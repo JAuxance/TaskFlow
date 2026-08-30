@@ -34,5 +34,19 @@ def create_user(username, email, password_hash):
                 """,
                 (username, email, password_hash),
             )
+            return cursor.fetchone()
+
+
+def get_user_by_email(email):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, username, email, password_hash, created_at
+                FROM users
+                WHERE email = %s;
+                """,
+                (email,),
+            )
 
             return cursor.fetchone()
