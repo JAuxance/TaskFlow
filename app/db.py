@@ -1,6 +1,7 @@
 import os
 import psycopg
 
+
 def get_db_connection():
     """
     Establishes a connection to the PostgreSQL database using psycopg.
@@ -13,10 +14,15 @@ def get_db_connection():
     db_port = os.getenv("DATABASE_PORT", os.getenv("DB_PORT", "5432"))
     db_name = os.getenv("DATABASE_NAME", os.getenv("DB_NAME", "mydatabase"))
     db_user = os.getenv("DATABASE_USER", os.getenv("DB_USER", "myuser"))
-    db_password = os.getenv("DATABASE_PASSWORD", os.getenv("DB_PASSWORD", "mypassword"))
+    db_password = os.getenv(
+        "DATABASE_PASSWORD", os.getenv("DB_PASSWORD", "mypassword")
+    )
 
     # Create a connection string
-    conn_str = f"host={db_host} port={db_port} dbname={db_name} user={db_user} password={db_password}"
+    conn_str = (
+        f"host={db_host} port={db_port} dbname={db_name} "
+        f"user={db_user} password={db_password}"
+    )
 
     # Establish and return the database connection
     return psycopg.connect(conn_str)
@@ -49,6 +55,7 @@ def get_user_by_email(email):
             )
             return cursor.fetchone()
 
+
 def get_user_by_id(user_id):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
@@ -61,4 +68,3 @@ def get_user_by_id(user_id):
                 (user_id,),
             )
             return cursor.fetchone()
-            

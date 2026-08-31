@@ -10,6 +10,7 @@ password_hasher = PasswordHasher()
 secret_key = os.getenv("SECRET_KEY")
 app.config["SECRET_KEY"] = secret_key
 
+
 @app.route("/health")
 def health():
     try:
@@ -66,7 +67,7 @@ def login():
 
     if not data:
         return {"error": "Invalid JSON body"}, 400
-    
+
     email = data.get("email")
     password = data.get("password")
 
@@ -78,7 +79,7 @@ def login():
     if not user:
         return {
             "error": "invalid email or password"
-            }, 401
+        }, 401
 
     user_id = user[0]
 
@@ -96,6 +97,7 @@ def login():
         "email": user[2],
     }, 200
 
+
 @app.route("/api/auth/me", methods=["GET"])
 def get_current_user():
     user_id = session.get("user_id")
@@ -104,18 +106,19 @@ def get_current_user():
         return {
             "error": "authentication required"
         }, 401
-    
+
     user = get_user_by_id(user_id)
     if not user:
         return {
             "error": "user not found"
         }, 404
-    
+
     return {
-    "id": user[0],
-    "username": user[1],
-    "email": user[2],
+        "id": user[0],
+        "username": user[1],
+        "email": user[2],
     }, 200
+
 
 @app.route("/api/auth/logout", methods=["POST"])
 def logout():
@@ -123,6 +126,7 @@ def logout():
     return {
         "message": "logget out succesfully"
     }, 200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
