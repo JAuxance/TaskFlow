@@ -12,6 +12,7 @@ services:
       DATABASE_NAME: taskflow
       DATABASE_USER: taskflow
       DATABASE_PASSWORD: taskflow
+      SECRET_KEY: ${SECRET_KEY}
     depends_on:
       db:
         condition: service_healthy

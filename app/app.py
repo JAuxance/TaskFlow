@@ -1,13 +1,14 @@
-from flask import Flask, request
+from flask import Flask, request, session
 from argon2 import PasswordHasher
 from psycopg.errors import UniqueViolation
-from app.db import create_user, get_db_connection
+from app.db import create_user, get_db_connection, get_user_by_email, get_user_by_id
 from argon2.exceptions import VerifyMismatchError
-from app.db import get_user_by_email
-
+import os
 app = Flask(__name__)
 password_hasher = PasswordHasher()
 
+secret_key = os.getenv("SECRET_KEY")
+app.config["SECRET_KEY"] = secret_key
 
 @app.route("/health")
 def health():
@@ -65,7 +66,7 @@ def login():
 
     if not data:
         return {"error": "Invalid JSON body"}, 400
-
+    
     email = data.get("email")
     password = data.get("password")
 
@@ -75,7 +76,11 @@ def login():
     user = get_user_by_email(email)
 
     if not user:
-        return {"error": "invalid email or password"}, 401
+        return {
+            "error": "invalid email or password"
+            }, 401
+
+    user_id = user[0]
 
     try:
         password_hasher.verify(user[3], password)
@@ -83,12 +88,41 @@ def login():
     except VerifyMismatchError:
         return {"error": "invalid email or password"}, 401
 
+    session["user_id"] = user_id
+
     return {
-        "id": user[0],
+        "id": user_id,
         "username": user[1],
         "email": user[2],
     }, 200
 
+@app.route("/api/auth/me", methods=["GET"])
+def get_current_user():
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return {
+            "error": "authentication required"
+        }, 401
+    
+    user = get_user_by_id(user_id)
+    if not user:
+        return {
+            "error": "user not found"
+        }, 404
+    
+    return {
+    "id": user[0],
+    "username": user[1],
+    "email": user[2],
+    }, 200
+
+@app.route("/api/auth/logout", methods=["POST"])
+def logout():
+    session.pop("user_id", None)
+    return {
+        "message": "logget out succesfully"
+    }, 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

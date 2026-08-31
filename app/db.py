@@ -1,7 +1,6 @@
 import os
 import psycopg
 
-
 def get_db_connection():
     """
     Establishes a connection to the PostgreSQL database using psycopg.
@@ -48,5 +47,18 @@ def get_user_by_email(email):
                 """,
                 (email,),
             )
-
             return cursor.fetchone()
+
+def get_user_by_id(user_id):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, username, email
+                FROM users
+                WHERE id = %s;
+                """,
+                (user_id,),
+            )
+            return cursor.fetchone()
+            
