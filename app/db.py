@@ -68,3 +68,16 @@ def get_user_by_id(user_id):
                 (user_id,),
             )
             return cursor.fetchone()
+
+def create_workspace(owner_id, name):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO workspaces (owner_id, name)
+                VALUES (%s, %s)
+                RETURNING id, owner_id, name, created_at;
+                """,
+                (owner_id, name),
+            )
+            return cursor.fetchone()

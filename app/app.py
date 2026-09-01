@@ -1,7 +1,7 @@
 from flask import Flask, request, session
 from argon2 import PasswordHasher
 from psycopg.errors import UniqueViolation
-from app.db import create_user, get_db_connection, get_user_by_email, get_user_by_id
+from app.db import create_user, get_db_connection, get_user_by_email, get_user_by_id, create_workspace
 from argon2.exceptions import VerifyMismatchError
 import os
 app = Flask(__name__)
@@ -126,6 +126,37 @@ def logout():
     return {
         "message": "logget out succesfully"
     }, 200
+
+@app.route("/api/workspaces", methods=["POST"])
+def create_workspace_endpoint():
+    user_id = session.get("user_id")
+    data = request.get_json()
+
+    if not user_id:
+            return{
+                "error": "No user found"
+            }, 401
+
+    if data is None:
+        return {
+            "error": "invalid JSON body"
+        }, 400
+    
+    name = data.get("name")
+
+    if not name:
+        return {
+            "error": "name is required"
+        }, 400
+    workspace = create_workspace(user_id, name)
+
+    return{
+        "id": workspace[0],
+        "owner_id": workspace[1],
+        "name": workspace[2],
+        "created_at": workspace[3].isoformat()
+    }, 201
+    
 
 
 if __name__ == "__main__":
