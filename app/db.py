@@ -14,9 +14,7 @@ def get_db_connection():
     db_port = os.getenv("DATABASE_PORT", os.getenv("DB_PORT", "5432"))
     db_name = os.getenv("DATABASE_NAME", os.getenv("DB_NAME", "mydatabase"))
     db_user = os.getenv("DATABASE_USER", os.getenv("DB_USER", "myuser"))
-    db_password = os.getenv(
-        "DATABASE_PASSWORD", os.getenv("DB_PASSWORD", "mypassword")
-    )
+    db_password = os.getenv("DATABASE_PASSWORD", os.getenv("DB_PASSWORD", "mypassword"))
 
     # Create a connection string
     conn_str = (
@@ -69,6 +67,7 @@ def get_user_by_id(user_id):
             )
             return cursor.fetchone()
 
+
 def create_workspace(owner_id, name):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
@@ -79,5 +78,65 @@ def create_workspace(owner_id, name):
                 RETURNING id, owner_id, name, created_at;
                 """,
                 (owner_id, name),
+            )
+            return cursor.fetchone()
+
+
+def get_workspaces_by_owner(owner_id):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, owner_id, name, created_at
+                FROM workspaces
+                WHERE owner_id = %s;
+                """,
+                (owner_id,),
+            )
+            return cursor.fetchall()
+
+
+def get_workspace_by_id(workspace_id):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, owner_id, name, created_at
+                FROM workspaces
+                WHERE id = %s;
+                """,
+                (workspace_id,),
+            )
+            return cursor.fetchone()
+
+
+def delet_workspace(workspace_id):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                DELETE FROM workspaces
+                WHERE id = %s
+                RETURNING id;
+                """,
+                (workspace_id,),
+            )
+            return cursor.fetchone()
+
+
+def update_workspace(workspace_id, name):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE workspaces
+                SET name = %s
+                WHERE id = %s
+                RETURNING id, owner_id, name, created_at;
+                """,
+                (
+                    name,
+                    workspace_id,
+                ),
             )
             return cursor.fetchone()

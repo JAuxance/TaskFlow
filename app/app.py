@@ -1,9 +1,22 @@
 from flask import Flask, request, session
 from argon2 import PasswordHasher
 from psycopg.errors import UniqueViolation
-from app.db import create_user, get_db_connection, get_user_by_email, get_user_by_id, create_workspace
+from app.db import (
+    create_user,
+    get_db_connection,
+    get_user_by_email,
+    get_workspace_by_id,
+)
+from app.db import (
+    get_user_by_id,
+    create_workspace,
+    get_workspaces_by_owner,
+    delet_workspace,
+    update_workspace,
+)
 from argon2.exceptions import VerifyMismatchError
 import os
+
 app = Flask(__name__)
 password_hasher = PasswordHasher()
 
@@ -77,9 +90,7 @@ def login():
     user = get_user_by_email(email)
 
     if not user:
-        return {
-            "error": "invalid email or password"
-        }, 401
+        return {"error": "invalid email or password"}, 401
 
     user_id = user[0]
 
@@ -103,15 +114,11 @@ def get_current_user():
     user_id = session.get("user_id")
 
     if user_id is None:
-        return {
-            "error": "authentication required"
-        }, 401
+        return {"error": "authentication required"}, 401
 
     user = get_user_by_id(user_id)
     if not user:
-        return {
-            "error": "user not found"
-        }, 404
+        return {"error": "user not found"}, 404
 
     return {
         "id": user[0],
@@ -123,9 +130,8 @@ def get_current_user():
 @app.route("/api/auth/logout", methods=["POST"])
 def logout():
     session.pop("user_id", None)
-    return {
-        "message": "logget out succesfully"
-    }, 200
+    return {"message": "logget out succesfully"}, 200
+
 
 @app.route("/api/workspaces", methods=["POST"])
 def create_workspace_endpoint():
@@ -133,30 +139,114 @@ def create_workspace_endpoint():
     data = request.get_json()
 
     if not user_id:
-            return{
-                "error": "No user found"
-            }, 401
+        return {"error": "No user found"}, 401
 
     if data is None:
-        return {
-            "error": "invalid JSON body"
-        }, 400
-    
+        return {"error": "invalid JSON body"}, 400
+
     name = data.get("name")
 
     if not name:
-        return {
-            "error": "name is required"
-        }, 400
+        return {"error": "name is required"}, 400
     workspace = create_workspace(user_id, name)
 
-    return{
+    return {
         "id": workspace[0],
         "owner_id": workspace[1],
         "name": workspace[2],
-        "created_at": workspace[3].isoformat()
+        "created_at": workspace[3].isoformat(),
     }, 201
-    
+
+
+@app.route("/api/workspaces", methods=["GET"])
+def get_workspaces():
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return {"error": "No user found"}, 401
+
+    workspaces = get_workspaces_by_owner(user_id)
+
+    if not workspaces:
+        return [], 200
+
+    result = []
+    for workspace in workspaces:
+        result.append(
+            {
+                "id": workspace[0],
+                "owner_id": workspace[1],
+                "name": workspace[2],
+                "created_at": workspace[3].isoformat(),
+            }
+        )
+
+    return result, 200
+
+
+@app.route("/api/workspaces/<int:workspace_id>", methods=["GET"])
+def get_workspaces_by_id_route(workspace_id):
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+
+    workspace = get_workspace_by_id(workspace_id)
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "workspace not found"}, 404
+
+    return {
+        "id": workspace[0],
+        "owner_id": workspace[1],
+        "name": workspace[2],
+        "created_at": workspace[3].isoformat(),
+    }, 200
+
+
+@app.route("/api/workspaces/<int:workspace_id>", methods=["DELETE"])
+def del_workspace(workspace_id):
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+
+    workspace = get_workspace_by_id(workspace_id)
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+
+    delet_workspace(workspace_id)
+    return {"message": "workspace deleted successfuly"}, 200
+
+
+@app.route("/api/workspaces/<int:workspace_id>", methods=["PATCH"])
+def workspace_update(workspace_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    workspace = get_workspace_by_id(workspace_id)
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+
+    data = request.get_json()
+    name = data.get("name")
+    if not name:
+        return {"error": "name is missing"}, 400
+    edited_workspace = update_workspace(workspace_id, name)
+    return {
+        "id": edited_workspace[0],
+        "owner_id": edited_workspace[1],
+        "name": edited_workspace[2],
+        "created_at": edited_workspace[3].isoformat(),
+    }, 200
 
 
 if __name__ == "__main__":
