@@ -3,9 +3,16 @@ from argon2 import PasswordHasher
 from psycopg.errors import UniqueViolation
 from app.db import (
     create_user,
+    deleted_project,
     get_db_connection,
+    get_task_by_id,
     get_user_by_email,
     get_workspace_by_id,
+    create_project,
+    get_project_by_id,
+    update_project_db,
+    create_task,
+    update_task_db
 )
 from app.db import (
     get_user_by_id,
@@ -13,6 +20,9 @@ from app.db import (
     get_workspaces_by_owner,
     delet_workspace,
     update_workspace,
+    get_projects_by_workspace,
+    get_tasks_by_project,
+    delete_task
 )
 from argon2.exceptions import VerifyMismatchError
 import os
@@ -248,6 +258,263 @@ def workspace_update(workspace_id):
         "created_at": edited_workspace[3].isoformat(),
     }, 200
 
+@app.route("/api/workspaces/<int:workspace_id>/projects", methods=["POST"])
+def projects(workspace_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    workspace = get_workspace_by_id(workspace_id)
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+    data = request.get_json()
+    if not data:
+        return {"error": "invalid JSON body"}, 400
+    name = data.get("name")
+    description = data.get("description")
+    if not name:
+        return {"error": "name is required"}, 400
+    project = create_project(workspace_id, name, description)
+    return{
+        "id": project[0],
+        "workspace_id": project[1],
+        "name": project[2],
+        "description": project[3],
+        "created_at": project[4].isoformat()
+    },201
+@app.route("/api/workspaces/<int:workspace_id>/projects", methods=["GET"])
+def get_projects(workspace_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    workspace = get_workspace_by_id(workspace_id)
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+    projects = get_projects_by_workspace(workspace_id)
+    result = []
+    for project in projects:
+        result.append({
+           "id": project[0],
+            "workspace_id": project[1],
+            "name": project[2],
+            "description": project[3],
+            "created_at": project[4].isoformat()
+        })
+    return result, 200
+@app.route("/api/projects/<int:project_id>", methods=["GET"])
+def get_project_id(project_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    project = get_project_by_id(project_id)
+    if not project:
+        return {"error": "project not found"}, 404
+    workspace = get_workspace_by_id(project[1])
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+    return {
+        "id": project[0],
+        "workspace_id": project[1],
+        "name": project[2],
+        "description": project[3],
+        "created_at": project[4].isoformat()
+    }, 200
+@app.route("/api/projects/<int:project_id>", methods=["PATCH"])
+def update_project(project_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    project = get_project_by_id(project_id)
+    if not project:
+        return {"error": "project not found"}, 404
+    workspace = get_workspace_by_id(project[1])
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+    data = request.get_json()
+    if not data:
+        return {"error": "invalid JSON body"}, 400
+    name = data.get("name", project[2])
+    description = data.get("description", project[3])
+    if not name and not description:
+        return {"error": "name or description is required"}, 400
+    updated_project = update_project_db(project_id, name, description)
+    return {
+        "id": updated_project[0],
+        "workspace_id": updated_project[1],
+        "name": updated_project[2],
+        "description": updated_project[3],
+        "created_at": updated_project[4].isoformat()
+    }, 200
+@app.route("/api/projects/<int:project_id>", methods=["DELETE"])
+def delete_project(project_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    project = get_project_by_id(project_id)
+    if not project:
+        return {"error": "project not found"}, 404
+    workspace = get_workspace_by_id(project[1])
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+    deleted_project(project_id)
+    if not deleted_project:
+        return {"error": "project not found"}, 404
+    return {"message": "project deleted successfuly"}, 200
+
+@app.route("/api/projects/<int:project_id>/tasks", methods=["POST"])
+def create_task_route(project_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    project = get_project_by_id(project_id)
+    if not project:
+        return {"error": "project not found"}, 404
+    workspace = get_workspace_by_id(project[1])
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+    data = request.get_json()
+    if not data:
+        return {"error": "invalid JSON body"}, 400
+    title = data.get("title")
+    description = data.get("description")
+    assignee_id = data.get("assignee_id")
+    status = data.get("status")
+    priority = data.get("priority")
+    due_date = data.get("due_date")
+    if not title:
+        return {"error": "title is required"}, 400
+    if not status:
+        return {"error": "status is required"}, 400
+    if not priority:
+        return {"error": "priority is required"}, 400
+    assignee_id = data.get("assignee_id")
+    creator_id = user_id
+    if assignee_id:
+        assignee = get_user_by_id(assignee_id)
+        if not assignee:
+            return {"error": "assignee not found"}, 404
+    task = create_task(project_id, creator_id, assignee_id, title, description, status, priority, due_date)
+    return {
+        "id": task[0],
+        "project_id": task[1],
+        "title": task[2],
+        "description": task[3],
+        "status": task[4],
+        "priority": task[5],
+        "due_date": task[6].isoformat() if task[6] else None
+    }, 201
+
+@app.route("/api/projects/<int:project_id>/tasks", methods=["GET"])
+def get_tasks_route(project_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    project = get_project_by_id(project_id)
+    if not project:
+        return {"error": "project not found"}, 404
+    workspace = get_workspace_by_id(project[1])
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+    tasks = get_tasks_by_project(project_id)
+    if not tasks:
+        return [], 200
+    result = []
+    for task in tasks:
+        result.append({
+            "id": task[0],
+            "project_id": task[1],
+            "title": task[4],
+            "description": task[5],
+            "status": task[6],
+            "priority": task[7],
+            "due_date": task[8].isoformat() if task[8] else None
+        })
+    return result, 200
+
+@app.route("/api/tasks/<int:task_id>", methods=["GET"])
+def get_task_route(task_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    task = get_task_by_id(task_id)
+    if not task:
+        return {"error": "task not found"}, 404
+    return {
+        "id": task[0],
+        "project_id": task[1],
+        "title": task[4],
+        "description": task[5],
+        "status": task[6],
+        "priority": task[7],
+        "due_date": task[8].isoformat() if task[8] else None
+    }, 200
+@app.route("/api/tasks/<int:task_id>", methods=["PATCH"])
+def update_task_route(task_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    task = get_task_by_id(task_id)
+    if not task:
+        return {"error": "task not found"}, 404
+    project = get_project_by_id(task[1])
+    if not project:
+        return {"error": "project not found"}, 404
+    workspace = get_workspace_by_id(project[1])
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+    data = request.get_json()
+    if not data:
+        return {"error": "invalid JSON body"}, 400
+    title = data.get("title", task[4])
+    description = data.get("description", task[5])
+    status = data.get("status", task[6])
+    priority = data.get("priority", task[7])
+    due_date = data.get("due_date", task[8].isoformat() if task[8] else None)
+    updated_task = update_task_db(task_id, title, description, status, priority, due_date)
+    return {
+        "id": updated_task[0],
+        "project_id": updated_task[1],
+        "title": updated_task[4],
+        "description": updated_task[5],
+        "status": updated_task[6],
+        "priority": updated_task[7],
+        "due_date": updated_task[8].isoformat() if updated_task[8] else None
+    }, 200
+@app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
+def delete_task_route(task_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    task = get_task_by_id(task_id)
+    if not task:
+        return {"error": "task not found"}, 404
+    project = get_project_by_id(task[1])
+    if not project:
+        return {"error": "project not found"}, 404
+    workspace = get_workspace_by_id(project[1])
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if workspace[1] != user_id:
+        return {"error": "user_id dont match with your workspace_id"}, 404
+    deleted_task = delete_task(task_id)
+    if not deleted_task:
+        return {"error": "task not found"}, 404
+    return {"message": "task deleted successfuly"}, 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
