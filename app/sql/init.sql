@@ -33,3 +33,12 @@ CREATE TABLE tasks (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE workspace_members (
+    id SERIAL PRIMARY KEY,
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(20) NOT NULL DEFAULT 'member',
+        check (role IN ('owner', 'admin', 'member', 'guest')),
+    joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (workspace_id, user_id)
+);

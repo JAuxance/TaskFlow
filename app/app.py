@@ -2,6 +2,7 @@ from flask import Flask, request, session
 from argon2 import PasswordHasher
 from psycopg.errors import UniqueViolation
 from app.db import (
+    add_workspace_member,
     create_user,
     deleted_project,
     get_db_connection,
@@ -12,7 +13,9 @@ from app.db import (
     get_project_by_id,
     update_project_db,
     create_task,
-    update_task_db
+    update_task_db,
+    create_workspace_with_owner,
+    get_workspace_members,
 )
 from app.db import (
     get_user_by_id,
@@ -22,7 +25,7 @@ from app.db import (
     update_workspace,
     get_projects_by_workspace,
     get_tasks_by_project,
-    delete_task
+    delete_task,
 )
 from argon2.exceptions import VerifyMismatchError
 import os
@@ -158,7 +161,7 @@ def create_workspace_endpoint():
 
     if not name:
         return {"error": "name is required"}, 400
-    workspace = create_workspace(user_id, name)
+    workspace = create_workspace_with_owner(user_id, name)
 
     return {
         "id": workspace[0],
@@ -258,6 +261,7 @@ def workspace_update(workspace_id):
         "created_at": edited_workspace[3].isoformat(),
     }, 200
 
+
 @app.route("/api/workspaces/<int:workspace_id>/projects", methods=["POST"])
 def projects(workspace_id):
     user_id = session.get("user_id")
@@ -276,13 +280,15 @@ def projects(workspace_id):
     if not name:
         return {"error": "name is required"}, 400
     project = create_project(workspace_id, name, description)
-    return{
+    return {
         "id": project[0],
         "workspace_id": project[1],
         "name": project[2],
         "description": project[3],
-        "created_at": project[4].isoformat()
-    },201
+        "created_at": project[4].isoformat(),
+    }, 201
+
+
 @app.route("/api/workspaces/<int:workspace_id>/projects", methods=["GET"])
 def get_projects(workspace_id):
     user_id = session.get("user_id")
@@ -296,14 +302,18 @@ def get_projects(workspace_id):
     projects = get_projects_by_workspace(workspace_id)
     result = []
     for project in projects:
-        result.append({
-           "id": project[0],
-            "workspace_id": project[1],
-            "name": project[2],
-            "description": project[3],
-            "created_at": project[4].isoformat()
-        })
+        result.append(
+            {
+                "id": project[0],
+                "workspace_id": project[1],
+                "name": project[2],
+                "description": project[3],
+                "created_at": project[4].isoformat(),
+            }
+        )
     return result, 200
+
+
 @app.route("/api/projects/<int:project_id>", methods=["GET"])
 def get_project_id(project_id):
     user_id = session.get("user_id")
@@ -322,8 +332,10 @@ def get_project_id(project_id):
         "workspace_id": project[1],
         "name": project[2],
         "description": project[3],
-        "created_at": project[4].isoformat()
+        "created_at": project[4].isoformat(),
     }, 200
+
+
 @app.route("/api/projects/<int:project_id>", methods=["PATCH"])
 def update_project(project_id):
     user_id = session.get("user_id")
@@ -350,8 +362,10 @@ def update_project(project_id):
         "workspace_id": updated_project[1],
         "name": updated_project[2],
         "description": updated_project[3],
-        "created_at": updated_project[4].isoformat()
+        "created_at": updated_project[4].isoformat(),
     }, 200
+
+
 @app.route("/api/projects/<int:project_id>", methods=["DELETE"])
 def delete_project(project_id):
     user_id = session.get("user_id")
@@ -369,6 +383,7 @@ def delete_project(project_id):
     if not deleted_project:
         return {"error": "project not found"}, 404
     return {"message": "project deleted successfuly"}, 200
+
 
 @app.route("/api/projects/<int:project_id>/tasks", methods=["POST"])
 def create_task_route(project_id):
@@ -404,7 +419,16 @@ def create_task_route(project_id):
         assignee = get_user_by_id(assignee_id)
         if not assignee:
             return {"error": "assignee not found"}, 404
-    task = create_task(project_id, creator_id, assignee_id, title, description, status, priority, due_date)
+    task = create_task(
+        project_id,
+        creator_id,
+        assignee_id,
+        title,
+        description,
+        status,
+        priority,
+        due_date,
+    )
     return {
         "id": task[0],
         "project_id": task[1],
@@ -412,8 +436,9 @@ def create_task_route(project_id):
         "description": task[3],
         "status": task[4],
         "priority": task[5],
-        "due_date": task[6].isoformat() if task[6] else None
+        "due_date": task[6].isoformat() if task[6] else None,
     }, 201
+
 
 @app.route("/api/projects/<int:project_id>/tasks", methods=["GET"])
 def get_tasks_route(project_id):
@@ -433,16 +458,19 @@ def get_tasks_route(project_id):
         return [], 200
     result = []
     for task in tasks:
-        result.append({
-            "id": task[0],
-            "project_id": task[1],
-            "title": task[4],
-            "description": task[5],
-            "status": task[6],
-            "priority": task[7],
-            "due_date": task[8].isoformat() if task[8] else None
-        })
+        result.append(
+            {
+                "id": task[0],
+                "project_id": task[1],
+                "title": task[4],
+                "description": task[5],
+                "status": task[6],
+                "priority": task[7],
+                "due_date": task[8].isoformat() if task[8] else None,
+            }
+        )
     return result, 200
+
 
 @app.route("/api/tasks/<int:task_id>", methods=["GET"])
 def get_task_route(task_id):
@@ -459,8 +487,10 @@ def get_task_route(task_id):
         "description": task[5],
         "status": task[6],
         "priority": task[7],
-        "due_date": task[8].isoformat() if task[8] else None
+        "due_date": task[8].isoformat() if task[8] else None,
     }, 200
+
+
 @app.route("/api/tasks/<int:task_id>", methods=["PATCH"])
 def update_task_route(task_id):
     user_id = session.get("user_id")
@@ -485,7 +515,9 @@ def update_task_route(task_id):
     status = data.get("status", task[6])
     priority = data.get("priority", task[7])
     due_date = data.get("due_date", task[8].isoformat() if task[8] else None)
-    updated_task = update_task_db(task_id, title, description, status, priority, due_date)
+    updated_task = update_task_db(
+        task_id, title, description, status, priority, due_date
+    )
     return {
         "id": updated_task[0],
         "project_id": updated_task[1],
@@ -493,8 +525,10 @@ def update_task_route(task_id):
         "description": updated_task[5],
         "status": updated_task[6],
         "priority": updated_task[7],
-        "due_date": updated_task[8].isoformat() if updated_task[8] else None
+        "due_date": updated_task[8].isoformat() if updated_task[8] else None,
     }, 200
+
+
 @app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task_route(task_id):
     user_id = session.get("user_id")
@@ -515,6 +549,70 @@ def delete_task_route(task_id):
     if not deleted_task:
         return {"error": "task not found"}, 404
     return {"message": "task deleted successfuly"}, 200
+
+
+@app.route("/api/workspaces/<int:workspace_id>/members", methods=["POST"])
+def add_member(workspace_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    current_member = get_workspace_members(workspace_id, user_id)
+    workspace = get_workspace_by_id(workspace_id)
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if not current_member:
+        return {"error": "not a member of this workspace"}, 403
+    if current_member[3] not in ("owner", "admin"):
+        return {"error": "insufficient privileges"}, 403
+    data = request.get_json()
+    if not data:
+        return {"error": "invalid JSON body"}, 400
+    member_email = data.get("email")
+    role = data.get("role", "member")
+    allowed_roles = ["owner", "admin", "member", "guest"]
+    if role not in allowed_roles:
+        return {"error": f"role must be one of {allowed_roles}"}, 400
+    if not member_email:
+        return {"error": "email is required"}, 400
+    member = get_user_by_email(member_email)
+    if not member:
+        return {"error": "user not found"}, 404
+    try:
+        add_workspace_member(workspace_id, member[0], role)
+    except UniqueViolation:
+        return {"error": "user is already a member of this workspace"}, 409
+    return {
+        "message": f"User {member_email} added to workspace {workspace[2]} as {role}"
+    }, 201
+
+
+app.route("/api/workspaces/<int:workspace_id>/members", methods=["GET"])
+
+
+def get_members(workspace_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return {"error": "user_id Missing"}, 401
+    current_member = get_workspace_members(workspace_id, user_id)
+    workspace = get_workspace_by_id(workspace_id)
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    if not current_member:
+        return {"error": "not a member of this workspace"}, 403
+    members = get_workspace_members(workspace_id)
+    result = []
+    for member in members:
+        result.append(
+            {
+                "id": member[0],
+                "workspace_id": member[1],
+                "user_id": member[2],
+                "role": member[3],
+                "joined_at": member[4].isoformat(),
+            }
+        )
+    return result, 200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
