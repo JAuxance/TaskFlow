@@ -1,6 +1,7 @@
 from flask import Flask, request, session
 from argon2 import PasswordHasher
 from psycopg.errors import UniqueViolation
+from app.permissions import check_workspace_permission
 from app.db import (
     add_workspace_member,
     create_user,
@@ -16,11 +17,12 @@ from app.db import (
     update_task_db,
     create_workspace_with_owner,
     get_workspace_members,
+    get_workspace_member,
 )
 from app.db import (
     get_user_by_id,
-    create_workspace,
-    get_workspaces_by_owner,
+    get_workspaces_by_member,
+    get_workspace_by_member,
     delet_workspace,
     update_workspace,
     get_projects_by_workspace,
@@ -179,7 +181,7 @@ def get_workspaces():
     if not user_id:
         return {"error": "No user found"}, 401
 
-    workspaces = get_workspaces_by_owner(user_id)
+    workspaces = get_workspaces_by_member(user_id)
 
     if not workspaces:
         return [], 200
@@ -208,8 +210,9 @@ def get_workspaces_by_id_route(workspace_id):
     workspace = get_workspace_by_id(workspace_id)
     if not workspace:
         return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "workspace not found"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id)
+    if permission_error:
+        return permission_error
 
     return {
         "id": workspace[0],
@@ -246,8 +249,9 @@ def workspace_update(workspace_id):
     if not workspace:
         return {"error": "workspace not found"}, 404
 
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id, ("owner", "admin"))
+    if permission_error:
+        return permission_error
 
     data = request.get_json()
     name = data.get("name")
@@ -270,8 +274,9 @@ def projects(workspace_id):
     workspace = get_workspace_by_id(workspace_id)
     if not workspace:
         return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id, ("owner", "admin"))
+    if permission_error:
+        return permission_error
     data = request.get_json()
     if not data:
         return {"error": "invalid JSON body"}, 400
@@ -297,8 +302,9 @@ def get_projects(workspace_id):
     workspace = get_workspace_by_id(workspace_id)
     if not workspace:
         return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id)
+    if permission_error:
+        return permission_error
     projects = get_projects_by_workspace(workspace_id)
     result = []
     for project in projects:
@@ -325,8 +331,9 @@ def get_project_id(project_id):
     workspace = get_workspace_by_id(project[1])
     if not workspace:
         return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id)
+    if permission_error:
+        return permission_error
     return {
         "id": project[0],
         "workspace_id": project[1],
@@ -347,8 +354,9 @@ def update_project(project_id):
     workspace = get_workspace_by_id(project[1])
     if not workspace:
         return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id, ("owner", "admin"))
+    if permission_error:
+        return permission_error
     data = request.get_json()
     if not data:
         return {"error": "invalid JSON body"}, 400
@@ -377,8 +385,9 @@ def delete_project(project_id):
     workspace = get_workspace_by_id(project[1])
     if not workspace:
         return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id, ("owner", "admin"))
+    if permission_error:
+        return permission_error
     deleted_project(project_id)
     if not deleted_project:
         return {"error": "project not found"}, 404
@@ -396,8 +405,9 @@ def create_task_route(project_id):
     workspace = get_workspace_by_id(project[1])
     if not workspace:
         return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id, ("owner", "admin", "member"))
+    if permission_error:
+        return permission_error
     data = request.get_json()
     if not data:
         return {"error": "invalid JSON body"}, 400
@@ -451,8 +461,9 @@ def get_tasks_route(project_id):
     workspace = get_workspace_by_id(project[1])
     if not workspace:
         return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id)
+    if permission_error:
+        return permission_error
     tasks = get_tasks_by_project(project_id)
     if not tasks:
         return [], 200
@@ -480,6 +491,15 @@ def get_task_route(task_id):
     task = get_task_by_id(task_id)
     if not task:
         return {"error": "task not found"}, 404
+    project = get_project_by_id(task[1])
+    if not project:
+        return {"error": "project not found"}, 404
+    workspace = get_workspace_by_id(project[1])
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id)
+    if permission_error:
+        return permission_error
     return {
         "id": task[0],
         "project_id": task[1],
@@ -505,8 +525,9 @@ def update_task_route(task_id):
     workspace = get_workspace_by_id(project[1])
     if not workspace:
         return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    permission_error = check_workspace_permission(workspace[0], user_id, ("owner", "admin", "member"))
+    if permission_error:
+        return permission_error
     data = request.get_json()
     if not data:
         return {"error": "invalid JSON body"}, 400
@@ -556,7 +577,7 @@ def add_member(workspace_id):
     user_id = session.get("user_id")
     if not user_id:
         return {"error": "user_id Missing"}, 401
-    current_member = get_workspace_members(workspace_id, user_id)
+    current_member = get_workspace_member(workspace_id, user_id)
     workspace = get_workspace_by_id(workspace_id)
     if not workspace:
         return {"error": "workspace not found"}, 404
@@ -586,14 +607,12 @@ def add_member(workspace_id):
     }, 201
 
 
-app.route("/api/workspaces/<int:workspace_id>/members", methods=["GET"])
-
-
+@app.route("/api/workspaces/<int:workspace_id>/members", methods=["GET"])
 def get_members(workspace_id):
     user_id = session.get("user_id")
     if not user_id:
         return {"error": "user_id Missing"}, 401
-    current_member = get_workspace_members(workspace_id, user_id)
+    current_member = get_workspace_member(workspace_id, user_id)
     workspace = get_workspace_by_id(workspace_id)
     if not workspace:
         return {"error": "workspace not found"}, 404
@@ -608,7 +627,7 @@ def get_members(workspace_id):
                 "workspace_id": member[1],
                 "user_id": member[2],
                 "role": member[3],
-                "joined_at": member[4].isoformat(),
+                "created_at": member[4].isoformat(),
             }
         )
     return result, 200

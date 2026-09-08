@@ -68,30 +68,17 @@ def get_user_by_id(user_id):
             return cursor.fetchone()
 
 
-def create_workspace(owner_id, name):
+def get_workspaces_by_member(user_id):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                INSERT INTO workspaces (owner_id, name)
-                VALUES (%s, %s)
-                RETURNING id, owner_id, name, created_at;
+                SELECT w.id, w.owner_id, w.name, w.created_at
+                FROM workspaces AS w
+                JOIN workspace_members AS m ON m.workspace_id = w.id
+                WHERE m.user_id = %s;
                 """,
-                (owner_id, name),
-            )
-            return cursor.fetchone()
-
-
-def get_workspaces_by_owner(owner_id):
-    with get_db_connection() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT id, owner_id, name, created_at
-                FROM workspaces
-                WHERE owner_id = %s;
-                """,
-                (owner_id,),
+                (user_id,),
             )
             return cursor.fetchall()
 
@@ -229,7 +216,7 @@ def create_task(
             cursor.execute(
                 """
             INSERT INTO tasks (
-                project_id, creator_id, as title, description,
+                project_id, creator_id, assignee_id, title, description,
                 status, priority, due_date
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -315,30 +302,6 @@ def delete_task(task_id):
             )
             return cursor.fetchone()
 
-
-def create_workspace_with_owner(owner_id, name):
-    with get_db_connection() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                INSERT INTO workspaces (owner_id, name)
-                VALUES (%s, %s)
-                RETURNING id, owner_id, name, created_at;
-                """,
-                (owner_id, name),
-            )
-            workspace = cursor.fetchone()
-            # Add the owner as a member of the workspace
-            cursor.execute(
-                """
-                INSERT INTO workspace_members (workspace_id, user_id, role)
-                VALUES (%s, %s, 'owner');
-                """,
-                (workspace[0], owner_id),
-            )
-            return workspace
-
-
 def add_workspace_member(workspace_id, user_id, role):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
@@ -353,7 +316,7 @@ def add_workspace_member(workspace_id, user_id, role):
             return cursor.fetchone()
 
 
-def get_workspace_members(workspace_id, user_id):
+def get_workspace_member(workspace_id, user_id):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -365,4 +328,41 @@ def get_workspace_members(workspace_id, user_id):
                 """,
                 (workspace_id, user_id),
             )
+            return cursor.fetchone()
+
+
+def get_workspace_members(workspace_id):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, workspace_id, user_id, role, joined_at
+                FROM workspace_members
+                WHERE workspace_id = %s
+                """,
+                (workspace_id,),
+            )
             return cursor.fetchall()
+
+
+def create_workspace_with_owner(owner_id, name):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO workspaces (owner_id, name)
+                VALUES (%s, %s)
+                RETURNING id, owner_id, name, created_at;
+                """,
+                (owner_id, name),
+            )
+            workspace = cursor.fetchone()
+
+            cursor.execute(
+                """
+                INSERT INTO workspace_members (workspace_id, user_id, role)
+                VALUES (%s, %s, 'owner');
+                """,
+                (workspace[0], owner_id),
+            )
+            return workspace
