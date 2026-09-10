@@ -129,3 +129,4 @@ def delete_project(project_id):
     if not deleted_project_row:
         return {"error": "project not found"}, 404
     return {"message": "project deleted successfuly"}, 200
+

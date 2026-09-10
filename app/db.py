@@ -293,7 +293,7 @@ def delete_task(task_id):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
-                """
+            """
             DELETE FROM tasks
             WHERE id = %s
             RETURNING id;
@@ -366,3 +366,45 @@ def create_workspace_with_owner(owner_id, name):
                 (workspace[0], owner_id),
             )
             return workspace
+
+def update_role_member(workspace_id, user_id, role):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE workspace_members
+                SET role = %s
+                WHERE workspace_id = %s 
+                AND user_id = %s
+                RETURNING id, workspace_id, user_id, role, joined_at;
+                """,
+                (role, workspace_id, user_id),
+            )
+            return cursor.fetchone()
+
+def delete_member_db(workspace_id, user_id):
+    with get_db_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    DELETE FROM workspace_members
+                    WHERE workspace_id = %s AND user_id = %s
+                    RETURNING id;
+                    """,
+                    (workspace_id, user_id),
+                )
+                return cursor.fetchone()
+
+def crowned_king(owner_id, workspace_id):
+    with get_db_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE workspaces
+                    SET owner_id = %s
+                    WHERE id = %s
+                    RETURNING id, owner_id, name, created_at;
+                    """,
+                    (owner_id, workspace_id),
+                )
+                return cursor.fetchone()

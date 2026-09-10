@@ -106,7 +106,10 @@ def get_tasks_route(project_id):
     permission_error = check_workspace_permission(workspace[0], user_id)
     if permission_error:
         return permission_error
-    return [_task_response(task) for task in get_tasks_by_project(project_id)], 200
+    tasks = get_tasks_by_project(project_id)
+    response = [_task_response(task) for task in tasks]
+
+    return response, 200
 
 
 @tasks_bp.route("/api/tasks/<int:task_id>", methods=["GET"])

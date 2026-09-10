@@ -11,6 +11,9 @@ from app.db import (
     get_workspace_members,
     get_workspaces_by_member,
     update_workspace,
+    update_role_member,
+    delete_member_db,
+    crowned_king
 )
 from app.permissions import check_workspace_permission
 
@@ -167,3 +170,156 @@ def get_members(workspace_id):
         }
         for member in members
     ], 200
+
+@workspaces_bp.route("/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["PATCH"])
+def update_member_role(workspace_id, user_id):
+    current_user_id = session.get("user_id")
+    
+    if not current_user_id:
+        return {"error": "user_id Missing"}, 401
+    
+    workspace = get_workspace_by_id(workspace_id)
+
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    
+    permision_error = check_workspace_permission(
+        workspace_id,
+        current_user_id,
+        ("owner", "admin"))
+
+    if permision_error:
+        return permision_error
+    target_member = get_workspace_member(workspace_id, user_id)
+    if not target_member:
+        return {"error": "user_id not found in this workspace"}, 404
+    if user_id == workspace[1]:
+        return {"error": "cannot modify the crown holder"}, 403
+    data = request.get_json()
+    if not data:
+        return {"error": "invalid JSON body"}, 400
+    role = data.get("role")
+
+    if role not in ("admin", "owner", "member", "guest"):
+            return {"error": "invalid role"}, 400
+
+    current_member = get_workspace_member(workspace_id, current_user_id)
+    current_member_role = current_member[3]
+
+    if current_member_role == "admin" and role not in ("member", "guest"):
+        return {"error": "admin cannot assign this role"}, 403
+    
+    if current_member_role == "owner" and role == "owner" and current_user_id != workspace[1]:
+        return {"error": "only the crown holder can assign owner role"}, 403
+    
+    
+    if target_member[3] == "owner" and current_user_id != workspace[1]:
+        return {"error": "only the crown holder can modify an owner"}, 403
+    
+    updated_member = update_role_member(workspace_id, user_id, role)
+
+    if not updated_member:
+        return {"error": "member update failed"}, 404
+    
+    return {
+    "id": updated_member[0],
+    "workspace_id": updated_member[1],
+    "user_id": updated_member[2],
+    "role": updated_member[3],
+    "joined_at": updated_member[4].isoformat(),
+}, 200 
+
+@workspaces_bp.route("/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["DELETE"])
+def delet_member_route(workspace_id, user_id):
+    requester_id = session.get("user_id")
+    if not requester_id:
+       return {"error": "user_id Missing"}, 401 
+
+    target_member = get_workspace_member(workspace_id, user_id)
+    if not target_member:
+            return {"error": "user_id not found in this workspace"}, 404
+    target_member_role = target_member[3]
+    
+    workspace = get_workspace_by_id(workspace_id)
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+    requester_member = get_workspace_member(workspace_id, requester_id)
+    if not requester_member:
+        return{"error": "Your not in this workspace"}, 403
+    requester_role = requester_member[3]
+
+    if requester_role in ("member", "guest"):
+        return{"error":"permission denied"}, 403
+    if requester_role not in ("owner", "admin") and requester_id != workspace[1]:
+        return{"error":"permission denied"}, 403
+    if ((requester_role == "admin" and target_member_role == "owner") or user_id == workspace[1]):
+        return{"error":"permission denied"}, 403
+    if requester_role == "admin" and target_member_role == "admin":
+        return{"error":"permission denied"}, 403
+    if requester_role == "owner" and target_member_role == "owner":
+        if requester_id != workspace[1]:
+            return {"error": "permission denied"}, 403
+    deleted_member = delete_member_db(workspace_id, user_id)
+    if not deleted_member:
+        return {"error": "member delete failed"}, 404
+    return {"message": f"member {deleted_member[0]} has been deleted"},
+
+@workspaces_bp.route("/api/workspaces/<int:workspace_id>/owner",methods=["PATCH"],)
+def transfer_crown(workspace_id):
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return {"error": "authentication required"}, 401
+
+    workspace = get_workspace_by_id(workspace_id)
+
+    if not workspace:
+        return {"error": "workspace not found"}, 404
+
+    if user_id != workspace[1]:
+        return {"error": "only the crown holder can transfer ownership"}, 403
+
+    data = request.get_json()
+
+    if not data:
+        return {"error": "invalid JSON body"}, 400
+
+    target_user_id = data.get("user_id")
+
+    if not target_user_id:
+        return {"error": "user_id is required"}, 400
+
+    if target_user_id == user_id:
+        return {"error": "user already holds the crown"}, 409
+
+    target_member = get_workspace_member(
+        workspace_id,
+        target_user_id,
+    )
+
+    if not target_member:
+        return {"error": "target user is not a member of this workspace"}, 404
+
+    if target_member[3] != "owner":
+        return {"error": "target user must have owner role"}, 403
+
+    updated_workspace = crowned_king(
+        target_user_id,
+        workspace_id,
+    )
+
+    if not updated_workspace:
+        return {"error": "ownership transfer failed"}, 404
+
+    return {
+        "message": "The crown has been transferred successfully",
+        "workspace_id": updated_workspace[0],
+        "owner_id": updated_workspace[1],
+        "name": updated_workspace[2],
+        "created_at": updated_workspace[3].isoformat(),
+    }, 200
+
+
+    
+    
+    
