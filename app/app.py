@@ -8,7 +8,6 @@ from app.routes.projects import projects_bp
 from app.routes.tasks import tasks_bp
 from app.routes.workspaces import workspaces_bp
 
-
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 

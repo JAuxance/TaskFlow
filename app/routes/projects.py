@@ -10,7 +10,6 @@ from app.db import (
 )
 from app.permissions import check_workspace_permission
 
-
 projects_bp = Blueprint("projects", __name__)
 
 
@@ -22,7 +21,9 @@ def projects(workspace_id):
     workspace = get_workspace_by_id(workspace_id)
     if not workspace:
         return {"error": "workspace not found"}, 404
-    permission_error = check_workspace_permission(workspace[0], user_id, ("owner", "admin"))
+    permission_error = check_workspace_permission(
+        workspace[0], user_id, ("owner", "admin")
+    )
     if permission_error:
         return permission_error
     data = request.get_json()
@@ -129,4 +130,3 @@ def delete_project(project_id):
     if not deleted_project_row:
         return {"error": "project not found"}, 404
     return {"message": "project deleted successfuly"}, 200
-

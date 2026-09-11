@@ -13,10 +13,9 @@ from app.db import (
     update_workspace,
     update_role_member,
     delete_member_db,
-    crowned_king
+    crowned_king,
 )
 from app.permissions import check_workspace_permission
-
 
 workspaces_bp = Blueprint("workspaces", __name__)
 
@@ -99,7 +98,9 @@ def workspace_update(workspace_id):
     workspace = get_workspace_by_id(workspace_id)
     if not workspace:
         return {"error": "workspace not found"}, 404
-    permission_error = check_workspace_permission(workspace[0], user_id, ("owner", "admin"))
+    permission_error = check_workspace_permission(
+        workspace[0], user_id, ("owner", "admin")
+    )
     if permission_error:
         return permission_error
     data = request.get_json()
@@ -145,7 +146,9 @@ def add_member(workspace_id):
         add_workspace_member(workspace_id, member[0], role)
     except UniqueViolation:
         return {"error": "user is already a member of this workspace"}, 409
-    return {"message": f"User {member_email} added to workspace {workspace_id} as {role}"}, 201
+    return {
+        "message": f"User {member_email} added to workspace {workspace_id} as {role}"
+    }, 201
 
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/members", methods=["GET"])
@@ -171,22 +174,24 @@ def get_members(workspace_id):
         for member in members
     ], 200
 
-@workspaces_bp.route("/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["PATCH"])
+
+@workspaces_bp.route(
+    "/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["PATCH"]
+)
 def update_member_role(workspace_id, user_id):
     current_user_id = session.get("user_id")
-    
+
     if not current_user_id:
         return {"error": "user_id Missing"}, 401
-    
+
     workspace = get_workspace_by_id(workspace_id)
 
     if not workspace:
         return {"error": "workspace not found"}, 404
-    
+
     permision_error = check_workspace_permission(
-        workspace_id,
-        current_user_id,
-        ("owner", "admin"))
+        workspace_id, current_user_id, ("owner", "admin")
+    )
 
     if permision_error:
         return permision_error
@@ -201,70 +206,82 @@ def update_member_role(workspace_id, user_id):
     role = data.get("role")
 
     if role not in ("admin", "owner", "member", "guest"):
-            return {"error": "invalid role"}, 400
+        return {"error": "invalid role"}, 400
 
     current_member = get_workspace_member(workspace_id, current_user_id)
     current_member_role = current_member[3]
 
     if current_member_role == "admin" and role not in ("member", "guest"):
         return {"error": "admin cannot assign this role"}, 403
-    
-    if current_member_role == "owner" and role == "owner" and current_user_id != workspace[1]:
+
+    if (
+        current_member_role == "owner"
+        and role == "owner"
+        and current_user_id != workspace[1]
+    ):
         return {"error": "only the crown holder can assign owner role"}, 403
-    
-    
+
     if target_member[3] == "owner" and current_user_id != workspace[1]:
         return {"error": "only the crown holder can modify an owner"}, 403
-    
+
     updated_member = update_role_member(workspace_id, user_id, role)
 
     if not updated_member:
         return {"error": "member update failed"}, 404
-    
-    return {
-    "id": updated_member[0],
-    "workspace_id": updated_member[1],
-    "user_id": updated_member[2],
-    "role": updated_member[3],
-    "joined_at": updated_member[4].isoformat(),
-}, 200 
 
-@workspaces_bp.route("/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["DELETE"])
+    return {
+        "id": updated_member[0],
+        "workspace_id": updated_member[1],
+        "user_id": updated_member[2],
+        "role": updated_member[3],
+        "joined_at": updated_member[4].isoformat(),
+    }, 200
+
+
+@workspaces_bp.route(
+    "/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["DELETE"]
+)
 def delet_member_route(workspace_id, user_id):
     requester_id = session.get("user_id")
     if not requester_id:
-       return {"error": "user_id Missing"}, 401 
+        return {"error": "user_id Missing"}, 401
 
     target_member = get_workspace_member(workspace_id, user_id)
     if not target_member:
-            return {"error": "user_id not found in this workspace"}, 404
+        return {"error": "user_id not found in this workspace"}, 404
     target_member_role = target_member[3]
-    
+
     workspace = get_workspace_by_id(workspace_id)
     if not workspace:
         return {"error": "workspace not found"}, 404
     requester_member = get_workspace_member(workspace_id, requester_id)
     if not requester_member:
-        return{"error": "Your not in this workspace"}, 403
+        return {"error": "Your not in this workspace"}, 403
     requester_role = requester_member[3]
 
     if requester_role in ("member", "guest"):
-        return{"error":"permission denied"}, 403
+        return {"error": "permission denied"}, 403
     if requester_role not in ("owner", "admin") and requester_id != workspace[1]:
-        return{"error":"permission denied"}, 403
-    if ((requester_role == "admin" and target_member_role == "owner") or user_id == workspace[1]):
-        return{"error":"permission denied"}, 403
+        return {"error": "permission denied"}, 403
+    if (
+        requester_role == "admin" and target_member_role == "owner"
+    ) or user_id == workspace[1]:
+        return {"error": "permission denied"}, 403
     if requester_role == "admin" and target_member_role == "admin":
-        return{"error":"permission denied"}, 403
+        return {"error": "permission denied"}, 403
     if requester_role == "owner" and target_member_role == "owner":
         if requester_id != workspace[1]:
             return {"error": "permission denied"}, 403
     deleted_member = delete_member_db(workspace_id, user_id)
     if not deleted_member:
         return {"error": "member delete failed"}, 404
-    return {"message": f"member {deleted_member[0]} has been deleted"},
+    return ({"message": f"member {deleted_member[0]} has been deleted"},)
 
-@workspaces_bp.route("/api/workspaces/<int:workspace_id>/owner",methods=["PATCH"],)
+
+@workspaces_bp.route(
+    "/api/workspaces/<int:workspace_id>/owner",
+    methods=["PATCH"],
+)
 def transfer_crown(workspace_id):
     user_id = session.get("user_id")
 
@@ -318,8 +335,3 @@ def transfer_crown(workspace_id):
         "name": updated_workspace[2],
         "created_at": updated_workspace[3].isoformat(),
     }, 200
-
-
-    
-    
-    

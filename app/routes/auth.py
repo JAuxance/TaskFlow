@@ -5,7 +5,6 @@ from psycopg.errors import UniqueViolation
 
 from app.db import create_user, get_user_by_email, get_user_by_id
 
-
 auth_bp = Blueprint("auth", __name__)
 password_hasher = PasswordHasher()
 

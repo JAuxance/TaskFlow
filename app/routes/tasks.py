@@ -12,7 +12,6 @@ from app.db import (
 )
 from app.permissions import check_workspace_permission
 
-
 tasks_bp = Blueprint("tasks", __name__)
 
 
@@ -61,7 +60,9 @@ def create_task_route(project_id):
     workspace = get_workspace_by_id(project[1])
     if not workspace:
         return {"error": "workspace not found"}, 404
-    permission_error = check_workspace_permission(workspace[0], user_id, ("owner", "admin", "member"))
+    permission_error = check_workspace_permission(
+        workspace[0], user_id, ("owner", "admin", "member")
+    )
     if permission_error:
         return permission_error
     data = request.get_json()
