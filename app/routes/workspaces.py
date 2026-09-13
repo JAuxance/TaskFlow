@@ -1,4 +1,4 @@
-from flask import Blueprint, request, session
+from flask import Blueprint, request
 from psycopg.errors import UniqueViolation
 
 from app.db import (
@@ -6,7 +6,6 @@ from app.db import (
     create_workspace_with_owner,
     delet_workspace,
     get_user_by_email,
-    get_workspace_by_id,
     get_workspace_member,
     get_workspace_members,
     get_workspaces_by_member,
@@ -15,17 +14,22 @@ from app.db import (
     delete_member_db,
     crowned_king,
 )
-from app.permissions import check_workspace_permission
+from app.permissions import (
+    get_authenticated_user,
+    get_workspace_with_permission,
+    insufficient_privileges,
+    resource_not_found,
+)
 
 workspaces_bp = Blueprint("workspaces", __name__)
 
 
 @workspaces_bp.route("/api/workspaces", methods=["POST"])
 def create_workspace_endpoint():
-    user_id = session.get("user_id")
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
     data = request.get_json()
-    if not user_id:
-        return {"error": "No user found"}, 401
     if data is None:
         return {"error": "invalid JSON body"}, 400
     name = data.get("name")
@@ -42,10 +46,14 @@ def create_workspace_endpoint():
 
 @workspaces_bp.route("/api/workspaces", methods=["GET"])
 def get_workspaces():
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "No user found"}, 401
-    workspaces = get_workspaces_by_member(user_id)
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 20, type=int)
+
+    offset = (page - 1) * limit
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    workspaces = get_workspaces_by_member(user_id, limit, offset)
     return [
         {
             "id": workspace[0],
@@ -59,15 +67,12 @@ def get_workspaces():
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>", methods=["GET"])
 def get_workspaces_by_id_route(workspace_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
-    workspace = get_workspace_by_id(workspace_id)
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    permission_error = check_workspace_permission(workspace[0], user_id)
-    if permission_error:
-        return permission_error
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    workspace, error = get_workspace_with_permission(workspace_id, user_id)
+    if error:
+        return error
     return {
         "id": workspace[0],
         "owner_id": workspace[1],
@@ -78,31 +83,28 @@ def get_workspaces_by_id_route(workspace_id):
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>", methods=["DELETE"])
 def del_workspace(workspace_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
-    workspace = get_workspace_by_id(workspace_id)
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    if workspace[1] != user_id:
-        return {"error": "user_id dont match with your workspace_id"}, 404
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    _, error = get_workspace_with_permission(
+        workspace_id, user_id, require_owner=True
+    )
+    if error:
+        return error
     delet_workspace(workspace_id)
     return {"message": "workspace deleted successfuly"}, 200
 
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>", methods=["PATCH"])
 def workspace_update(workspace_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
-    workspace = get_workspace_by_id(workspace_id)
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    permission_error = check_workspace_permission(
-        workspace[0], user_id, ("owner", "admin")
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    _, error = get_workspace_with_permission(
+        workspace_id, user_id, ("owner", "admin")
     )
-    if permission_error:
-        return permission_error
+    if error:
+        return error
     data = request.get_json()
     name = data.get("name")
     if not name:
@@ -118,17 +120,15 @@ def workspace_update(workspace_id):
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/members", methods=["POST"])
 def add_member(workspace_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    workspace, error = get_workspace_with_permission(
+        workspace_id, user_id, ("owner", "admin")
+    )
+    if error:
+        return error
     current_member = get_workspace_member(workspace_id, user_id)
-    workspace = get_workspace_by_id(workspace_id)
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    if not current_member:
-        return {"error": "not a member of this workspace"}, 403
-    if current_member[3] not in ("owner", "admin"):
-        return {"error": "insufficient privileges"}, 403
     data = request.get_json()
     if not data:
         return {"error": "invalid JSON body"}, 400
@@ -141,7 +141,12 @@ def add_member(workspace_id):
         return {"error": "email is required"}, 400
     member = get_user_by_email(member_email)
     if not member:
-        return {"error": "user not found"}, 404
+        return resource_not_found()
+    current_member_role = current_member[3]
+    if current_member_role == "admin" and role in ("owner", "admin"):
+        return insufficient_privileges()
+    if user_id != workspace[1] and role == "owner":
+        return insufficient_privileges()
     try:
         add_workspace_member(workspace_id, member[0], role)
     except UniqueViolation:
@@ -153,16 +158,17 @@ def add_member(workspace_id):
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/members", methods=["GET"])
 def get_members(workspace_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
-    current_member = get_workspace_member(workspace_id, user_id)
-    workspace = get_workspace_by_id(workspace_id)
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    if not current_member:
-        return {"error": "not a member of this workspace"}, 403
-    members = get_workspace_members(workspace_id)
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 20, type=int)
+
+    offset = (page - 1) * limit
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    _, error = get_workspace_with_permission(workspace_id, user_id)
+    if error:
+        return error
+    members = get_workspace_members(workspace_id, limit, offset)
     return [
         {
             "id": member[0],
@@ -179,27 +185,21 @@ def get_members(workspace_id):
     "/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["PATCH"]
 )
 def update_member_role(workspace_id, user_id):
-    current_user_id = session.get("user_id")
+    current_user_id, error = get_authenticated_user()
 
-    if not current_user_id:
-        return {"error": "user_id Missing"}, 401
+    if error:
+        return error
 
-    workspace = get_workspace_by_id(workspace_id)
-
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-
-    permision_error = check_workspace_permission(
+    workspace, error = get_workspace_with_permission(
         workspace_id, current_user_id, ("owner", "admin")
     )
-
-    if permision_error:
-        return permision_error
+    if error:
+        return error
     target_member = get_workspace_member(workspace_id, user_id)
     if not target_member:
-        return {"error": "user_id not found in this workspace"}, 404
+        return resource_not_found()
     if user_id == workspace[1]:
-        return {"error": "cannot modify the crown holder"}, 403
+        return insufficient_privileges()
     data = request.get_json()
     if not data:
         return {"error": "invalid JSON body"}, 400
@@ -212,22 +212,25 @@ def update_member_role(workspace_id, user_id):
     current_member_role = current_member[3]
 
     if current_member_role == "admin" and role not in ("member", "guest"):
-        return {"error": "admin cannot assign this role"}, 403
+        return insufficient_privileges()
 
     if (
         current_member_role == "owner"
         and role == "owner"
         and current_user_id != workspace[1]
     ):
-        return {"error": "only the crown holder can assign owner role"}, 403
+        return insufficient_privileges()
 
     if target_member[3] == "owner" and current_user_id != workspace[1]:
-        return {"error": "only the crown holder can modify an owner"}, 403
+        return insufficient_privileges()
 
+    if current_member_role == "admin" and target_member[3] == "admin":
+        return insufficient_privileges()
+    
     updated_member = update_role_member(workspace_id, user_id, role)
 
     if not updated_member:
-        return {"error": "member update failed"}, 404
+        return resource_not_found()
 
     return {
         "id": updated_member[0],
@@ -242,40 +245,35 @@ def update_member_role(workspace_id, user_id):
     "/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["DELETE"]
 )
 def delet_member_route(workspace_id, user_id):
-    requester_id = session.get("user_id")
-    if not requester_id:
-        return {"error": "user_id Missing"}, 401
+    requester_id, error = get_authenticated_user()
+    if error:
+        return error
+
+    workspace, error = get_workspace_with_permission(
+        workspace_id, requester_id, ("owner", "admin")
+    )
+    if error:
+        return error
+    requester_member = get_workspace_member(workspace_id, requester_id)
+    requester_role = requester_member[3]
 
     target_member = get_workspace_member(workspace_id, user_id)
     if not target_member:
-        return {"error": "user_id not found in this workspace"}, 404
+        return resource_not_found()
     target_member_role = target_member[3]
-
-    workspace = get_workspace_by_id(workspace_id)
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    requester_member = get_workspace_member(workspace_id, requester_id)
-    if not requester_member:
-        return {"error": "Your not in this workspace"}, 403
-    requester_role = requester_member[3]
-
-    if requester_role in ("member", "guest"):
-        return {"error": "permission denied"}, 403
-    if requester_role not in ("owner", "admin") and requester_id != workspace[1]:
-        return {"error": "permission denied"}, 403
     if (
         requester_role == "admin" and target_member_role == "owner"
     ) or user_id == workspace[1]:
-        return {"error": "permission denied"}, 403
+        return insufficient_privileges()
     if requester_role == "admin" and target_member_role == "admin":
-        return {"error": "permission denied"}, 403
+        return insufficient_privileges()
     if requester_role == "owner" and target_member_role == "owner":
         if requester_id != workspace[1]:
-            return {"error": "permission denied"}, 403
+            return insufficient_privileges()
     deleted_member = delete_member_db(workspace_id, user_id)
     if not deleted_member:
-        return {"error": "member delete failed"}, 404
-    return ({"message": f"member {deleted_member[0]} has been deleted"},)
+        return resource_not_found()
+    return {"message": f"member {deleted_member[0]} has been deleted"}, 200
 
 
 @workspaces_bp.route(
@@ -283,18 +281,16 @@ def delet_member_route(workspace_id, user_id):
     methods=["PATCH"],
 )
 def transfer_crown(workspace_id):
-    user_id = session.get("user_id")
+    user_id, error = get_authenticated_user()
 
-    if not user_id:
-        return {"error": "authentication required"}, 401
+    if error:
+        return error
 
-    workspace = get_workspace_by_id(workspace_id)
-
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-
-    if user_id != workspace[1]:
-        return {"error": "only the crown holder can transfer ownership"}, 403
+    workspace, error = get_workspace_with_permission(
+        workspace_id, user_id, require_owner=True
+    )
+    if error:
+        return error
 
     data = request.get_json()
 
@@ -315,10 +311,10 @@ def transfer_crown(workspace_id):
     )
 
     if not target_member:
-        return {"error": "target user is not a member of this workspace"}, 404
+        return resource_not_found()
 
     if target_member[3] != "owner":
-        return {"error": "target user must have owner role"}, 403
+        return insufficient_privileges()
 
     updated_workspace = crowned_king(
         target_user_id,
@@ -326,7 +322,7 @@ def transfer_crown(workspace_id):
     )
 
     if not updated_workspace:
-        return {"error": "ownership transfer failed"}, 404
+        return resource_not_found()
 
     return {
         "message": "The crown has been transferred successfully",

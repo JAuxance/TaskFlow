@@ -7,14 +7,21 @@ from app.routes.auth import auth_bp
 from app.routes.projects import projects_bp
 from app.routes.tasks import tasks_bp
 from app.routes.workspaces import workspaces_bp
+from app.extensions import limiter
 
 app = Flask(__name__)
+limiter.init_app(app)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(workspaces_bp)
 app.register_blueprint(projects_bp)
 app.register_blueprint(tasks_bp)
+
 
 
 @app.route("/health")
@@ -26,8 +33,13 @@ def health():
                 cursor.fetchone()
         return {"api": "ok", "database": "ok"}, 200
     except Exception as error:
-        return {"api": "ok", "database": "error", "error": str(error)}, 500
+        print(error)
+
+    return {
+        "api": "ok",
+        "database": "error"
+    }, 500
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)

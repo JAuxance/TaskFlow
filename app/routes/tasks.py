@@ -1,16 +1,19 @@
-from flask import Blueprint, request, session
-
+from flask import Blueprint, request
+from datetime import datetime
 from app.db import (
     create_task,
     delete_task,
-    get_project_by_id,
     get_task_by_id,
     get_tasks_by_project,
     get_user_by_id,
-    get_workspace_by_id,
+    get_workspace_member,
     update_task_db,
 )
-from app.permissions import check_workspace_permission
+from app.permissions import (
+    get_authenticated_user,
+    get_project_with_permission,
+    resource_not_found,
+)
 
 tasks_bp = Blueprint("tasks", __name__)
 
@@ -36,54 +39,70 @@ def _task_response(task):
 def _task_with_permission(task_id, user_id, roles=None):
     task = get_task_by_id(task_id)
     if not task:
-        return None, ({"error": "task not found"}, 404)
-    project = get_project_by_id(task[1])
-    if not project:
-        return None, ({"error": "project not found"}, 404)
-    workspace = get_workspace_by_id(project[1])
-    if not workspace:
-        return None, ({"error": "workspace not found"}, 404)
-    permission_error = check_workspace_permission(workspace[0], user_id, roles)
-    if permission_error:
-        return None, permission_error
+        return None, resource_not_found()
+    _, error = get_project_with_permission(task[1], user_id, roles)
+    if error:
+        return None, error
+
     return task, None
 
 
 @tasks_bp.route("/api/projects/<int:project_id>/tasks", methods=["POST"])
 def create_task_route(project_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
-    project = get_project_by_id(project_id)
-    if not project:
-        return {"error": "project not found"}, 404
-    workspace = get_workspace_by_id(project[1])
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    permission_error = check_workspace_permission(
-        workspace[0], user_id, ("owner", "admin", "member")
+
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    
+    project, error = get_project_with_permission(
+        project_id, user_id, ("owner", "admin", "member")
     )
-    if permission_error:
-        return permission_error
+    if error:
+        return error
+    
     data = request.get_json()
-    if not data:
+    if not isinstance(data, dict)or not data:
         return {"error": "invalid JSON body"}, 400
+    target_user_id = data.get("assignee_id")
+    if target_user_id:
+        if not get_user_by_id(target_user_id):
+            return {"error": "assignee not found"}, 404
+        workspace_member = get_workspace_member(project[1], target_user_id)
+
+        if not workspace_member:
+            return {"error": "user is not a member of this workspace"}, 403
+    
     title = data.get("title")
+    if not isinstance(title, str) or not title.strip() or len(title) > 100:
+        return {"error": "invalid title value"}, 400
+    
     status = data.get("status")
+    if status not in ("todo", "in_progress", "review", "done"):
+        return {"error": "invalid status value"}, 400
+    
     priority = data.get("priority")
+    if priority not in ("low", "medium", "high", "urgent"):
+        return {"error": "invalid priority value"}, 400
+
+    due_date = data.get("due_date")
+    if due_date is not None:
+        if not isinstance(due_date, str):
+            return {"error": "invalid due_date value"}, 400
+        try:
+            datetime.fromisoformat(due_date)
+        except ValueError:
+            return {"error": "invalid due_date value"}, 400
+    
     if not title:
         return {"error": "title is required"}, 400
     if not status:
         return {"error": "status is required"}, 400
     if not priority:
         return {"error": "priority is required"}, 400
-    assignee_id = data.get("assignee_id")
-    if assignee_id and not get_user_by_id(assignee_id):
-        return {"error": "assignee not found"}, 404
     task = create_task(
         project_id,
         user_id,
-        assignee_id,
+        target_user_id,
         title,
         data.get("description"),
         status,
@@ -95,19 +114,17 @@ def create_task_route(project_id):
 
 @tasks_bp.route("/api/projects/<int:project_id>/tasks", methods=["GET"])
 def get_tasks_route(project_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
-    project = get_project_by_id(project_id)
-    if not project:
-        return {"error": "project not found"}, 404
-    workspace = get_workspace_by_id(project[1])
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    permission_error = check_workspace_permission(workspace[0], user_id)
-    if permission_error:
-        return permission_error
-    tasks = get_tasks_by_project(project_id)
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 20, type=int)
+
+    offset = (page - 1) * limit
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    _, error = get_project_with_permission(project_id, user_id)
+    if error:
+        return error
+    tasks = get_tasks_by_project(project_id, limit, offset)
     response = [_task_response(task) for task in tasks]
 
     return response, 200
@@ -115,9 +132,9 @@ def get_tasks_route(project_id):
 
 @tasks_bp.route("/api/tasks/<int:task_id>", methods=["GET"])
 def get_task_route(task_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
     task, error = _task_with_permission(task_id, user_id)
     if error:
         return error
@@ -126,9 +143,9 @@ def get_task_route(task_id):
 
 @tasks_bp.route("/api/tasks/<int:task_id>", methods=["PATCH"])
 def update_task_route(task_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
     task, error = _task_with_permission(task_id, user_id, ("owner", "admin", "member"))
     if error:
         return error
@@ -148,10 +165,10 @@ def update_task_route(task_id):
 
 @tasks_bp.route("/api/tasks/<int:task_id>", methods=["DELETE"])
 def delete_task_route(task_id):
-    user_id = session.get("user_id")
+    user_id, error = get_authenticated_user()
 
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
+    if error:
+        return error
 
     task, error = _task_with_permission(
         task_id,
@@ -163,6 +180,6 @@ def delete_task_route(task_id):
         return error
 
     if not delete_task(task_id):
-        return {"error": "task not found"}, 404
+        return resource_not_found()
 
     return {"message": "task deleted successfully"}, 200

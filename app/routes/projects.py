@@ -1,31 +1,31 @@
-from flask import Blueprint, request, session
+from flask import Blueprint, request
 
 from app.db import (
     create_project,
-    get_project_by_id,
     get_projects_by_workspace,
-    get_workspace_by_id,
     update_project_db,
     deleted_project,
 )
-from app.permissions import check_workspace_permission
+from app.permissions import (
+    get_authenticated_user,
+    get_project_with_permission,
+    get_workspace_with_permission,
+    resource_not_found,
+)
 
 projects_bp = Blueprint("projects", __name__)
 
 
 @projects_bp.route("/api/workspaces/<int:workspace_id>/projects", methods=["POST"])
 def projects(workspace_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
-    workspace = get_workspace_by_id(workspace_id)
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    permission_error = check_workspace_permission(
-        workspace[0], user_id, ("owner", "admin")
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    _, error = get_workspace_with_permission(
+        workspace_id, user_id, ("owner", "admin")
     )
-    if permission_error:
-        return permission_error
+    if error:
+        return error
     data = request.get_json()
     if not data:
         return {"error": "invalid JSON body"}, 400
@@ -45,15 +45,16 @@ def projects(workspace_id):
 
 @projects_bp.route("/api/workspaces/<int:workspace_id>/projects", methods=["GET"])
 def get_projects(workspace_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
-    workspace = get_workspace_by_id(workspace_id)
-    if not workspace:
-        return {"error": "workspace not found"}, 404
-    permission_error = check_workspace_permission(workspace[0], user_id)
-    if permission_error:
-        return permission_error
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 20, type=int)
+
+    offset = (page - 1) * limit
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    _, error = get_workspace_with_permission(workspace_id, user_id)
+    if error:
+        return error
     return [
         {
             "id": project[0],
@@ -62,7 +63,7 @@ def get_projects(workspace_id):
             "description": project[3],
             "created_at": project[4].isoformat(),
         }
-        for project in get_projects_by_workspace(workspace_id)
+        for project in get_projects_by_workspace(workspace_id, limit, offset)
     ], 200
 
 
@@ -77,23 +78,14 @@ def _project_response(project):
 
 
 def _project_with_permission(project_id, user_id, roles=None):
-    project = get_project_by_id(project_id)
-    if not project:
-        return None, ({"error": "project not found"}, 404)
-    workspace = get_workspace_by_id(project[1])
-    if not workspace:
-        return None, ({"error": "workspace not found"}, 404)
-    permission_error = check_workspace_permission(workspace[0], user_id, roles)
-    if permission_error:
-        return None, permission_error
-    return project, None
+    return get_project_with_permission(project_id, user_id, roles)
 
 
 @projects_bp.route("/api/projects/<int:project_id>", methods=["GET"])
 def get_project_id(project_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
     project, error = _project_with_permission(project_id, user_id)
     if error:
         return error
@@ -102,9 +94,9 @@ def get_project_id(project_id):
 
 @projects_bp.route("/api/projects/<int:project_id>", methods=["PATCH"])
 def update_project(project_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
     project, error = _project_with_permission(project_id, user_id, ("owner", "admin"))
     if error:
         return error
@@ -120,13 +112,13 @@ def update_project(project_id):
 
 @projects_bp.route("/api/projects/<int:project_id>", methods=["DELETE"])
 def delete_project(project_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return {"error": "user_id Missing"}, 401
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
     project, error = _project_with_permission(project_id, user_id, ("owner", "admin"))
     if error:
         return error
     deleted_project_row = deleted_project(project[0])
     if not deleted_project_row:
-        return {"error": "project not found"}, 404
+        return resource_not_found()
     return {"message": "project deleted successfuly"}, 200
