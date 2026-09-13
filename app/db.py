@@ -68,7 +68,7 @@ def get_user_by_id(user_id):
             return cursor.fetchone()
 
 
-def get_workspaces_by_member(user_id):
+def get_workspaces_by_member(user_id, limit, offset):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -76,9 +76,12 @@ def get_workspaces_by_member(user_id):
                 SELECT w.id, w.owner_id, w.name, w.created_at
                 FROM workspaces AS w
                 JOIN workspace_members AS m ON m.workspace_id = w.id
-                WHERE m.user_id = %s;
+                WHERE m.user_id = %s
+                ORDER BY w.id
+                LIMIT %s
+                OFFSET %s;
                 """,
-                (user_id,),
+                (user_id, limit, offset),
             )
             return cursor.fetchall()
 
@@ -147,7 +150,7 @@ def create_project(workspace_id, name, description):
             return cursor.fetchone()
 
 
-def get_projects_by_workspace(workspace_id):
+def get_projects_by_workspace(workspace_id, limit, offset):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -155,8 +158,11 @@ def get_projects_by_workspace(workspace_id):
             SELECT id, workspace_id, name, description, created_at
             FROM projects
             WHERE workspace_id = %s
+            ORDER BY id
+            LIMIT %s
+            OFFSET %s;
             """,
-                (workspace_id,),
+                (workspace_id, limit, offset),
             )
             return cursor.fetchall()
 
@@ -236,17 +242,20 @@ def create_task(
             return cursor.fetchone()
 
 
-def get_tasks_by_project(project_id):
+def get_tasks_by_project(project_id, limit, offset):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-            SELECT id, project_id, creator_id, assignee_id, title,
-                description, status, priority, due_date
-            FROM tasks
-            WHERE project_id = %s
-            """,
-                (project_id,),
+                SELECT id, project_id, creator_id, assignee_id, title,
+                       description, status, priority, due_date
+                FROM tasks
+                WHERE project_id = %s
+                ORDER BY id
+                LIMIT %s
+                OFFSET %s;
+                """,
+                (project_id, limit, offset),
             )
             return cursor.fetchall()
 
@@ -293,7 +302,7 @@ def delete_task(task_id):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
-                """
+            """
             DELETE FROM tasks
             WHERE id = %s
             RETURNING id;
@@ -301,7 +310,6 @@ def delete_task(task_id):
                 (task_id,),
             )
             return cursor.fetchone()
-
 
 def add_workspace_member(workspace_id, user_id, role):
     with get_db_connection() as connection:
@@ -332,7 +340,7 @@ def get_workspace_member(workspace_id, user_id):
             return cursor.fetchone()
 
 
-def get_workspace_members(workspace_id):
+def get_workspace_members(workspace_id, limit, offset):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -340,8 +348,11 @@ def get_workspace_members(workspace_id):
                 SELECT id, workspace_id, user_id, role, joined_at
                 FROM workspace_members
                 WHERE workspace_id = %s
+                ORDER BY id
+                LIMIT %s
+                OFFSET %s;
                 """,
-                (workspace_id,),
+                (workspace_id, limit, offset),
             )
             return cursor.fetchall()
 
@@ -368,7 +379,6 @@ def create_workspace_with_owner(owner_id, name):
             )
             return workspace
 
-
 def update_role_member(workspace_id, user_id, role):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
@@ -384,31 +394,68 @@ def update_role_member(workspace_id, user_id, role):
             )
             return cursor.fetchone()
 
-
 def delete_member_db(workspace_id, user_id):
     with get_db_connection() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
                     DELETE FROM workspace_members
                     WHERE workspace_id = %s AND user_id = %s
                     RETURNING id;
                     """,
-                (workspace_id, user_id),
-            )
-            return cursor.fetchone()
-
+                    (workspace_id, user_id),
+                )
+                return cursor.fetchone()
 
 def crowned_king(owner_id, workspace_id):
     with get_db_connection() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
                     UPDATE workspaces
                     SET owner_id = %s
                     WHERE id = %s
                     RETURNING id, owner_id, name, created_at;
                     """,
-                (owner_id, workspace_id),
+                    (owner_id, workspace_id),
+                )
+                return cursor.fetchone()
+
+def create_session(user_id, session_token, expires_at):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO sessions (user_id, session_token, expires_at)
+                VALUES (%s, %s, %s)
+                RETURNING id, user_id, session_token, created_at;
+                """,
+                (user_id, session_token, expires_at),
             )
             return cursor.fetchone()
+
+def get_session_by_token(session_token):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, user_id, session_token, created_at, expires_at, revoked
+                FROM sessions
+                WHERE session_token = %s;
+                """,
+                (session_token,),
+            )
+            return cursor.fetchone()
+
+def revoke_session(session_token):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE session
+                SET revoked = TRUE
+                WHERE session_token = %s
+                RETURNING id, user_id, session_token, created_at, expires_at, revoked;
+                """,
+                (session_token),
+            )

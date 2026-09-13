@@ -42,3 +42,23 @@ CREATE TABLE workspace_members (
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (workspace_id, user_id)
 );
+CREATE TABLE sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_token TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE ROLE taskflow_app WITH LOGIN PASSWORD '';
+
+GRANT CONNECT ON DATABASE taskflow TO taskflow_app;
+GRANT USAGE ON SCHEMA public TO taskflow_app;
+
+GRANT SELECT, INSERT, UPDATE, DELETE 
+ON ALL TABLES IN SCHEMA public 
+TO taskflow_app;
+
+GRANT USAGE, SELECT
+ON ALL SEQUENCES IN SCHEMA public
+TO taskflow_app;
