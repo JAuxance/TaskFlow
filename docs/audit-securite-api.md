@@ -1,268 +1,266 @@
-# Audit de sécurité de l’API TaskFlow
+# TaskFlow API Security Audit
 
-Date : 11 septembre 2026. Version examinée : commit `fc818aa`, avec les fichiers présents dans l’espace de travail au début de l’audit.
+Date: September 11, 2026. Reviewed version: commit `fc818aa`, with the files present in the workspace at the start of the audit.
 
-Suivi du 14 septembre 2026 : voir le [bilan de clôture et les preuves de recette après reset](cloture-audit-securite-api.md). Le présent document conserve les constats et résultats initiaux.
+Follow-up on September 14, 2026: see the [audit closure report and acceptance evidence after reset](cloture-audit-securite-api.md). This document preserves the initial findings and results.
 
-Objectif : relever les risques et préparer un support de travail pour un dossier RNCP niveau 5. Les corrections restent à réaliser par l’auteur du projet. Aucun correctif applicatif, changement de configuration ou changement de données n’a été effectué pendant cet audit.
+Objective: identify risks and prepare working material for an RNCP level 5 portfolio. Fixes were still to be implemented by the project author. No application fix, configuration change, or data change was made during this audit.
 
-## 1. Périmètre et méthode
+## 1. Scope and method
 
-Revue des 25 couples route/méthode déclarés, de l’authentification, des permissions, des accès PostgreSQL, du schéma SQL, des dépendances directes et de la configuration Docker. Fichiers concernés : `app/app.py`, `app/permissions.py`, `app/db.py`, les quatre modules de `app/routes/`, `app/sql/init.sql`, `requirements.txt`, `Dockerfile`, `compose.yaml`, `.env.example`, `.gitignore` et la documentation existante.
+Review of the 25 declared route/method pairs, authentication, permissions, PostgreSQL access, the SQL schema, direct dependencies, and Docker configuration. Files covered: `app/app.py`, `app/permissions.py`, `app/db.py`, the four modules in `app/routes/`, `app/sql/init.sql`, `requirements.txt`, `Dockerfile`, `compose.yaml`, `.env.example`, `.gitignore`, and the existing documentation.
 
-La revue de code est complétée par des vérifications avec le client de test Flask et des données fictives en mémoire. Aucun serveur réseau ni conteneur n’a été démarré pour l’audit ; aucune connexion à la base réelle, aucun test de charge et aucune tentative sur un service public n’ont été réalisés. Le contenu de `.env` et des cinq fichiers `.txt` non suivis n’a pas été consulté. Leur présence seule a été observée.
+The code review was supplemented by checks with the Flask test client and fictitious in-memory data. No network server or container was started for the audit; no connection to the real database, load test, or attempt against a public service was performed. The contents of `.env` and the five untracked `.txt` files were not accessed. Their presence alone was observed.
 
-Environnement des vérifications : Python 3.14.4, Flask 3.1.0, Werkzeug 3.1.8 et argon2-cffi 25.1.0, dans un environnement temporaire extérieur au dépôt. Le Dockerfile prévoit Python 3.12 : ces sondes ne constituent donc pas une validation du conteneur. Le pilote PostgreSQL a été remplacé par un double interdisant toute connexion, car `psycopg-binary==3.2.1` n’était pas installable pour ce Python et `libpq` était absent. Les fonctions d’accès aux données ont été simulées ; les routes et le traitement HTTP Flask sont ceux du projet. Les exceptions ont été converties en réponses HTTP pour observer les codes `500` ; le débogueur interactif n’a pas été lancé.
+Verification environment: Python 3.14.4, Flask 3.1.0, Werkzeug 3.1.8, and argon2-cffi 25.1.0, in a temporary environment outside the repository. The Dockerfile specifies Python 3.12, so these probes do not validate the container. The PostgreSQL driver was replaced with a connection-blocking stub because `psycopg-binary==3.2.1` could not be installed for this Python version and `libpq` was missing. Data-access functions were simulated; the project routes and Flask HTTP processing were used. Exceptions were converted into HTTP responses to observe `500` codes; the interactive debugger was not started.
 
-Les références OWASP servent à classer les risques. Elles ne constituent ni une certification de l’API, ni une correspondance officielle avec un titre RNCP précis, dont le référentiel n’a pas été fourni. [Référentiel OWASP API Security 2023](https://owasp.org/API-Security/editions/2023/en/0x11-t10/).
+OWASP references classify risks only. They do not constitute API certification or an official mapping to a specific RNCP qualification, whose framework was not provided. [OWASP API Security 2023 framework](https://owasp.org/API-Security/editions/2023/en/0x11-t10/).
 
-## 2. Synthèse des constats
+## 2. Findings summary
 
-L’API dispose déjà de protections utiles : hachage Argon2, requêtes SQL paramétrées, vérification de l’appartenance aux espaces et restrictions par rôle. Le principal défaut applicatif concerne l’attribution des rôles : les règles diffèrent selon l’action utilisée. La configuration Docker doit également être revue avant une exposition réseau.
+The API already has useful protections: Argon2 password hashing, parameterized SQL queries, workspace-membership checks, and role restrictions. The main application defect concerns role assignment: the rules differ depending on the action used. The Docker configuration must also be reviewed before network exposure.
 
-La gravité tient compte de l’impact et des conditions d’exploitation. « Élevée » signifie une priorité avant exposition ou utilisation avec des données réelles ; « moyenne » un risque à traiter dans le cycle de sécurisation ; « faible » une divulgation limitée ou un durcissement. Aucun score CVSS n’a été calculé.
+Severity considers impact and exploitation conditions. “High” means a priority before exposure or use with real data; “medium” means a risk to address during the security cycle; “low” means limited disclosure or hardening. No CVSS score was calculated.
 
-| ID | Constat | Gravité | État de la preuve |
+| ID | Finding | Severity | Evidence status |
 | --- | --- | --- | --- |
-| SEC-01 | Attribution de rôles supérieurs par l’ajout d’un membre | Élevée | Confirmé dans le code et par simulation HTTP |
-| SEC-02 | Suppression d’un administrateur après rétrogradation | Moyenne | Confirmé dans le code et par simulation HTTP |
-| SEC-03 | Débogueur Flask activé par le démarrage Docker | Élevée si accessible au réseau | Configuration confirmée ; exposition réelle non vérifiée |
-| SEC-04 | PostgreSQL publié avec un compte excessivement privilégié et des identifiants faibles | Élevée si accessible au réseau | Configuration confirmée ; privilèges du serveur existant non vérifiés |
-| SEC-05 | Fichiers locaux sensibles inclus dans le contexte de construction Docker | Élevée si l’image est diffusée | Règles de construction et présence de `.env` confirmées |
-| SEC-06 | Cookie de session sans attribut `Secure` | Élevée en cas d’accès HTTP sur un réseau non fiable | Attributs du cookie vérifiés ; interception non réalisée |
-| SEC-07 | Ancien cookie encore utilisable après déconnexion | Moyenne | Rejeu confirmé avec une session fictive |
-| SEC-08 | Absence de limites applicatives sur les tentatives et les ressources | Moyenne | Revue et vérifications ciblées ; saturation non testée |
-| SEC-09 | Validation insuffisante des types et valeurs d’entrée | Faible isolément ; moyenne avec SEC-03 | Erreurs de traitement confirmées sur des requêtes fictives |
-| SEC-10 | Affectation d’une tâche à un utilisateur extérieur à l’espace | Moyenne | Acceptation confirmée par simulation HTTP |
-| SEC-11 | Détails techniques renvoyés par `/health` | Faible | Divulgation confirmée avec une erreur fictive |
-| SEC-12 | Réponses permettant d’identifier des comptes ou des ressources existantes | Faible | Revue et vérifications ciblées |
+| SEC-01 | Assignment of elevated roles when adding a member | High | Confirmed in code and by HTTP simulation |
+| SEC-02 | Deletion of an administrator after demotion | Medium | Confirmed in code and by HTTP simulation |
+| SEC-03 | Flask debugger enabled by Docker startup | High if network-accessible | Configuration confirmed; actual exposure not verified |
+| SEC-04 | PostgreSQL exposed with an over-privileged account and weak credentials | High if network-accessible | Configuration confirmed; existing privileges not verified |
+| SEC-05 | Local sensitive files included in the Docker build context | High if the image is distributed | Build rules and `.env` presence confirmed |
+| SEC-06 | Session cookie without the `Secure` attribute | High on HTTP over an untrusted network | Cookie attributes verified; interception not performed |
+| SEC-07 | Old cookie remains usable after logout | Medium | Replay confirmed with a fictitious session |
+| SEC-08 | No application limits on attempts and resource consumption | Medium | Review and targeted checks; saturation not tested |
+| SEC-09 | Insufficient validation of input types and values | Low in isolation; medium with SEC-03 | Processing errors confirmed with fictitious requests |
+| SEC-10 | Task assigned to a user outside the workspace | Medium | Acceptance confirmed by HTTP simulation |
+| SEC-11 | Technical details returned by `/health` | Low | Disclosure confirmed with a fictitious error |
+| SEC-12 | Responses allow existing accounts or resources to be identified | Low | Review and targeted checks |
 
-Les gravités conditionnelles ne prouvent pas que l’application est actuellement accessible depuis Internet.
+Conditional severities do not prove that the application is currently accessible from the Internet.
 
-## 3. Fiches de relevé
+## 3. Finding details
 
-### SEC-01 — Attribution de rôles supérieurs par l’ajout d’un membre
+### SEC-01 — Assignment of elevated roles when adding a member
 
-**Preuves :** [app/routes/workspaces.py](../app/routes/workspaces.py), lignes 124–146, à comparer aux lignes 214–225.
+**Evidence:** [app/routes/workspaces.py](../app/routes/workspaces.py), lines 124–146, compared with lines 214–225.
 
-`POST /api/workspaces/{id}/members` autorise les rôles `owner` et `admin` pour tout appelant déjà `owner` ou `admin`. En revanche, la route `PATCH` interdit à un administrateur d’attribuer ces rôles et réserve l’attribution du rôle `owner` au détenteur de la propriété principale, nommé « crown holder » dans le code.
+`POST /api/workspaces/{id}/members` allows `owner` and `admin` for any caller already holding either role. The `PATCH` route applies a different policy and reserves `owner` assignment to the primary owner, called the “crown holder” in the code.
 
-**Scénario :** un administrateur dispose d’un second compte inscrit, encore extérieur à l’espace. Il l’ajoute avec `{"email":"second@example.test","role":"owner"}`. La route accepte l’ajout. Un `owner` qui ne détient pas la propriété principale peut également ajouter un autre `owner`.
+**Scenario:** an administrator adds an external registered account with `{"email":"second@example.test","role":"owner"}`. The route accepts it. A non-primary `owner` can also add another `owner`.
 
-**Impact :** élévation de privilèges dans l’espace, notamment pour administrer des membres avec des droits normalement refusés. Le rôle `owner` ajouté ne transfère pas automatiquement `workspaces.owner_id` : la propriété principale et la suppression de l’espace restent protégées par cette seconde vérification.
+**Impact:** privilege escalation within the workspace. The added role does not transfer `workspaces.owner_id`; primary ownership and workspace deletion remain separately protected.
 
-**Correction à envisager :** appliquer une même politique d’attribution des rôles lors de l’ajout et de la modification. **Critère de validation :** un administrateur ne peut attribuer ni `admin` ni `owner`, quelle que soit la route ; seul le détenteur de la propriété principale peut attribuer `owner`. Vérifier aussi que les opérations autorisées restent possibles.
+**Suggested fix:** apply one role-assignment policy to member creation and modification. **Validation criterion:** an administrator cannot assign `admin` or `owner`, regardless of route; only the primary owner can assign `owner`.
 
-Classement : OWASP API5:2023, autorisation des fonctions.
+Classification: OWASP API5:2023, function-level authorization.
 
-### SEC-02 — Suppression d’un administrateur après rétrogradation
+### SEC-02 — Deletion of an administrator after demotion
 
-**Preuves :** [app/routes/workspaces.py](../app/routes/workspaces.py), lignes 198–225 et 266–275.
+**Evidence:** [app/routes/workspaces.py](../app/routes/workspaces.py), lines 198–225 and 266–275.
 
-La suppression directe d’un administrateur par un autre administrateur est interdite. Cependant, `PATCH /api/workspaces/{id}/members/{user_id}` permet de transformer cet administrateur en `member` ou `guest`. L’appelant peut ensuite le supprimer.
+Direct deletion of an administrator by another administrator is forbidden, but `PATCH /api/workspaces/{id}/members/{user_id}` can demote that administrator to `member` or `guest`, after which deletion succeeds.
 
-**Scénario observé :** administrateur A tente de supprimer B : refus `403`. A rétrograde B en `member` : succès `200`. A relance la suppression : l’opération de suppression est appelée. La réponse finale comporte un défaut distinct décrit plus bas.
+**Observed scenario:** deletion returns `403`, demotion returns `200`, and the subsequent deletion is called. The final response has a separate defect.
 
-**Impact :** contournement d’une protection explicite entre administrateurs, avec perte des droits et de l’accès de la cible. **Correction à envisager :** vérifier le rôle actuel de la cible lors de la modification, en cohérence avec les règles de suppression. **Critère de validation :** si la politique conserve cette protection, A ne peut ni rétrograder B ni le supprimer par enchaînement d’actions.
+**Impact:** bypass of the administrator-protection rule. **Suggested fix:** check the target’s current role during modification. **Validation criterion:** A cannot demote and then delete B if this protection remains the policy.
 
-Classement : OWASP API5:2023.
+Classification: OWASP API5:2023.
 
-### SEC-03 — Débogueur activé par le démarrage Docker
+### SEC-03 — Debugger enabled by Docker startup
 
-**Preuves :** [app/app.py](../app/app.py), ligne 33 ; [Dockerfile](../Dockerfile), ligne 11 ; [compose.yaml](../compose.yaml), lignes 5–6.
+**Evidence:** [app/app.py](../app/app.py), line 33; [Dockerfile](../Dockerfile), line 11; [compose.yaml](../compose.yaml), lines 5–6.
 
-Le conteneur démarre `python -m app.app`, qui appelle `app.run(host="0.0.0.0", port=5000, debug=True)`. Le port 5000 est publié sur l’hôte. Le mode débogage peut exposer des traces internes et présente une surface dangereuse si le débogueur devient accessible. Flask précise que son débogueur permet d’exécuter du code Python et que son PIN ne doit pas servir de protection de production. [Documentation Flask sur le débogage](https://flask.palletsprojects.com/en/stable/debugging/).
+The container runs `python -m app.app`, which calls `app.run(host="0.0.0.0", port=5000, debug=True)`. Port 5000 is published. Debug mode can expose internal traces and a dangerous interactive surface. Flask states that its debugger can execute Python code and is not production protection. [Flask debugging documentation](https://flask.palletsprojects.com/en/stable/debugging/).
 
-**Limite :** aucun accès externe ni contournement du PIN ou des contrôles d’hôte n’a été démontré. Une exécution de code anonyme n’est donc pas affirmée.
+No external access or PIN/host-control bypass was demonstrated; anonymous code execution is not asserted.
 
-**Correction à envisager :** prévoir un démarrage de production avec le débogage désactivé et un serveur WSGI adapté. **Critère de validation :** une erreur volontaire en environnement de recette produit une réponse générique, sans trace ni interface interactive ; vérifier le mode réellement lancé par le conteneur.
+**Suggested fix:** disable debugging in production and use an appropriate WSGI server. **Validation criterion:** staging errors return a generic response without a traceback or interactive interface.
 
-Classement : OWASP API8:2023, configuration de sécurité.
+Classification: OWASP API8:2023, security misconfiguration.
 
-### SEC-04 — Accès PostgreSQL trop exposé et trop privilégié
+### SEC-04 — PostgreSQL too exposed and over-privileged
 
-**Preuves :** [compose.yaml](../compose.yaml), lignes 13–14 et 23–28 ; [app/sql/init.sql](../app/sql/init.sql), lignes 1–44.
+**Evidence:** [compose.yaml](../compose.yaml), lines 13–14 and 23–28; [app/sql/init.sql](../app/sql/init.sql), lines 1–44.
 
-Les identifiants de base sont des valeurs faibles inscrites en clair dans Compose, et le port `5432:5432` est publié sans restriction à la boucle locale. Docker publie ainsi le port sur toutes les interfaces par défaut ; son accessibilité effective dépend du réseau et du pare-feu. [Documentation Docker sur la publication des ports](https://docs.docker.com/get-started/docker-concepts/running-containers/publishing-ports/).
+Database credentials are weak values written in plain text in Compose, and `5432:5432` is published on all interfaces by default. The API uses the same account declared in `POSTGRES_USER`; on a new volume the official image creates it as a superuser. No restricted application role is defined. Existing-volume privileges were not queried. [Docker port publishing](https://docs.docker.com/get-started/docker-concepts/running-containers/publishing-ports/) and [PostgreSQL image documentation](https://hub.docker.com/_/postgres).
 
-Le compte utilisé par l’API est aussi celui déclaré dans `POSTGRES_USER`. Sur un volume neuf, l’image officielle crée ce compte avec les privilèges de superutilisateur. Aucun rôle applicatif restreint n’est défini par le SQL fourni. Il s’agit d’une déduction de la configuration d’initialisation ; les droits du volume actuel n’ont pas été interrogés. [Documentation de l’image PostgreSQL](https://hub.docker.com/_/postgres).
+**Impact:** direct database access bypasses API controls, and an application compromise gains excessive privileges. **Suggested fix:** restrict network exposure, use strong secrets, and use a restricted application role. Verify that unauthorized networks cannot reach the port and that the application account is not a superuser.
 
-**Impact :** un accès direct à PostgreSQL peut contourner tous les contrôles de l’API ; une compromission de l’application bénéficie aussi de droits excessifs en base. **Correction à envisager :** limiter l’exposition réseau, utiliser un secret robuste et un rôle applicatif restreint. **Critère de validation :** le port est inaccessible depuis les réseaux non autorisés ; les identifiants précédents sont refusés ; le compte applicatif n’est pas superutilisateur et ne peut pas administrer les rôles ou supprimer le schéma.
+Changing only `.env` does not replace literal Compose values. Changing `POSTGRES_PASSWORD` does not reset an already initialized volume; verify the existing database without deleting its data.
 
-Changer uniquement `.env` ne remplace pas les valeurs littérales de Compose. Modifier `POSTGRES_PASSWORD` ne réinitialise pas non plus le mot de passe d’un volume déjà initialisé : vérifier le résultat sur la base existante, sans supprimer ses données.
+Classification: OWASP API8:2023.
 
-Classement : OWASP API8:2023.
+### SEC-05 — Local sensitive files included in the Docker image
 
-### SEC-05 — Fichiers locaux sensibles incorporés à l’image Docker
+**Evidence:** [Dockerfile](../Dockerfile), line 9; [compose.yaml](../compose.yaml), line 3; [.gitignore](../.gitignore), line 1. No `.dockerignore` or `Dockerfile.dockerignore` was present; `.env` and `.git` were present.
 
-**Preuves :** [Dockerfile](../Dockerfile), ligne 9 ; [compose.yaml](../compose.yaml), ligne 3 ; [.gitignore](../.gitignore), ligne 1. Absence constatée de `.dockerignore` et de `Dockerfile.dockerignore` ; présence constatée de `.env` et de `.git`.
+With `build: .` and `COPY . .`, a future build includes `.env` and other unexcluded local files. `.gitignore` does not filter the Docker context. [Docker build context documentation](https://docs.docker.com/build/concepts/context/).
 
-Avec le contexte local `build: .` et `COPY . .`, un prochain build réalisé depuis cet espace de travail inclut `.env` et les autres fichiers locaux non exclus. `.gitignore` concerne Git et ne filtre pas ce contexte Docker. [Documentation Docker sur le contexte de construction](https://docs.docker.com/build/concepts/context/).
+**Impact:** anyone retrieving the image may retrieve included secrets. No existing image or previous distribution was inspected or asserted. The `.txt` contents were not read; their names do not prove that they contain sessions.
 
-**Impact :** une personne pouvant récupérer cette image peut également récupérer les fichiers qu’elle contient, y compris des secrets si `.env` en contient. Aucune image existante n’a été inspectée et aucune diffusion antérieure n’est affirmée. Le contenu des fichiers `.txt` n’a pas été lu ; leur nom ne prouve pas qu’ils contiennent des sessions.
+**Suggested fix:** restrict the build context and inject secrets at runtime. Inspect the final image and layers; no `.env`, Git history, or local authentication file should be present. Rotate affected secrets if such an image was distributed.
 
-**Correction à envisager :** limiter explicitement les fichiers inclus au build et injecter les secrets à l’exécution. **Critère de validation :** inspecter l’image finale et ses couches ; aucun `.env`, historique Git ou fichier local d’authentification ne doit être présent. Si une image contenant des secrets a déjà été diffusée, leur retrait d’une nouvelle image doit s’accompagner du renouvellement des secrets concernés.
+Classification: OWASP API8:2023.
 
-Classement : OWASP API8:2023.
+### SEC-06 — Session cookie without the `Secure` attribute
 
-### SEC-06 — Cookie de session sans attribut `Secure`
+**Evidence:** [app/app.py](../app/app.py), lines 11–12; [app/routes/auth.py](../app/routes/auth.py), line 52; [compose.yaml](../compose.yaml), lines 5–6.
 
-**Preuves :** [app/app.py](../app/app.py), lignes 11–12 ; [app/routes/auth.py](../app/routes/auth.py), ligne 52 ; [compose.yaml](../compose.yaml), lignes 5–6.
+The session cookie has `HttpOnly`, but no `Secure` or explicit `SameSite`. The API starts over HTTP and no HTTPS proxy is described. Without `Secure`, a browser may send the cookie over HTTP. [Flask cookie configuration](https://flask.palletsprojects.com/en/stable/config/#SESSION_COOKIE_SECURE).
 
-Le cookie de session émis possède `HttpOnly`, mais pas `Secure` ni de valeur explicite `SameSite`. L’API fournie démarre en HTTP ; aucun proxy HTTPS n’est décrit dans le dépôt. Sans `Secure`, le navigateur peut transmettre le cookie par HTTP. Les paramètres correspondants sont documentés par Flask. [Configuration des cookies Flask](https://flask.palletsprojects.com/en/stable/config/#SESSION_COOKIE_SECURE).
+**Impact:** a user on an observable HTTP network may have their session and credentials intercepted. This was not performed; external HTTPS, HSTS, and filtering remain unverified.
 
-**Impact :** si un utilisateur accède à l’application en HTTP sur un réseau observable, sa session et ses identifiants de connexion peuvent être interceptés. Ce scénario n’a pas été réalisé. Un éventuel HTTPS, HSTS ou filtrage géré hors du dépôt reste à vérifier.
+**Suggested fix:** require HTTPS for real data and configure cookie attributes explicitly. **Validation criterion:** HTTPS login, `Secure` and `HttpOnly`, an explicit `SameSite`, and no unprotected direct-port access.
 
-**Correction à envisager :** imposer HTTPS pour l’utilisation avec des données réelles et configurer explicitement les attributs adaptés au parcours client. **Critère de validation :** connexion réelle par HTTPS, cookie avec `Secure` et `HttpOnly`, valeur `SameSite` choisie explicitement, et absence d’accès applicatif non protégé par le port direct.
+Classification: OWASP API2/API8:2023. Missing explicit `SameSite` alone does not demonstrate CSRF.
 
-Classement : OWASP API2/API8:2023. L’absence de `SameSite` explicite ne démontre pas à elle seule une attaque CSRF ; voir les limites ci-dessous.
+### SEC-07 — Logout does not revoke a copied cookie
 
-### SEC-07 — La déconnexion ne révoque pas une copie du cookie
+**Evidence:** [app/routes/auth.py](../app/routes/auth.py), lines 52, 58, and 67–70; [app/app.py](../app/app.py), lines 11–12.
 
-**Preuves :** [app/routes/auth.py](../app/routes/auth.py), lignes 52, 58 et 67–70 ; [app/app.py](../app/app.py), lignes 11–12.
+The session is a Flask-signed cookie. `logout()` removes `user_id` from the current browser session without server-side revocation. A prior copy remains accepted.
 
-La session est un cookie signé par Flask. `logout()` retire `user_id` de la session du navigateur courant, sans enregistrer de révocation côté serveur. Une copie antérieure du cookie reste acceptée.
+**Scenario:** retain a fictitious login cookie, log out, reinject the cookie, and call `/api/auth/me`. The original client is cleaned but the copy remains valid. The default signature lifetime is 31 days, provided the key remains valid. [Flask session configuration](https://flask.palletsprojects.com/en/stable/config/#PERMANENT_SESSION_LIFETIME).
 
-**Scénario :** connexion avec un compte fictif, conservation du cookie en mémoire, déconnexion, puis réinjection du cookie conservé avant un appel à `/api/auth/me`. La déconnexion nettoie le client initial mais n’invalide pas cette copie. Le délai de validation de signature par défaut est de 31 jours depuis sa création, sous réserve que la clé reste valide ; la fermeture du navigateur ne révoque pas une copie déjà extraite. [Configuration Flask des sessions](https://flask.palletsprojects.com/en/stable/config/#PERMANENT_SESSION_LIFETIME).
+**Impact:** logout cannot terminate a stolen session. No real theft was performed. **Suggested fix:** add revocation and an appropriate session lifetime. **Validation criterion:** the retained cookie receives `401` after logout. [OWASP session termination recommendations](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html).
 
-**Impact :** la déconnexion ne permet pas de mettre fin à une session volée. Le vol préalable du cookie est une condition du scénario ; aucun vol réel n’a été effectué. **Correction à envisager :** prévoir un mécanisme de révocation et une durée de session adaptée. **Critère de validation :** après déconnexion, le cookie conservé avant celle-ci reçoit `401`. [Recommandations OWASP sur la fin de session](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html).
+Classification: OWASP API2:2023.
 
-Classement : OWASP API2:2023.
+### SEC-08 — Attempts and resource consumption are not limited
 
-### SEC-08 — Tentatives et consommation de ressources non limitées
+**Evidence:** [app/routes/auth.py](../app/routes/auth.py), lines 12–25 and 36–52; [app/app.py](../app/app.py), lines 11–17; [app/db.py](../app/db.py), lines 71–83, 150–161, 239–251, and 335–346.
 
-**Preuves :** [app/routes/auth.py](../app/routes/auth.py), lignes 12–25 et 36–52 ; [app/app.py](../app/app.py), lignes 11–17 ; [app/db.py](../app/db.py), lignes 71–83, 150–161, 239–251 et 335–346.
+There is no limit on login or registration attempts. `MAX_CONTENT_LENGTH` is not configured, lists use unpaginated `fetchall()`, and free-text fields have no application maximum. Argon2 intentionally consumes significant CPU and memory.
 
-Aucune limitation applicative des tentatives de connexion ou d’inscription n’est présente. `MAX_CONTENT_LENGTH` n’est pas configuré, et les listes sont chargées intégralement avec `fetchall()` sans pagination. Les textes libres n’ont pas de taille maximale applicative. L’inscription et la vérification du mot de passe mobilisent Argon2, volontairement coûteux en calcul et en mémoire.
+**Impact:** automated password guessing, mass account creation, and resource exhaustion are easier. No saturation or server-capacity measurement was performed. [Flask resource consumption](https://flask.palletsprojects.com/en/stable/web-security/#resource-use).
 
-**Impact :** facilitation des essais automatisés de mots de passe, création massive de comptes et risque d’épuisement de ressources. Les tailles de colonnes SQL ne limitent pas la taille du JSON reçu avant son traitement. Aucune saturation ni capacité maximale du serveur n’a été mesurée ; un filtrage externe pourrait limiter le risque. [Consommation de ressources dans Flask](https://flask.palletsprojects.com/en/stable/web-security/#resource-use).
+**Suggested fix:** set request and field limits, limit attempts, paginate results, and provide quotas. **Validation criterion:** controlled `429` after the threshold, `413` for oversized bodies, bounded result counts, and no write when limits are exceeded.
 
-**Correction à envisager :** fixer des limites de requête et de champs, limiter les tentatives, paginer et prévoir des quotas adaptés. **Critère de validation :** dépassement du seuil de tentatives traité par une réponse contrôlée telle que `429`, corps trop gros rejeté en `413`, nombre de résultats borné et absence d’écriture lorsque les limites sont dépassées.
+Classification: OWASP API2/API4:2023.
 
-Classement : OWASP API2/API4:2023.
+### SEC-09 — Insufficient input validation
 
-### SEC-09 — Entrées insuffisamment validées
+**Evidence:** [app/routes/auth.py](../app/routes/auth.py), lines 14–25 and 38–49; [app/routes/workspaces.py](../app/routes/workspaces.py), lines 106–109; [app/routes/tasks.py](../app/routes/tasks.py), lines 68–92 and 135–145; [app/sql/init.sql](../app/sql/init.sql), lines 26–32.
 
-**Preuves :** [app/routes/auth.py](../app/routes/auth.py), lignes 14–25 et 38–49 ; [app/routes/workspaces.py](../app/routes/workspaces.py), lignes 106–109 ; [app/routes/tasks.py](../app/routes/tasks.py), lignes 68–92 et 135–145 ; [app/sql/init.sql](../app/sql/init.sql), lignes 26–32.
+The code assumes JSON is an object and fields have expected types. `[1]` reaches `.get()` and raises an exception; a numeric registration password reaches `len(password)` and also raises one. Task statuses, priorities, dates, and lengths are not validated before SQL access.
 
-Le code suppose que le JSON est un objet et que les champs ont les types attendus. Un tableau non vide tel que `[1]` atteint un appel à `.get()` et déclenche une exception. À l’inscription, un mot de passe numérique non nul atteint `len(password)` et déclenche aussi une exception. Les statuts, priorités, dates et longueurs des tâches ne sont pas validés avant l’accès SQL.
+**Impact:** clients can trigger `500` responses, unnecessary queries, and potentially exposed traces through SEC-03. SQL constraints prevent some forbidden values; this is an input/error-handling defect, not demonstrated SQL injection.
 
-**Impact :** réponses `500` déclenchables par le client, requêtes inutiles vers la base, traces potentiellement exposées avec SEC-03. Les contraintes SQL empêchent déjà plusieurs valeurs interdites d’être enregistrées : le défaut est le traitement de l’entrée et de l’erreur, pas une injection SQL démontrée.
+**Suggested fix:** define request schemas and validate types, lengths, allowed values, identifiers, and dates. Arrays, forbidden `null`, oversized strings, unknown statuses, and impossible dates should return JSON `400` or `422` without writing.
 
-**Correction à envisager :** définir le schéma des requêtes, valider types, longueurs, valeurs autorisées, identifiants et dates, puis traduire les erreurs prévisibles. **Critère de validation :** tableaux, nombres, valeurs `null` interdites, chaînes trop longues, statuts inconnus et dates impossibles produisent un `400` ou `422` JSON, sans écriture. Refaire les cas liés aux contraintes sur une base de test PostgreSQL.
+Classification: input validation, with OWASP API4/API8:2023 consequences.
 
-Classement : validation des entrées, avec conséquences OWASP API4/API8:2023.
+### SEC-10 — Task assigned outside the workspace
 
-### SEC-10 — Affectation d’une tâche hors de l’espace de travail
+**Evidence:** [app/routes/tasks.py](../app/routes/tasks.py), lines 80–86; [app/sql/init.sql](../app/sql/init.sql), line 25.
 
-**Preuves :** [app/routes/tasks.py](../app/routes/tasks.py), lignes 80–86 ; [app/sql/init.sql](../app/sql/init.sql), ligne 25.
+Task creation checks only that `assignee_id` belongs to an existing user, not that the user belongs to the project workspace. The foreign key has the same limitation.
 
-La création d’une tâche vérifie uniquement que `assignee_id` correspond à un utilisateur existant. Elle ne vérifie pas son appartenance à l’espace du projet. La clé étrangère vérifie elle aussi seulement l’existence du compte.
+**Scenario and impact:** an authorized member can assign a task to an external user. This creates an authorization inconsistency, although external read access was not demonstrated because workspace read controls remain.
 
-**Scénario :** un membre autorisé crée une tâche dans son projet avec l’identifiant d’un utilisateur extérieur. La route accepte cette affectation. **Impact :** incohérence d’autorisation sur la relation entre tâche et responsable ; possibilité de rattacher une personne à un espace auquel elle n’appartient pas. Aucune lecture de la tâche par cet utilisateur extérieur n’a été démontrée : les contrôles de lecture de l’espace restent présents.
+**Suggested fix:** verify assignee membership, or document intentional external assignment and define its rights. **Validation criterion:** external assignment is rejected without insertion; internal and unassigned tasks remain possible.
 
-**Correction à envisager :** vérifier l’appartenance du responsable à l’espace, selon la règle métier retenue. Si l’affectation externe est intentionnelle, la documenter et définir ses droits. **Critère de validation :** une affectation externe est refusée sans insertion ; une affectation interne autorisée et une tâche non affectée restent possibles.
+Classification: OWASP API3:2023, object-property authorization.
 
-Classement : OWASP API3:2023, autorisation d’une propriété d’objet.
+### SEC-11 — Technical disclosure through `/health`
 
-### SEC-11 — Divulgation technique sur `/health`
+**Evidence:** [app/app.py](../app/app.py), lines 20–29.
 
-**Preuves :** [app/app.py](../app/app.py), lignes 20–29.
+The public endpoint returns `str(error)` on a database error. A synthetic error appeared in JSON; a real error may reveal hostnames, ports, or connection details.
 
-L’endpoint public renvoie `str(error)` lors d’une erreur de base. Une erreur fictive injectée pendant la vérification se retrouve dans la réponse JSON. Une erreur réelle peut fournir des noms d’hôtes, ports ou détails de connexion selon sa nature ; aucune valeur secrète réelle n’a été utilisée.
+**Impact:** infrastructure reconnaissance. **Suggested fix:** return minimal public status and keep details in internal logs. **Validation criterion:** simulated outages reveal no technical details, while an identifier permits server-side diagnosis.
 
-**Impact :** aide à la reconnaissance de l’infrastructure. **Correction à envisager :** renvoyer un état public minimal et conserver le détail dans des journaux internes. **Critère de validation :** une panne de base simulée ne révèle aucun détail technique au client ; un identifiant permet de retrouver le diagnostic côté serveur.
+Classification: OWASP API8:2023.
 
-Classement : OWASP API8:2023.
+### SEC-12 — Account and resource enumeration
 
-### SEC-12 — Énumération de comptes et de ressources
+**Evidence:** [app/routes/auth.py](../app/routes/auth.py), lines 25–27; [app/routes/tasks.py](../app/routes/tasks.py), lines 36–48; [app/routes/projects.py](../app/routes/projects.py), lines 79–88; [app/routes/workspaces.py](../app/routes/workspaces.py), lines 65–70 and 142–148.
 
-**Preuves :** [app/routes/auth.py](../app/routes/auth.py), lignes 25–27 ; [app/routes/tasks.py](../app/routes/tasks.py), lignes 36–48 ; [app/routes/projects.py](../app/routes/projects.py), lignes 79–88 ; [app/routes/workspaces.py](../app/routes/workspaces.py), lignes 65–70 et 142–148.
+Registration for an existing email returns `409` with a specific message. An external logged-in user receives `403` for an existing task and `404` for an unknown ID. Similar distinctions exist for workspaces and projects; member addition also distinguishes registered emails.
 
-Une inscription sur un email déjà présent retourne `409` avec un message spécifique. Pour un utilisateur connecté extérieur à l’espace, une tâche existante donne `403` alors qu’un identifiant inexistant donne `404`. Des distinctions semblables existent sur les espaces et projets. L’ajout de membres permet également à un appelant autorisé de distinguer les emails inscrits.
+**Impact:** account or resource existence can be discovered without demonstrated content access. **Suggested fix:** decide which existence information may be public and harmonize responses where confidentiality is required; add attempt limits. Login already uses the same message for an unknown account and incorrect password.
 
-**Impact :** découverte de l’existence d’un compte ou d’une ressource, sans accès démontré à son contenu. **Correction à envisager :** décider quelles informations d’existence peuvent être publiques et harmoniser les réponses si leur confidentialité est recherchée ; compléter par des limites de tentatives. **Critère de validation :** un utilisateur non autorisé ne peut distinguer les cas que la politique exige de masquer. Le message de connexion reste déjà identique pour un compte inconnu et un mauvais mot de passe.
+Classification: confidentiality and response design.
 
-Classement : confidentialité et conception des réponses.
+## 4. Dependencies: identified alerts and applicability
 
-## 4. Dépendances : alertes identifiées et applicabilité
+The direct versions in `requirements.txt` were compared with public PyPI metadata and maintainer advisories available at the audit date. Duplicate GHSA, CVE, and PYSEC identifiers refer to the same issue and are not counted more than once.
 
-Les versions directes de `requirements.txt` ont été confrontées aux métadonnées publiques PyPI et aux avis des mainteneurs à la date de l’audit. Les doublons entre identifiants GHSA, CVE et PYSEC désignent le même problème et ne sont pas comptés plusieurs fois.
-
-| Dépendance déclarée | Alerte et version corrigée | Applicabilité observée dans ce projet |
+| Declared dependency | Alert and fixed version | Applicability |
 | --- | --- | --- |
-| Flask 3.1.0 | CVE-2025-47278 ; corrigée en 3.1.1 | Concerne `SECRET_KEY_FALLBACKS`, non configuré ici. Exploitation non établie. [Avis du mainteneur](https://github.com/pallets/flask/security/advisories/GHSA-4grg-w6v8-c28g). |
-| Flask 3.1.0 | CVE-2026-27205 ; corrigée en 3.1.3 | Nécessite notamment certains accès aux clés de session et un cache partagé. Les routes utilisent `session.get()` et aucun proxy de cache n’est décrit. Exploitation non établie. [Avis du mainteneur](https://github.com/pallets/flask/security/advisories/GHSA-68rp-wp8r-4726). |
-| python-dotenv 1.0.1 | CVE-2026-28684 ; correction annoncée en 1.2.2 | Concerne `set_key()`/`unset_key()` et des conditions locales sur les fichiers. Aucun appel à ces fonctions dans le code examiné. Exploitation par l’API non établie. [Avis du mainteneur](https://github.com/theskumar/python-dotenv/security/advisories/GHSA-mf9w-mj56-hr94). |
+| Flask 3.1.0 | CVE-2025-47278; fixed in 3.1.1 | Concerns `SECRET_KEY_FALLBACKS`, not configured here. Exploitation not established. [Advisory](https://github.com/pallets/flask/security/advisories/GHSA-4grg-w6v8-c28g). |
+| Flask 3.1.0 | CVE-2026-27205; fixed in 3.1.3 | Requires, among other things, session-key access and a shared cache. No cache proxy is described. Exploitation not established. [Advisory](https://github.com/pallets/flask/security/advisories/GHSA-68rp-wp8r-4726). |
+| python-dotenv 1.0.1 | CVE-2026-28684; fix announced in 1.2.2 | Concerns `set_key()`/`unset_key()` and local file conditions. These functions are not used. API exploitation not established. [Advisory](https://github.com/theskumar/python-dotenv/security/advisories/GHSA-mf9w-mj56-hr94). |
 
-Aucune alerte n’a été renvoyée par les métadonnées consultées pour `psycopg==3.2.1`, `psycopg-binary==3.2.1` et `argon2-cffi==25.1.0`. [Métadonnées PyPI psycopg](https://pypi.org/pypi/psycopg/3.2.1/json), [psycopg-binary](https://pypi.org/pypi/psycopg-binary/3.2.1/json), [argon2-cffi](https://pypi.org/pypi/argon2-cffi/25.1.0/json). Cela ne prouve pas l’absence de vulnérabilité : les bibliothèques natives, l’OS et les dépendances transitives de l’image réellement déployée n’ont pas été inventoriés ni scannés.
+No alert was returned for `psycopg==3.2.1`, `psycopg-binary==3.2.1`, or `argon2-cffi==25.1.0`. [psycopg metadata](https://pypi.org/pypi/psycopg/3.2.1/json), [psycopg-binary](https://pypi.org/pypi/psycopg-binary/3.2.1/json), [argon2-cffi](https://pypi.org/pypi/argon2-cffi/25.1.0/json). This does not prove the absence of vulnerabilities: native libraries, the OS, and transitive dependencies of the deployed image were not inventoried or scanned.
 
-**Action à prévoir par l’auteur :** mettre à jour les dépendances concernées vers des versions corrigées compatibles, verrouiller aussi les dépendances transitives et analyser l’image effectivement produite. Aucun paquet du projet ni fichier de dépendances n’a été modifié. Ces alertes de maintenance sont distinguées des scénarios applicatifs confirmés.
+**Action for the author:** update affected dependencies to compatible fixed versions, lock transitive dependencies, and scan the produced image. No project package or dependency file was modified. These maintenance alerts are distinct from confirmed application scenarios.
 
-## 5. Observations complémentaires et limites
+## 5. Additional observations and limitations
 
-- **Durcissement Docker :** `compose.yaml:7–8` monte tout le dépôt en écriture dans `/app`, et le Dockerfile ne définit pas d’utilisateur applicatif. Une compromission du processus pourrait donc atteindre les fichiers montés selon leurs permissions. Cela ne démontre pas une prise de contrôle de tout l’hôte. Prévoir une configuration de production avec les accès nécessaires seulement.
-- **Réponse incorrecte après suppression d’un membre :** `app/routes/workspaces.py:278` retourne un tuple à un élément. Flask le refuse alors que la fonction de suppression a déjà été exécutée. C’est un défaut de fiabilité supplémentaire : le client peut recevoir `500` malgré une suppression effectuée. Prévoir une réponse HTTP valide et tester l’état final de la base lors de la correction.
-- **CSRF à compléter selon le client prévu :** aucun mécanisme dédié n’est visible. Les mutations métier exigent du JSON et aucun CORS permissif n’est configuré, ce qui bloque le scénario classique par formulaire intersite. Le logout accepte en revanche un POST sans JSON. Son déclenchement intersite dépendrait de l’envoi du cookie par le navigateur. Aucune exploitation CSRF en navigateur n’a été démontrée ; ne pas présenter toutes les routes comme vulnérables sur cette seule absence.
-- **Secrets :** la robustesse réelle de `SECRET_KEY`, les droits de `.env`, l’historique Git complet et les anciennes images n’ont pas été examinés. Le code ne valide pas explicitement la présence et la qualité de la clé au démarrage ; une clé absente provoque un échec de session, pas une authentification contournée démontrée.
-- **Traçabilité :** aucun journal métier dédié aux changements de rôle, transferts de propriété ou suppressions sensibles n’apparaît dans le code. Les journaux d’accès techniques ne suffisent pas nécessairement à reconstituer acteur, cible et changement. Le dispositif de supervision extérieur n’a pas été inspecté.
-- **Périmètre non vérifié :** HTTPS réel, pare-feu, reverse proxy, sauvegardes/restauration, système hôte, concurrence des transactions et interfaces clientes. Aucun front n’a été examiné : une valeur contenant du HTML renvoyée en JSON ne suffit pas à démontrer une XSS.
+- **Docker hardening:** `compose.yaml:7–8` mounts the entire repository read-write at `/app`, and the Dockerfile defines no application user. A process compromise could reach mounted files according to their permissions. This does not demonstrate full host takeover. Use a production configuration with only required access.
+- **Incorrect response after member deletion:** `app/routes/workspaces.py:278` returns a one-element tuple. Flask rejects it after deletion has run, so the client may receive `500` despite successful deletion. Return a valid HTTP response and test final database state.
+- **CSRF requires client-specific follow-up:** no dedicated mechanism is visible. JSON mutations and the absence of permissive CORS block the classic cross-site form scenario, although logout accepts POST without JSON. No browser CSRF exploitation was demonstrated.
+- **Secrets:** actual `SECRET_KEY` strength, `.env` permissions, complete Git history, and old images were not examined. A missing key causes session failure, not demonstrated authentication bypass.
+- **Traceability:** no business log dedicated to role changes, ownership transfers, or sensitive deletions appears in the code. External monitoring was not inspected.
+- **Unverified scope:** actual HTTPS, firewall, reverse proxy, backup/recovery, host system, transaction concurrency, and client interfaces. No frontend was examined; HTML in JSON is not sufficient to demonstrate XSS.
 
-## 6. Protections déjà présentes
+## 6. Protections already present
 
-| Protection observée | Preuve | Portée |
+| Observed protection | Evidence | Scope |
 | --- | --- | --- |
-| Hachage des mots de passe avec Argon2 | `app/routes/auth.py:9,25,49` | Le code stocke un hachage et vérifie le mot de passe par la bibliothèque. |
-| Requêtes SQL paramétrées | `app/db.py`, par exemple lignes 32–38, 46–52 et 272–287 | Aucune concaténation d’entrée HTTP dans les requêtes SQL n’a été identifiée. |
-| Permissions vérifiées côté serveur | `app/permissions.py:4–10`, `app/routes/tasks.py:36–49` | Les rôles et l’appartenance sont vérifiés via les données de l’espace. Les incohérences de SEC-01/02 restent à corriger. |
-| Identité du créateur issue de la session | `app/routes/tasks.py:54,85` | Le client ne choisit pas le créateur de la tâche dans le JSON. |
-| Propriété principale contrôlée séparément | `app/routes/workspaces.py:87,201,296` | Protection de la suppression de l’espace, du titulaire principal et du transfert de propriété. |
-| Contraintes d’intégrité en base | `app/sql/init.sql:4,28–31,40–43` | Email et adhésion uniques, clés étrangères, listes de valeurs de statut/priorité/rôle. |
-| Création de l’espace et de son propriétaire dans une transaction | `app/db.py:349–369` | Les deux insertions partagent le même contexte de connexion transactionnel. |
-| Cookie signé avec `HttpOnly` | Session Flask utilisée par `app/routes/auth.py:52` | La signature protège l’intégrité du cookie ; `HttpOnly` réduit l’accès depuis JavaScript. |
-| Message de connexion générique | `app/routes/auth.py:45–51` | Même message pour compte inconnu et mauvais mot de passe. |
-| `.env` exclu du suivi Git actuel | `.gitignore:1` et liste des fichiers suivis | Ne protège pas le build Docker ni nécessairement les anciens commits. |
+| Argon2 password hashing | `app/routes/auth.py:9,25,49` | Hashes are stored and passwords verified through the library. |
+| Parameterized SQL queries | `app/db.py`, for example lines 32–38, 46–52, and 272–287 | No HTTP-input concatenation into SQL was identified. |
+| Server-side permission checks | `app/permissions.py:4–10`, `app/routes/tasks.py:36–49` | Roles and membership are checked through workspace data; SEC-01/02 inconsistencies remain. |
+| Creator identity from the session | `app/routes/tasks.py:54,85` | The client cannot choose the task creator in JSON. |
+| Primary ownership checked separately | `app/routes/workspaces.py:87,201,296` | Protects workspace deletion, primary ownership, and ownership transfer. |
+| Database integrity constraints | `app/sql/init.sql:4,28–31,40–43` | Unique email and membership, foreign keys, and allowed status/priority/role values. |
+| Workspace and owner created transactionally | `app/db.py:349–369` | Both inserts share one transactional connection context. |
+| Signed cookie with `HttpOnly` | Flask session used by `app/routes/auth.py:52` | Signature protects integrity; `HttpOnly` reduces JavaScript access. |
+| Generic login message | `app/routes/auth.py:45–51` | Same message for unknown account and incorrect password. |
+| `.env` excluded from current Git tracking | `.gitignore:1` and tracked-file list | Does not protect the Docker build or old commits. |
 
-## 7. Utilisation pour le dossier RNCP niveau 5
+## 7. Use in an RNCP level 5 portfolio
 
-Ce document fournit l’état initial. Pour présenter le travail, sélectionner des corrections représentatives : autorisation des rôles, validation des données, gestion de session et configuration de déploiement. Pour chacune, conserver la preuve initiale, expliquer l’impact sur la confidentialité, l’intégrité ou la disponibilité, puis ajouter le choix de correction et une preuve de validation.
+This document provides the initial state. Select representative fixes for presentation: role authorization, data validation, session management, and deployment configuration. For each, retain initial evidence, explain its impact on confidentiality, integrity, or availability, then add the fix and validation evidence.
 
-Ordre de traitement suggéré : sécuriser l’exposition et les secrets avant toute mise en ligne ; corriger SEC-01 et SEC-02 avant un usage partagé ; traiter ensuite sessions, limites, validation et affectations ; terminer par les divulgations limitées et les mesures de suivi. Les mises à jour de dépendances peuvent être menées en parallèle avec leurs vérifications de compatibilité.
+Suggested order: secure exposure and secrets before going online; fix SEC-01 and SEC-02 before shared use; then address sessions, limits, validation, and assignments; finish with limited disclosures and follow-up measures. Dependency updates can run in parallel with compatibility checks.
 
-| Élément à compléter par l’auteur | Contenu attendu |
+| Item to complete | Expected content |
 | --- | --- |
-| Constat choisi | Identifiant SEC, fichier et règle concernée |
-| Preuve avant correction | Requête fictive, rôle de l’appelant, résultat obtenu et résultat attendu |
-| Correction réalisée | Explication du changement et référence au commit de correction |
-| Vérification après correction | Cas interdit désormais refusé, cas autorisé toujours fonctionnel, état final des données |
-| Risque résiduel | Limites restantes, dépendances au déploiement et justification des choix |
+| Selected finding | SEC identifier, file, and affected rule |
+| Evidence before the fix | Fictitious request, caller role, actual result, and expected result |
+| Fix implemented | Change explanation and fixing-commit reference |
+| Verification after the fix | Forbidden case rejected, allowed case still works, final data state |
+| Residual risk | Remaining limitations, deployment dependencies, and rationale |
 
-Ne présenter comme corrigés que les points effectivement traités et vérifiés. Pour les scénarios simulés durant cet audit, compléter la démonstration finale sur une base PostgreSQL de test et sur le mode de déploiement choisi.
+Only present points as fixed when they have actually been addressed and verified. Complete simulated scenarios on a PostgreSQL test database and with the selected deployment mode.
 
-## 8. Résultats des vérifications isolées
+## 8. Isolated verification results
 
-Le tableau conserve les résultats observés pendant cet audit. Les scripts et sorties détaillées ont été produits dans `/tmp/taskflow-audit-n79la5l5/`, hors du dépôt ; ils restent temporaires et ne constituent pas une suite de tests versionnée jointe au projet. Les comptes, emails, identifiants, cookies et données utilisés sont fictifs. Les lignes de code référencées dans ce rapport correspondent à l’état initial et peuvent évoluer lors des corrections.
+The table preserves results observed during this audit. Detailed scripts and outputs were produced in `/tmp/taskflow-audit-n79la5l5/`, outside the repository; they are temporary and not a versioned test suite. Accounts, emails, identifiers, cookies, and data are fictitious. Code references correspond to the initial state and may change during remediation.
 
-| Vérification | Résultat observé | Conclusion |
+| Verification | Observed result | Conclusion |
 | --- | --- | --- |
-| 20 opérations métier sans session, avec JSON valide si nécessaire | 20 réponses `401` | Authentification requise sur les opérations métier déclarées. |
-| Lectures et mutations examinées avec un utilisateur extérieur à l’espace | 17 réponses `403` | Cloisonnement respecté dans ces scénarios. |
-| Mutations examinées avec le rôle `guest` | 11 réponses `403` | Invité bloqué sur les mutations testées. |
-| Modification et suppression du titulaire principal par six autres comptes/rôles | 12 réponses `403` | Protection du titulaire dans ces scénarios. |
-| Six lectures métier avec le rôle `guest` | 6 réponses `200` | Les lectures autorisées restent possibles. |
-| Administrateur ajoutant un utilisateur au rôle `owner` par POST | `201`, rôle `owner` enregistré en mémoire, titulaire principal inchangé | SEC-01 reproduit. |
-| Administrateur attribuant `owner` par PATCH | `403` | Différence de politique avec POST confirmée. |
-| Owner non titulaire ajoutant un autre owner | `201` | Autre chemin de SEC-01 reproduit. |
-| Administrateur supprimant un pair, puis le rétrogradant et le supprimant | `403`, puis `200`, puis `500` avec cible supprimée en mémoire | SEC-02 et défaut de réponse après suppression reproduits. |
-| Création de tâche avec un responsable extérieur à l’espace | `201`, identifiant extérieur transmis à la création | SEC-10 reproduit, sans preuve d’accès en lecture pour cet utilisateur. |
-| Cookie émis à la connexion | `session=<masqué>; HttpOnly; Path=/` | `Secure` et `SameSite` absents de l’en-tête observé. |
-| Connexion, `/me`, déconnexion, `/me`, réinjection du cookie et `/me` | `200`, `200`, `200`, `401`, puis `200` | SEC-07 reproduit. |
-| JSON `[1]` sur inscription/connexion et mot de passe entier sur ces deux routes | 4 réponses `500` | Absence de validation de types confirmée. |
-| Tableaux JSON sur quatre mutations métier et JSON `null` sur PATCH workspace | 5 réponses `500` | SEC-09 reproduit sur les routes examinées. |
-| Formulaire classique sur la connexion | `415` | Type MIME non JSON refusé. |
-| POST formulaire sur la déconnexion | `200` | Le logout n’exige pas de JSON ; ceci ne simule pas les règles de cookies d’un navigateur. |
-| `/health` avec erreur de connexion synthétique | `500`, texte fictif de l’exception recopié dans `error` | SEC-11 reproduit. |
-| 30 connexions successives avec un email fictif inconnu | 30 réponses `401`, aucun `429` | Absence de limitation constatée sur cette séquence ; aucun test de charge. |
-| Lecture par un utilisateur extérieur : tâche existante puis identifiant absent | `403`, puis `404` | Distinction d’existence de SEC-12 confirmée. |
+| 20 business operations without a session | 20 `401` responses | Authentication required. |
+| Reads and mutations with a user outside the workspace | 17 `403` responses | Isolation respected in these scenarios. |
+| Mutations with the `guest` role | 11 `403` responses | Guest blocked on tested mutations. |
+| Primary-owner modification/deletion by six other accounts/roles | 12 `403` responses | Owner protected in these scenarios. |
+| Six business reads with `guest` | 6 `200` responses | Authorized reads remain possible. |
+| Administrator adds `owner` through POST | `201`; role stored in memory; primary owner unchanged | SEC-01 reproduced. |
+| Administrator assigns `owner` through PATCH | `403` | POST/PATCH policy difference confirmed. |
+| Non-primary owner adds another owner | `201` | Another SEC-01 path reproduced. |
+| Administrator deletes, demotes, then deletes a peer | `403`, `200`, then `500`; target removed in memory | SEC-02 and response defect reproduced. |
+| Task created with an external assignee | `201`; external ID passed to creation | SEC-10 reproduced; no external read access shown. |
+| Login cookie | `session=<redacted>; HttpOnly; Path=/` | `Secure` and `SameSite` absent. |
+| Login, `/me`, logout, `/me`, cookie replay, `/me` | `200`, `200`, `200`, `401`, then `200` | SEC-07 reproduced. |
+| JSON `[1]` and integer passwords on auth routes | 4 `500` responses | Missing type validation confirmed. |
+| JSON arrays on four mutations and JSON `null` on workspace PATCH | 5 `500` responses | SEC-09 reproduced. |
+| Classic form login | `415` | Non-JSON MIME type rejected. |
+| Form POST logout | `200` | Logout does not require JSON. |
+| `/health` with synthetic connection error | `500`; exception text copied into `error` | SEC-11 reproduced. |
+| 30 successive logins with an unknown email | 30 `401` responses; no `429` | No rate limiting observed; no load test. |
+| Outside-user read: existing task then missing ID | `403`, then `404` | SEC-12 existence distinction confirmed. |
 
-Les quatre premières lignes totalisent 60 refus attendus vérifiés. Ces résultats ne couvrent pas toutes les combinaisons de rôles, de routes, de concurrence et d’état de base. L’énumération par email à l’inscription, les contraintes SQL et les configurations Docker ont été évaluées par lecture du code, sans test sur la base ou sur un déploiement réel.
+The first four rows total 60 expected denials that were verified. These results do not cover every role, route, concurrency, or database-state combination. Email enumeration, SQL constraints, and Docker configuration were assessed by code review, without testing a real database or deployment.
