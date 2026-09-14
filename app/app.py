@@ -9,11 +9,13 @@ from app.routes.tasks import tasks_bp
 from app.routes.workspaces import workspaces_bp
 from app.extensions import limiter
 
+app_env = os.getenv("APP_ENV", "development")
+
 app = Flask(__name__)
 limiter.init_app(app)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SECURE"] = app_env == "production"
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
 
