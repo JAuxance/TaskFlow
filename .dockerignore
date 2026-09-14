@@ -1,8 +1,15 @@
 .env
 .git
 .gitignore
-*.txt
 __pycache__/
 *.pyc
 .venv/
 venv/
+cookies.txt
+EXPLICATION.md
+
+crown.txt
+owner.txt
+admin.txt
+member.txt
+outsider.txt

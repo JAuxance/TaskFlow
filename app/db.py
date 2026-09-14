@@ -452,10 +452,11 @@ def revoke_session(session_token):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                UPDATE session
+                UPDATE sessions
                 SET revoked = TRUE
                 WHERE session_token = %s
                 RETURNING id, user_id, session_token, created_at, expires_at, revoked;
                 """,
-                (session_token),
+                (session_token,),
             )
+            return cursor.fetchone()
