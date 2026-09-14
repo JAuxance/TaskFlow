@@ -2,6 +2,8 @@
 
 Date : 11 septembre 2026. Version examinée : commit `fc818aa`, avec les fichiers présents dans l’espace de travail au début de l’audit.
 
+Suivi du 14 septembre 2026 : voir le [bilan de clôture et les preuves de recette après reset](cloture-audit-securite-api.md). Le présent document conserve les constats et résultats initiaux.
+
 Objectif : relever les risques et préparer un support de travail pour un dossier RNCP niveau 5. Les corrections restent à réaliser par l’auteur du projet. Aucun correctif applicatif, changement de configuration ou changement de données n’a été effectué pendant cet audit.
 
 ## 1. Périmètre et méthode
