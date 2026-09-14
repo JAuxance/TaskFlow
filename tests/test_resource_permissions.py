@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 from flask import Flask
 
 from app import permissions
-from app.routes import projects, tasks, workspaces
+from app.routes import auth, projects, tasks, workspaces
 
 
 @dataclass(frozen=True)
@@ -43,6 +43,13 @@ RESOURCE_ROUTES = (
     Route("PATCH", "/api/workspaces/1/owner", {"user_id": 20}),
 )
 
+AUTHENTICATED_ROUTES = RESOURCE_ROUTES + (
+    Route("POST", "/api/workspaces", {"name": "Workspace"}),
+    Route("GET", "/api/workspaces"),
+    Route("GET", "/api/auth/me"),
+    Route("POST", "/api/auth/logout"),
+)
+
 NOT_FOUND = {"error": "resource not found"}
 FORBIDDEN = {"error": "insufficient privileges"}
 
@@ -56,7 +63,7 @@ class FakeDatabase:
         "create_task", "update_task_db", "delete_task", "create_project",
         "update_project_db", "deleted_project", "update_workspace", "delet_workspace",
         "add_workspace_member", "update_role_member", "delete_member_db", "crowned_king",
-        "create_workspace_with_owner",
+        "create_workspace_with_owner", "revoke_session",
     }
 
     def __init__(self):
@@ -71,6 +78,8 @@ class FakeDatabase:
         self.project_exists = True
         self.task_exists = True
         self.target_exists = True
+        self.target_user_exists = True
+        self.actor_user_exists = True
         self.actor_role = "owner"
         self.target_role = "owner"
         self.owner_id = self.ACTOR
@@ -132,6 +141,10 @@ class FakeDatabase:
         if name == "get_user_by_email":
             return (self.TARGET, "target", args[0], "hash", self.now)
         if name == "get_user_by_id":
+            if args[0] == self.ACTOR and not self.actor_user_exists:
+                return None
+            if args[0] == self.TARGET and not self.target_user_exists:
+                return None
             return (args[0], "target", "target@example.test")
         if name in ("create_task", "update_task_db"):
             return self.task
@@ -153,7 +166,7 @@ class ResourcePermissionTests(unittest.TestCase):
         self.db = FakeDatabase()
         # Patch the DB boundary wherever it was imported; helpers remain real.
         mocks = {}
-        for module in (permissions, tasks, projects, workspaces):
+        for module in (permissions, auth, tasks, projects, workspaces):
             for name, value in vars(module).copy().items():
                 if callable(value) and getattr(value, "__module__", None) == "app.db":
                     if name not in mocks:
@@ -166,7 +179,7 @@ class ResourcePermissionTests(unittest.TestCase):
                     self.addCleanup(patcher.stop)
         app = Flask(__name__)
         app.config.update(TESTING=True, SECRET_KEY="test-resource-permissions")
-        for blueprint in (tasks.tasks_bp, projects.projects_bp, workspaces.workspaces_bp):
+        for blueprint in (auth.auth_bp, tasks.tasks_bp, projects.projects_bp, workspaces.workspaces_bp):
             app.register_blueprint(blueprint)
         self.client = app.test_client()
         self.sign_in()
@@ -218,7 +231,7 @@ class ResourcePermissionTests(unittest.TestCase):
 
     def test_invalid_sessions_are_rejected_before_any_business_access(self):
         for session_state in ("missing", "unknown", "expired", "revoked"):
-            for route in RESOURCE_ROUTES:
+            for route in AUTHENTICATED_ROUTES:
                 with self.subTest(session=session_state, method=route.method, path=route.path):
                     self.db.reset()
                     self.db.session_state = session_state
@@ -227,6 +240,51 @@ class ResourcePermissionTests(unittest.TestCase):
                     response = self.request_route(route)
                     self.assertEqual(response.status_code, 401, response.get_json())
                     self.assertEqual(self.db.writes, [])
+
+    def test_missing_assignee_and_assignee_outside_workspace_have_identical_responses(self):
+        route = Route("POST", "/api/projects/2/tasks", {
+            "title": "Task", "status": "todo", "priority": "medium",
+            "assignee_id": self.db.TARGET,
+        })
+        for scenario in ("missing_user", "nonmember"):
+            with self.subTest(scenario=scenario):
+                self.db.reset()
+                if scenario == "missing_user":
+                    self.db.target_user_exists = False
+                else:
+                    self.db.target_exists = False
+                self.assert_denied(route)
+
+    def test_workspace_members_of_any_role_can_be_assigned_tasks(self):
+        route = Route("POST", "/api/projects/2/tasks", {
+            "title": "Task", "status": "todo", "priority": "medium",
+            "assignee_id": self.db.TARGET,
+        })
+        for role in ("owner", "admin", "member", "guest"):
+            with self.subTest(role=role):
+                self.db.reset()
+                self.db.target_role = role
+                response = self.request_route(route)
+                self.assertEqual(response.status_code, 201, response.get_json())
+                self.assertEqual(len(self.db.writes), 1)
+                self.assertEqual(self.db.writes[0][0], "create_task")
+                self.assertEqual(self.db.writes[0][1][2], self.db.TARGET)
+
+    def test_missing_current_user_returns_generic_404(self):
+        self.db.actor_user_exists = False
+        self.assert_denied(Route("GET", "/api/auth/me"))
+
+    def test_logout_revokes_valid_session_and_clears_cookie_session(self):
+        response = self.request_route(Route("POST", "/api/auth/logout"))
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertEqual(self.db.writes, [("revoke_session", ("test-token",), {})])
+        with self.client.session_transaction() as session:
+            self.assertEqual(dict(session), {})
+
+    def test_session_disappearing_before_logout_returns_401(self):
+        self.db.empty_write = "revoke_session"
+        response = self.request_route(Route("POST", "/api/auth/logout"))
+        self.assertEqual(response.status_code, 401, response.get_json())
 
     def test_guest_can_read_but_cannot_mutate_resources(self):
         for route in RESOURCE_ROUTES:
@@ -361,8 +419,12 @@ class ResourcePermissionTests(unittest.TestCase):
 
     def test_resource_disappearing_before_write_returns_generic_404(self):
         cases = (
+            ("update_task_db", Route("PATCH", "/api/tasks/3", {"title": "Updated task"})),
             ("delete_task", Route("DELETE", "/api/tasks/3")),
+            ("update_project_db", Route("PATCH", "/api/projects/2", {"name": "Updated project"})),
             ("deleted_project", Route("DELETE", "/api/projects/2")),
+            ("update_workspace", Route("PATCH", "/api/workspaces/1", {"name": "Updated workspace"})),
+            ("delet_workspace", Route("DELETE", "/api/workspaces/1")),
             ("update_role_member", Route("PATCH", "/api/workspaces/1/members/20", {"role": "member"})),
             ("delete_member_db", Route("DELETE", "/api/workspaces/1/members/20")),
             ("crowned_king", Route("PATCH", "/api/workspaces/1/owner", {"user_id": 20})),

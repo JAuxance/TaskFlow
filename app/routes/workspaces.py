@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint
 from psycopg.errors import UniqueViolation
 
 from app.db import (
@@ -15,11 +15,13 @@ from app.db import (
     crowned_king,
 )
 from app.permissions import (
+    check_workspace_permission,
     get_authenticated_user,
     get_workspace_with_permission,
     insufficient_privileges,
     resource_not_found,
 )
+from app.validation import get_json_object, get_pagination, is_valid_id, is_valid_text
 
 workspaces_bp = Blueprint("workspaces", __name__)
 
@@ -29,12 +31,14 @@ def create_workspace_endpoint():
     user_id, error = get_authenticated_user()
     if error:
         return error
-    data = request.get_json()
-    if data is None:
-        return {"error": "invalid JSON body"}, 400
+    data, error = get_json_object()
+    if error:
+        return error
     name = data.get("name")
     if not name:
         return {"error": "name is required"}, 400
+    if not is_valid_text(name, allow_empty=False, max_length=50):
+        return {"error": "invalid name"}, 400
     workspace = create_workspace_with_owner(user_id, name)
     return {
         "id": workspace[0],
@@ -46,13 +50,13 @@ def create_workspace_endpoint():
 
 @workspaces_bp.route("/api/workspaces", methods=["GET"])
 def get_workspaces():
-    page = request.args.get("page", 1, type=int)
-    limit = request.args.get("limit", 20, type=int)
-
-    offset = (page - 1) * limit
     user_id, error = get_authenticated_user()
     if error:
         return error
+    pagination, error = get_pagination()
+    if error:
+        return error
+    limit, offset = pagination
     workspaces = get_workspaces_by_member(user_id, limit, offset)
     return [
         {
@@ -91,7 +95,8 @@ def del_workspace(workspace_id):
     )
     if error:
         return error
-    delet_workspace(workspace_id)
+    if not delet_workspace(workspace_id):
+        return resource_not_found()
     return {"message": "workspace deleted successfuly"}, 200
 
 
@@ -105,11 +110,17 @@ def workspace_update(workspace_id):
     )
     if error:
         return error
-    data = request.get_json()
+    data, error = get_json_object()
+    if error:
+        return error
     name = data.get("name")
     if not name:
         return {"error": "name is missing"}, 400
+    if not is_valid_text(name, allow_empty=False, max_length=50):
+        return {"error": "invalid name"}, 400
     edited_workspace = update_workspace(workspace_id, name)
+    if not edited_workspace:
+        return resource_not_found()
     return {
         "id": edited_workspace[0],
         "owner_id": edited_workspace[1],
@@ -129,16 +140,18 @@ def add_member(workspace_id):
     if error:
         return error
     current_member = get_workspace_member(workspace_id, user_id)
-    data = request.get_json()
-    if not data:
-        return {"error": "invalid JSON body"}, 400
+    data, error = get_json_object()
+    if error:
+        return error
     member_email = data.get("email")
     role = data.get("role", "member")
     allowed_roles = ["owner", "admin", "member", "guest"]
-    if role not in allowed_roles:
+    if not isinstance(role, str) or role not in allowed_roles:
         return {"error": f"role must be one of {allowed_roles}"}, 400
     if not member_email:
         return {"error": "email is required"}, 400
+    if not is_valid_text(member_email, allow_empty=False, max_length=255):
+        return {"error": "invalid email"}, 400
     member = get_user_by_email(member_email)
     if not member:
         return resource_not_found()
@@ -158,16 +171,16 @@ def add_member(workspace_id):
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/members", methods=["GET"])
 def get_members(workspace_id):
-    page = request.args.get("page", 1, type=int)
-    limit = request.args.get("limit", 20, type=int)
-
-    offset = (page - 1) * limit
     user_id, error = get_authenticated_user()
     if error:
         return error
     _, error = get_workspace_with_permission(workspace_id, user_id)
     if error:
         return error
+    pagination, error = get_pagination()
+    if error:
+        return error
+    limit, offset = pagination
     members = get_workspace_members(workspace_id, limit, offset)
     return [
         {
@@ -200,12 +213,12 @@ def update_member_role(workspace_id, user_id):
         return resource_not_found()
     if user_id == workspace[1]:
         return insufficient_privileges()
-    data = request.get_json()
-    if not data:
-        return {"error": "invalid JSON body"}, 400
+    data, error = get_json_object()
+    if error:
+        return error
     role = data.get("role")
 
-    if role not in ("admin", "owner", "member", "guest"):
+    if not isinstance(role, str) or role not in ("admin", "owner", "member", "guest"):
         return {"error": "invalid role"}, 400
 
     current_member = get_workspace_member(workspace_id, current_user_id)
@@ -292,29 +305,23 @@ def transfer_crown(workspace_id):
     if error:
         return error
 
-    data = request.get_json()
-
-    if not data:
-        return {"error": "invalid JSON body"}, 400
+    data, error = get_json_object()
+    if error:
+        return error
 
     target_user_id = data.get("user_id")
 
     if not target_user_id:
         return {"error": "user_id is required"}, 400
+    if not is_valid_id(target_user_id):
+        return {"error": "invalid user_id"}, 400
 
     if target_user_id == user_id:
         return {"error": "user already holds the crown"}, 409
 
-    target_member = get_workspace_member(
-        workspace_id,
-        target_user_id,
-    )
-
-    if not target_member:
-        return resource_not_found()
-
-    if target_member[3] != "owner":
-        return insufficient_privileges()
+    error = check_workspace_permission(workspace_id, target_user_id, ("owner",))
+    if error:
+        return error
 
     updated_workspace = crowned_king(
         target_user_id,

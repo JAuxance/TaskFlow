@@ -5,6 +5,7 @@ from flask import session
 from app.db import (
     get_project_by_id,
     get_session_by_token,
+    get_task_by_id,
     get_workspace_by_id,
     get_workspace_member,
 )
@@ -49,6 +50,16 @@ def get_project_with_permission(project_id, user_id, roles=None):
     if error:
         return None, error
     return project, None
+
+
+def get_task_with_permission(task_id, user_id, roles=None):
+    task = get_task_by_id(task_id)
+    if not task:
+        return None, resource_not_found()
+    _, error = get_project_with_permission(task[1], user_id, roles)
+    if error:
+        return None, error
+    return task, None
 
 
 def get_authenticated_user():

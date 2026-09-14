@@ -2,12 +2,13 @@ from datetime import datetime, timedelta, timezone
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from flask import Blueprint, request, session
+from flask import Blueprint, session
 from psycopg.errors import UniqueViolation
 from email_validator import validate_email, EmailNotValidError
 from app.extensions import limiter
 import secrets
-from app.permissions import get_authenticated_user
+from app.permissions import get_authenticated_user, resource_not_found
+from app.validation import get_json_object, is_valid_text
 from app.db import create_session, create_user, get_user_by_email, get_user_by_id, get_session_by_token, revoke_session
 
 auth_bp = Blueprint("auth", __name__)
@@ -18,9 +19,9 @@ password_hasher = PasswordHasher()
 @auth_bp.route("/api/users", methods=["POST"])
 @limiter.limit("3 per hour")
 def register_user():
-    data = request.get_json()
-    if not isinstance(data, dict) or not data:
-        return {"error": "Invalid JSON body"}, 400
+    data, error = get_json_object()
+    if error:
+        return error
     username = data.get("username")
     email = data.get("email")
     password = data.get("password")
@@ -41,6 +42,13 @@ def register_user():
 
     if len(email) > 255:
         return {"error": "email must be at most 255 characters"}, 400
+
+    if not is_valid_text(username):
+        return {"error": "invalid username value"}, 400
+    if not is_valid_text(email):
+        return {"error": "invalid email value"}, 400
+    if not is_valid_text(password, allow_nul=True):
+        return {"error": "invalid password value"}, 400
 
     try:
         validate_email(email, check_deliverability=False)
@@ -66,10 +74,9 @@ def register_user():
 @auth_bp.route("/api/auth/login", methods=["POST"])
 @limiter.limit("5 per minute")
 def login():
-    data = request.get_json()
-
-    if not isinstance(data, dict) or not data:
-        return {"error": "invalid JSON body"}, 400
+    data, error = get_json_object()
+    if error:
+        return error
     email = data.get("email")
     password = data.get("password")
 
@@ -77,6 +84,10 @@ def login():
         return {"error": "email and password must be strings"}, 400
     if not email.strip() or not password.strip():
         return {"error": "email and password cannot be empty"}, 400
+    if not is_valid_text(email, max_length=255):
+        return {"error": "invalid email value"}, 400
+    if not is_valid_text(password, allow_nul=True):
+        return {"error": "invalid password value"}, 400
  
     user = get_user_by_email(email)
     if not user:
@@ -103,21 +114,21 @@ def get_current_user():
     user = get_user_by_id(user_id)
 
     if not user:
-        return{"error": "user not found"}, 404
+        return resource_not_found()
     return {"id": user[0], "username": user[1], "email": user[2]}, 200
 
 
 @auth_bp.route("/api/auth/logout", methods=["POST"])
 def logout():
+    _, error = get_authenticated_user()
+    if error:
+        return error
+
     session_token = session.get("session_token")
-
-    if not session_token:
-        return{"error": "authentication required"}, 401
-
     revoked_session = revoke_session(session_token)
 
     if not revoked_session:
-        return {"error": "session revocation failed"}, 404
+        return {"error": "session revocation failed"}, 401
     
     session.clear()
 
