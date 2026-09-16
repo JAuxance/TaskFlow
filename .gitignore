@@ -7,4 +7,9 @@ venv/
 .vscode/
 .idea/
 cookies.txt
+admin.txt
+crown.txt
+member.txt
+outsider.txt
+owner.txt
 EXPLICATION.md
