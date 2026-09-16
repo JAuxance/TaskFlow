@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask
+from flask_cors import CORS
 
 from app.db import get_db_connection
 from app.routes.auth import auth_bp
@@ -12,6 +13,13 @@ from app.extensions import limiter
 app_env = os.getenv("APP_ENV", "development")
 
 app = Flask(__name__)
+
+CORS(
+    app,
+    origins=["http://localhost:5500"],
+    supports_credentials=True
+)
+
 limiter.init_app(app)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
