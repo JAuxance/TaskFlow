@@ -4,4 +4,3 @@ psycopg[binary]==3.2.1
 python-dotenv==1.2.2
 argon2-cffi==25.1.0
 email-validator==2.0.0
-Flask-Cors
