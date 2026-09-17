@@ -3,6 +3,10 @@ import {
     getWorkspaces,
     createWorkspace,
     getWorkspaceById,
+    getWorkspacesMembers,
+    addWorkspaceMember,
+    updateWorkspaceMemberRole,
+    deleteWorkspaceMember,
 } from "./workspaces.js";
 import { getProjects, createProject, getProjectById } from "./projects.js";
 import { getTasks, createTask, getTaskById, updateTask, deleteTask } from "./task.js";
@@ -129,14 +133,121 @@ async function renderWorkspace(workspace) {
         <button id="back-button">← Retour</button>
 
         <h1>${workspace.name}</h1>
-        <p>Workspace ID : ${workspace.id}</p>
+        <p>Worksapce ID: ${workspace.id}</p>
 
+        <h2>Projets<h2>
+        <div id="projects-list"></div>
+
+        <h2>Members</h2>
+
+        <form id="add-member-from">
+            <input
+                id="member-email"
+                type="email"
+                placeholder="Email du membre"
+                required
+            >
+
+
+            <select id="member-role">
+                <option value="member">Member</option>
+                <option value="guest">Guest</option>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+            </select>
+
+            <button type="submit">Ajouter</button>
+        </form>
+        <p id="member-message"></p>
+    
+        <div id="members-list"></div>
+    
         <div id="projects-list"></div>
     `;
+    const addMemberForm = document.getElementById("add-member-from");
 
+    addMemberForm.addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        const email = document.getElementById("member-email").value;
+        const role = document.getElementById("member-role").value;
+        const message = document.getElementById("member-message");
+
+        const result = await addWorkspaceMember(
+            workspace.id,
+            email,
+            role
+        );
+
+        if (result.ok) {
+            renderWorkspace(workspace);
+        } else {
+            message.textContent = result.data.error;
+        }
+    });
     const projectsResult = await getProjects(workspace.id);
     const projectsList = document.getElementById("projects-list");
+    const membersResult = await getWorkspacesMembers(workspace.id);
+    const membersList = document.getElementById("members-list");
+    if (membersResult.ok) {
+        const members = membersResult.data;
 
+        members.forEach(function(member) {
+            const memberELement = document.createElement("div");
+
+            memberELement.innerHTML = `
+                <strong>${member.user_name}</strong>
+                
+                <select class="member-role-select">
+                   <option value="owner">Owner</option>
+                   <option value="admin">Admin</option>
+                   <option value="member">Member</option>
+                   <option value="guest">Guest</option>
+                </select>
+
+                <button class="delete-member-button">
+                    Suprimer
+                </button>
+                `;
+
+            const roleSelect = memberELement.querySelector(".member-role-select");
+
+            roleSelect.value = member.role;
+
+            roleSelect.addEventListener("change", async function() {
+                console.log("user id :", member.user_id);
+                console.log("nouveau rôle :", roleSelect.value);
+                const result = await updateWorkspaceMemberRole(
+                    workspace.id,
+                    member.user_id,
+                    roleSelect.value
+                );
+                if (!result.ok) {
+                    console.log(result);
+                    roleSelect.value = member.role;
+                }
+            });
+            membersList.appendChild(memberELement);
+            const deleteMemberButton = memberELement.querySelector(".delete-member-button");
+            deleteMemberButton.addEventListener("click", async function() {
+                const confirmed = confirm(
+                    `Supprimer ${member.user_name} du workspace ?`
+                );
+                if (!confirmed) {
+                    return;
+                }
+                const result = await deleteWorkspaceMember(
+                    workspace.id,
+                    member.user_id
+                );
+                if (result.ok) {
+                    renderWorkspace(workspace);
+                } else {
+                    console.log(result)
+                }
+            })
+        });
+    }
     if (projectsResult.ok) {
         const projects = projectsResult.data;
 
@@ -198,6 +309,7 @@ async function renderWorkspace(workspace) {
                 }
             });
         }
+
     }
 
     console.log(projectsResult);
@@ -291,12 +403,12 @@ async function renderProject(project, workspace) {
     });
 }
 
-function renderTask(task, project, workspace) {
+async function renderTask(task, project, workspace) {
     const app = document.getElementById("app");
 
     app.innerHTML = `
     <button id="back-task-button">← Retour</button>
-
+    
     <label for="task-title">Titre:</label>
     <input
         id="task-title"
@@ -321,11 +433,18 @@ function renderTask(task, project, workspace) {
         <option value="high">High</option>
         <option value="urgent">Urgent</option>
     </select>
-
+    <label for="task-due-date">Échéance :</label>
+    <input
+        id="task-due-date"
+        type="datetime-local"
+    >
+    <label for="task-assignee">Assigné à:</label>
+    <select id="task-assignee">
+        <option value="">Non assignée</option>
+    </select>
     <button id="save-task-button">Engregistrer</button>
     <button id="delete-task-button">Supprimer la tâche</button>
     `;
-
     const statusSelect = document.getElementById("task-status");
 
     statusSelect.value = task.status;
@@ -352,18 +471,50 @@ function renderTask(task, project, workspace) {
 
         console.log(result);
     });
+    const dueDateInput = document.getElementById("task-due-date");
+    if (task.due_date) {
+        dueDateInput.value = task.due_date.slice(0, 16);
+    }
+    const membersResult = await getWorkspacesMembers(workspace.id);
+    const assigneeSelect = document.getElementById("task-assignee");
 
+    if (membersResult.ok) {
+        const members = membersResult.data;
+
+        members.forEach(function(member) {
+            const option = document.createElement("option");
+
+            option.value = member.user_id;
+            option.textContent = member.user_name;
+
+            assigneeSelect.appendChild(option);
+
+        });
+        if (task.assignee_id) {
+            assigneeSelect.value = String(task.assignee_id);
+        }
+    }
     const titleInput = document.getElementById("task-title");
     const descriptionInput = document.getElementById("task-description");
     const saveTaskButton = document.getElementById("save-task-button");
     saveTaskButton.addEventListener("click", async function() {
-        const result = await updateTask(task.id, {
+        const data = {
             title: titleInput.value,
-            description: descriptionInput.value
-        });
+            description: descriptionInput.value,
+            assignee_id: assigneeSelect.value ?
+                Number(assigneeSelect.value) : null
+        };
+
+        if (dueDateInput.value) {
+            data.due_date = dueDateInput.value;
+        }
+
+        const result = await updateTask(task.id, data);
 
         if (result.ok) {
-            renderProject(project, workspace)
+            renderProject(project, workspace);
+        } else {
+            console.log(result);
         }
     });
     const deleteTaskButton = document.getElementById("delete-task-button");
@@ -385,7 +536,7 @@ function renderTask(task, project, workspace) {
     backButton.addEventListener("click", function() {
         renderProject(project, workspace);
     });
-
+    console.log(task.assignee_id);
 }
 
 initApp();
