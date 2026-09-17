@@ -50,17 +50,28 @@ def _task_response(task):
     if len(task) == 7:
         title_index, description_index = 2, 3
         status_index, priority_index, due_date_index = 4, 5, 6
+
+        assignee_id = None
+        creator_id = None
     else:
         title_index, description_index = 4, 5
         status_index, priority_index, due_date_index = 6, 7, 8
+
+        creator_id = task[2]
+        assignee_id = task[3]
+
     return {
         "id": task[0],
         "project_id": task[1],
+        "creator_id": creator_id,
+        "assignee_id": assignee_id,
         "title": task[title_index],
         "description": task[description_index],
         "status": task[status_index],
         "priority": task[priority_index],
-        "due_date": task[due_date_index].isoformat() if task[due_date_index] else None,
+        "due_date": task[due_date_index].isoformat()
+        if task[due_date_index]
+        else None,
     }
 
 
@@ -152,6 +163,13 @@ def update_task_route(task_id):
     error = _validate_task_fields(data, partial=True)
     if error:
         return error
+    assignee_id = data.get("assignee_id", task[3])
+    if "assignee_id" in data and assignee_id is not None:
+        if not is_valid_id(assignee_id):
+            return {"error": "invalid assignee_id value"}, 400
+        _, error = get_project_with_permission(task[1], assignee_id)
+        if error:
+            return error
     try:
         updated_task = update_task_db(
             task_id,
@@ -160,6 +178,7 @@ def update_task_route(task_id):
             data.get("status", task[6]),
             data.get("priority", task[7]),
             data.get("due_date", task[8].isoformat() if task[8] else None),
+            assignee_id=assignee_id,
         )
     except DataError:
         return {"error": "invalid due_date value"}, 400

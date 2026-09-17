@@ -189,6 +189,8 @@ def get_members(workspace_id):
             "user_id": member[2],
             "role": member[3],
             "created_at": member[4].isoformat(),
+            "user_name": member[5],
+            "user_email": member[6],
         }
         for member in members
     ], 200

@@ -275,13 +275,14 @@ def get_task_by_id(task_id):
             return cursor.fetchone()
 
 
-def update_task_db(task_id, title, description, status, priority, due_date):
+def update_task_db(task_id, title, description, status, priority, due_date, assignee_id):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
             UPDATE tasks
-            SET title = %s, description = %s, status = %s, priority = %s, due_date = %s
+            SET title = %s, description = %s, status = %s, priority = %s,
+                due_date = %s, assignee_id = %s
             WHERE id = %s
             RETURNING id, project_id, creator_id, assignee_id, title,
                 description, status, priority, due_date;
@@ -292,6 +293,7 @@ def update_task_db(task_id, title, description, status, priority, due_date):
                     status,
                     priority,
                     due_date,
+                    assignee_id,
                     task_id,
                 ),
             )
@@ -345,10 +347,12 @@ def get_workspace_members(workspace_id, limit, offset):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT id, workspace_id, user_id, role, joined_at
-                FROM workspace_members
-                WHERE workspace_id = %s
-                ORDER BY id
+                SELECT wm.id, wm.workspace_id, wm.user_id, wm.role, wm.joined_at, u.username, u.email
+                FROM workspace_members AS wm
+                JOIN users AS u
+                    ON u.id = wm.user_id
+                WHERE wm.workspace_id = %s
+                ORDER BY wm.id
                 LIMIT %s
                 OFFSET %s;
                 """,
