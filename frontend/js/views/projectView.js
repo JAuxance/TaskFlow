@@ -1,122 +1,224 @@
 import { updateProject, deleteProject } from "../projects.js";
 import { getTasks, createTask, getTaskById } from "../task.js";
 
-export async function renderProject(project, workspace, { renderWorkspace, renderProject, renderTask }) {
-    const app = document.getElementById("app");
+const STATUSES = [
+    ["todo", "Todo"],
+    ["in_progress", "In Progress"],
+    ["review", "Review"],
+    ["done", "Done"]
+];
 
-    app.innerHTML = `
-        <button id="back-project-button">← Retour</button>
+const PRIORITIES = { low: "Low", medium: "Medium", high: "High", urgent: "Urgent" };
 
-        <label for="project-name">Nom :</label>
-        <input
-            id="project-name"
-            type="text"
-            value="${project.name}"
-        >
+function dueDateLabel(value) {
+    if (!value) return "";
+    // A timestamp without an offset is a local calendar date, not UTC.
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(date);
+}
 
-        <label for="project-description">Description:</label>
-        <textarea id="project-description">${project.description || ""}</textarea>
+export async function renderProject(project, workspace, navigation) {
 
-        <button id="save-project-button">Enregistrer</button>
-        <button id="delete-project-button">Supprimer le projet</button>
-        <div id="tasks-list"></div>
+    const { content, members, role } = navigation;
+    const current = () => content.isConnected && (!navigation.isCurrent || navigation.isCurrent());
+    const canEditProject = ["owner", "admin"].includes(role);
+    const canEditTasks = ["owner", "admin", "member"].includes(role);
+    const memberNames = new Map((members || []).map(member => [String(member.user_id), member.user_name]));
+
+    content.innerHTML = `
+        <div class="page-heading">
+            <h1>${escapeHTML(project.name)}</h1>
+            ${project.description ? `<p class="secondary-text">${escapeHTML(project.description)}</p>` : ""}
+        </div>
+        ${canEditTasks ? `
+            <form id="create-task-form" class="inline-form">
+                <div class="field field-wide">
+                    <label for="task-title-input">Task title</label>
+                    <input id="task-title-input" name="title" type="text" placeholder="Enter a task title" maxlength="100" required>
+                </div>
+                <button type="submit" class="btn-primary">Create task</button>
+            </form>
+            <p id="create-task-message" class="form-message" role="status" hidden></p>
+        ` : ""}
+        <p id="tasks-message" class="form-message" role="status" hidden></p>
+        <div class="kanban-board" aria-label="Project task board">
+            ${STATUSES.map(([value, label]) => `
+                <section class="kanban-column" data-status="${value}" aria-labelledby="heading-${value}">
+                    <h2 id="heading-${value}" class="kanban-heading">${label}</h2>
+                    <div class="task-cards"><p class="empty-state">Loading tasks…</p></div>
+                </section>
+            `).join("")}
+        </div>
+        ${canEditProject ? `
+            <details class="project-properties">
+                <summary>Project settings</summary>
+                <form id="project-settings-form" class="task-form">
+                    <div class="field">
+                        <label for="project-name">Project name</label>
+                        <input id="project-name" name="name" type="text" value="${escapeHTML(project.name)}" maxlength="50" required>
+                    </div>
+                    <div class="field">
+                        <label for="project-description">Description</label>
+                        <textarea id="project-description" name="description" rows="3">${escapeHTML(project.description || "")}</textarea>
+                    </div>
+                    <div class="task-form-actions">
+                        <button id="save-project-button" type="submit" class="btn-primary">Save project</button>
+                        <button id="delete-project-button" type="button" class="btn-danger">Delete project</button>
+                    </div>
+                    <p id="project-message" class="form-message" role="status" hidden></p>
+                </form>
+            </details>
+        ` : ""}
     `;
-    const deleteProjectButton = document.getElementById("delete-project-button");
 
-    deleteProjectButton.addEventListener("click", async function() {
-        const confirmed = confirm("Supprimer ce projet ?");
+    const tasksMessage = content.querySelector("#tasks-message");
+    let loadVersion = 0;
 
-        if (!confirmed) {
+    async function loadTasks() {
+        const version = ++loadVersion;
+        const result = await getTasks(project.id);
+        if (!current() || version !== loadVersion) return;
+        if (!result.ok) {
+            setMessage(tasksMessage, result.data?.error || "Unable to load tasks. Please open this project again.");
+            content.querySelectorAll(".task-cards").forEach(column => {
+                if (!column.querySelector(".task-card")) column.innerHTML = '<p class="empty-state">Tasks unavailable</p>';
+            });
             return;
         }
-        const result = await deleteProject(project.id);
-
-        if (result.ok) {
-            renderWorkspace(workspace);
-        } else {
-            console.log(result);
-        }
-    });
-
-    const projectNameInput = document.getElementById("project-name");
-    const projectDescriptionInput = document.getElementById("project-description");
-    const saveProjectButton = document.getElementById("save-project-button");
-
-    saveProjectButton.addEventListener("click", async function() {
-        const result = await updateProject(project.id, {
-            name: projectNameInput.value,
-            description: projectDescriptionInput.value
-        });
-
-        if (result.ok) {
-            renderWorkspace(workspace);
-        } else {
-            console.log(result);
-        }
-    });
-    const tasksResult = await getTasks(project.id);
-
-    const tasksList = document.getElementById("tasks-list")
-
-    if (tasksResult.ok) {
-        const tasks = tasksResult.data;
-
-        if (tasks.length === 0) {
-            tasksList.innerHTML = `
-            <p>Aucune tâche pour le moment.</p>
-            <button id="create-task-button">Créer une tâche</button>
-            `;
-        } else {
-            tasksList.innerHTML = `
-                <button id="create-task-button">Créer une tâche</button>
+        setMessage(tasksMessage, "");
+        for (const [status] of STATUSES) {
+            const column = content.querySelector(`[data-status="${status}"] .task-cards`);
+            const tasks = result.data.filter(task => task.status === status);
+            column.replaceChildren();
+            if (!tasks.length) {
+                column.innerHTML = '<p class="empty-state">No tasks yet.</p>';
+                continue;
+            }
+            for (const task of tasks) {
+                const card = document.createElement("button");
+                card.type = "button";
+                card.className = "task-card";
+                const assignee = task.assignee_id == null
+                    ? "Unassigned"
+                    : memberNames.get(String(task.assignee_id)) || "Member unavailable";
+                const dueLabel = dueDateLabel(task.due_date);
+                card.innerHTML = `
+                    <span class="task-card-title">${escapeHTML(task.title)}</span>
+                    <span class="task-priority" data-priority="${escapeHTML(task.priority)}">${escapeHTML(PRIORITIES[task.priority] || task.priority)} priority</span>
+                    <span class="task-meta">
+                        <span class="task-assignee">${escapeHTML(assignee)}</span>
+                        ${dueLabel ? `<time datetime="${escapeHTML(task.due_date)}" title="${escapeHTML(task.due_date)}">${escapeHTML(dueLabel)}</time>` : ""}
+                    </span>
                 `;
-
-            tasks.forEach(function(task) {
-                const taskElement = document.createElement("div");
-
-                taskElement.innerHTML = `
-                    <button class="open-task-button">
-                        <strong>${task.title}</strong>
-                    </button>
-
-                    <p>Status: ${task.status}</p>
-                    <p>Priorité: ${task.priority}</p>
-                `;
-                const openTaskButton = taskElement.querySelector(".open-task-button");
-                openTaskButton.addEventListener("click", async function() {
-                    const result = await getTaskById(task.id);
-
-                    if (result.ok) {
-                        renderTask(result.data, project, workspace);
+                card.addEventListener("click", () => withBusy(card, async () => {
+                    const detail = await getTaskById(task.id);
+                    if (!current()) return;
+                    if (detail.ok) {
+                        await navigation.renderTask(detail.data, project, workspace);
+                    } else {
+                        setMessage(tasksMessage, detail.data?.error || "Unable to open this task.");
                     }
-                });
-
-                tasksList.appendChild(taskElement);
-            });
+                }));
+                column.appendChild(card);
+            }
         }
-        const createTaskbutton = document.getElementById("create-task-button");
-
-        createTaskbutton.addEventListener("click", async function() {
-            const title = prompt("Titre de la tâche :");
-
-            if (!title) {
-                return;
-            }
-
-            const result = await createTask(project.id, title);
-
-            if (result.ok) {
-                await renderProject(project, workspace);
-            } else {
-                alert(result.data.error || "Impossible de créer la tâche.");
-            }
-        });
-
     }
 
-    const backButton = document.getElementById("back-project-button");
-
-    backButton.addEventListener("click", function() {
-        renderWorkspace(workspace);
+    const createForm = content.querySelector("#create-task-form");
+    createForm?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const input = createForm.querySelector("input");
+        const button = createForm.querySelector("button");
+        const message = content.querySelector("#create-task-message");
+        if (button.disabled) return;
+        const enteredTitle = input.value;
+        const title = enteredTitle.trim();
+        if (!title) {
+            setMessage(message, "Enter a task title.");
+            input.focus();
+            return;
+        }
+        setMessage(message, "");
+        await withBusy(button, async () => {
+            const result = await createTask(project.id, title);
+            if (!current()) return;
+            if (!result.ok) {
+                setMessage(message, result.data?.error || "Unable to create the task.");
+                return;
+            }
+            if (input.value === enteredTitle) input.value = "";
+            setMessage(message, "Task created.", "success");
+            await loadTasks();
+            if (current()) input.focus();
+        });
     });
+
+    const projectForm = content.querySelector("#project-settings-form");
+    projectForm?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = content.querySelector("#save-project-button");
+        const deleteButton = content.querySelector("#delete-project-button");
+        const name = content.querySelector("#project-name").value.trim();
+        const description = content.querySelector("#project-description").value;
+        const message = content.querySelector("#project-message");
+        if (button.disabled || deleteButton.disabled) return;
+        if (!name) {
+            setMessage(message, "Enter a project name.");
+            return;
+        }
+        await withBusy(button, async () => {
+            const result = await updateProject(project.id, { name, description });
+            if (!current()) return;
+            if (result.ok) {
+                await navigation.renderProject(result.data, workspace);
+            } else {
+                setMessage(message, result.data?.error || "Unable to save the project.");
+            }
+        });
+    });
+
+    content.querySelector("#delete-project-button")?.addEventListener("click", async event => {
+        const button = event.currentTarget;
+        if (button.disabled || content.querySelector("#save-project-button").disabled) return;
+        if (!window.confirm("Delete this project and all its tasks? This cannot be undone.")) return;
+        await withBusy(button, async () => {
+            const result = await deleteProject(project.id);
+            if (!current()) return;
+            if (result.ok) {
+                await navigation.renderWorkspace(workspace);
+            } else {
+                setMessage(content.querySelector("#project-message"), result.data?.error || "Unable to delete the project.");
+            }
+        });
+    });
+
+    await loadTasks();
+}
+
+function escapeHTML(value = "") {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[character]));
+}
+
+
+function setMessage(element, text = "", type = "error") {
+    if (!element) return;
+    element.textContent = text;
+    element.hidden = !text;
+    element.dataset.type = type;
+    element.setAttribute("role", type === "error" ? "alert" : "status");
+}
+
+async function withBusy(control, action) {
+    const wasDisabled = control.disabled;
+    control.disabled = true;
+    control.setAttribute("aria-busy", "true");
+    try {
+        return await action();
+    } finally {
+        control.disabled = wasDisabled;
+        control.removeAttribute("aria-busy");
+    }
 }
