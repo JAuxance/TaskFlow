@@ -68,3 +68,21 @@ export async function deleteWorkspaceMember(workspaceId, userId) {
         }
     );
 }
+export async function updateWorkspace(workspaceId, data) {
+    return await apiRequest(
+        `/api/workspaces/${workspaceId}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        }
+    );
+}
+export async function deleteWorkspace(workspaceId) {
+    return await apiRequest(
+        `/api/workspaces/${workspaceId}`, {
+            method: "DELETE"
+        }
+    );
+}

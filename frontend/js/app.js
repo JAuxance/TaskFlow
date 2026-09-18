@@ -7,8 +7,10 @@ import {
     addWorkspaceMember,
     updateWorkspaceMemberRole,
     deleteWorkspaceMember,
+    updateWorkspace,
+    deleteWorkspace,
 } from "./workspaces.js";
-import { getProjects, createProject, getProjectById } from "./projects.js";
+import { getProjects, createProject, getProjectById, updateProject, deleteProject } from "./projects.js";
 import { getTasks, createTask, getTaskById, updateTask, deleteTask } from "./task.js";
 
 function renderLogin() {
@@ -132,10 +134,18 @@ async function renderWorkspace(workspace) {
     app.innerHTML = `
         <button id="back-button">← Retour</button>
 
-        <h1>${workspace.name}</h1>
+        <label for="workspace-name">Nom :</label>
+    <input
+        id="workspace-name"
+        type="text"
+        value="${workspace.name}"
+    >
+        <button id="save-workspace-button">Enregistrer</button>
+        <button id="delete-workspace-button">Supprimer le workspace</button>
+
         <p>Worksapce ID: ${workspace.id}</p>
 
-        <h2>Projets<h2>
+        <h2>Projets</h2>
         <div id="projects-list"></div>
 
         <h2>Members</h2>
@@ -161,9 +171,47 @@ async function renderWorkspace(workspace) {
         <p id="member-message"></p>
     
         <div id="members-list"></div>
-    
-        <div id="projects-list"></div>
     `;
+    const deleteWorkspaceButton = document.getElementById("delete-workspace-button");
+    document.getElementById("delet-workspace-button");
+    deleteWorkspaceButton.addEventListener("click", async function() {
+        const confirmation = prompt(
+            `Pour supprimer définitivement ce workspace, tape exactement : ${workspace.name}`
+        );
+        if (confirmation !== workspace.name) {
+            alert("Le nom ne correspond pas. Supression annulée.")
+            return;
+        }
+        const result = await deleteWorkspace(workspace.id);
+
+        if (result.ok) {
+            const userResult = await getCurrentUser();
+
+            if (userResult.ok) {
+                renderApp(userResult.data);
+            }
+        } else {
+            console.log(result);
+        }
+    });
+    const workspaceNameInput = document.getElementById("workspace-name");
+    const saveWorkspaceButton = document.getElementById("save-workspace-button");
+
+    saveWorkspaceButton.addEventListener("click", async function() {
+        const result = await updateWorkspace(workspace.id, {
+            name: workspaceNameInput.value
+        });
+
+        if (result.ok) {
+            const userResult = await getCurrentUser();
+
+            if (userResult.ok) {
+                renderApp(userResult.data);
+            }
+        } else {
+            console.log(result);
+        }
+    });
     const addMemberForm = document.getElementById("add-member-from");
 
     addMemberForm.addEventListener("submit", async function(event) {
@@ -331,11 +379,53 @@ async function renderProject(project, workspace) {
     app.innerHTML = `
         <button id="back-project-button">← Retour</button>
 
-        <h1>${project.name}</h1>
-        <p>${project.description || ""}</p>
+        <label for="project-name">Nom :</label>
+        <input
+            id="project-name"
+            type="text"
+            value="${project.name}"
+        >
 
+        <label for="project-description">Description:</label>
+        <textarea id="project-description">${project.description || ""}</textarea>
+
+        <button id="save-project-button">Enregistrer</button>
+        <button id="delete-project-button">Supprimer le projet</button>
         <div id="tasks-list"></div>
     `;
+    const deleteProjectButton = document.getElementById("delete-project-button");
+
+    deleteProjectButton.addEventListener("click", async function() {
+        const confirmed = confirm("Supprimer ce projet ?");
+
+        if (!confirmed) {
+            return;
+        }
+        const result = await deleteProject(project.id);
+
+        if (result.ok) {
+            renderWorkspace(workspace);
+        } else {
+            console.log(result);
+        }
+    });
+
+    const projectNameInput = document.getElementById("project-name");
+    const projectDescriptionInput = document.getElementById("project-description");
+    const saveProjectButton = document.getElementById("save-project-button");
+
+    saveProjectButton.addEventListener("click", async function() {
+        const result = await updateProject(project.id, {
+            name: projectNameInput.value,
+            description: projectDescriptionInput.value
+        });
+
+        if (result.ok) {
+            renderWorkspace(workspace);
+        } else {
+            console.log(result);
+        }
+    });
     const tasksResult = await getTasks(project.id);
 
     const tasksList = document.getElementById("tasks-list")

@@ -25,3 +25,21 @@ export async function createProject(workspaceId, name, description = "") {
 export async function getProjectById(projectId) {
     return await apiRequest(`/api/projects/${projectId}`);
 }
+export async function updateProject(projectId, data) {
+    return await apiRequest(
+        `/api/projects/${projectId}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        }
+    );
+}
+export async function deleteProject(projectId) {
+    return await apiRequest(
+        `/api/projects/${projectId}`, {
+            method: "DELETE"
+        }
+    );
+}
