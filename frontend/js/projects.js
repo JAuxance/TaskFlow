@@ -1,7 +1,7 @@
-import { apiRequest } from "./api.js";
+import { apiRequest, apiCollection } from "./api.js";
 
 export async function getProjects(workspaceId) {
-    return await apiRequest(`/api/workspaces/${workspaceId}/projects`);
+    return await apiCollection(`/api/workspaces/${workspaceId}/projects`);
 }
 export async function createProject(workspaceId, name, description = "") {
     const body = {

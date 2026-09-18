@@ -1,7 +1,7 @@
-import { apiRequest } from "./api.js";
+import { apiRequest, apiCollection } from "./api.js";
 
 export async function getWorkspaces() {
-    return await apiRequest("/api/workspaces");
+    return await apiCollection("/api/workspaces");
 }
 
 export async function createWorkspace(name) {
@@ -23,7 +23,7 @@ export async function getWorkspaceById(workspaceId) {
     return await apiRequest(`/api/workspaces/${workspaceId}`);
 }
 export async function getWorkspacesMembers(workspaceId) {
-    return await apiRequest(`/api/workspaces/${workspaceId}/members`);
+    return await apiCollection(`/api/workspaces/${workspaceId}/members`);
 }
 export async function addWorkspaceMember(workspaceId, email, role = "member") {
     const body = {

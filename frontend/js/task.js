@@ -1,7 +1,7 @@
-import { apiRequest } from "./api.js";
+import { apiRequest, apiCollection } from "./api.js";
 
 export async function getTasks(projectId) {
-    return await apiRequest(`/api/projects/${projectId}/tasks`);
+    return await apiCollection(`/api/projects/${projectId}/tasks`);
 }
 
 export async function createTask(projectId, title) {
