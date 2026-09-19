@@ -21,6 +21,7 @@ tasks_bp = Blueprint("tasks", __name__)
 
 
 def _validate_task_fields(data, *, partial=False):
+    allowed_colors = ["gray", "blue", "green", "yellow", "orange", "red", "purple"]
     if not partial or "title" in data:
         if not is_valid_text(data.get("title"), allow_empty=False, max_length=100):
             return {"error": "invalid title value"}, 400
@@ -33,6 +34,9 @@ def _validate_task_fields(data, *, partial=False):
             "low", "medium", "high", "urgent"
         ):
             return {"error": "invalid priority value"}, 400
+    if "color" in data:
+        if data["color"] not in allowed_colors:
+            return {"error": "invalid color value"}, 400
     if "description" in data and data["description"] is not None:
         if not is_valid_text(data["description"]):
             return {"error": "invalid description value"}, 400
@@ -47,31 +51,17 @@ def _validate_task_fields(data, *, partial=False):
 
 
 def _task_response(task):
-    if len(task) == 7:
-        title_index, description_index = 2, 3
-        status_index, priority_index, due_date_index = 4, 5, 6
-
-        assignee_id = None
-        creator_id = None
-    else:
-        title_index, description_index = 4, 5
-        status_index, priority_index, due_date_index = 6, 7, 8
-
-        creator_id = task[2]
-        assignee_id = task[3]
-
     return {
         "id": task[0],
         "project_id": task[1],
-        "creator_id": creator_id,
-        "assignee_id": assignee_id,
-        "title": task[title_index],
-        "description": task[description_index],
-        "status": task[status_index],
-        "priority": task[priority_index],
-        "due_date": task[due_date_index].isoformat()
-        if task[due_date_index]
-        else None,
+        "creator_id": task[2],
+        "assignee_id": task[3],
+        "title": task[4],
+        "description": task[5],
+        "status": task[6],
+        "priority": task[7],
+        "due_date": task[8].isoformat() if task[8] else None,
+        "color": task[9],
     }
 
 
@@ -100,7 +90,8 @@ def create_task_route(project_id):
         error = check_workspace_permission(project[1], target_user_id)
         if error:
             return error
-    
+    if "color" not in data:
+        data["color"] = "gray"
     error = _validate_task_fields(data)
     if error:
         return error
@@ -113,6 +104,7 @@ def create_task_route(project_id):
             data.get("description"),
             data["status"],
             data["priority"],
+            data.get("color"),
             data.get("due_date"),
         )
     except DataError:
@@ -179,6 +171,7 @@ def update_task_route(task_id):
             data.get("priority", task[7]),
             data.get("due_date", task[8].isoformat() if task[8] else None),
             assignee_id=assignee_id,
+            color=data.get("color", task[9]),
         )
     except DataError:
         return {"error": "invalid due_date value"}, 400

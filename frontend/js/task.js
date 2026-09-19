@@ -1,14 +1,25 @@
 import { apiRequest, apiCollection } from "./api.js";
 
+export const TASK_COLORS = {
+    gray: "Gray",
+    blue: "Blue",
+    green: "Green",
+    yellow: "Yellow",
+    orange: "Orange",
+    red: "Red",
+    purple: "Purple"
+};
+
 export async function getTasks(projectId) {
     return await apiCollection(`/api/projects/${projectId}/tasks`);
 }
 
-export async function createTask(projectId, title) {
+export async function createTask(projectId, title, color = "gray") {
     const body = {
         title,
         status: "todo",
-        priority: "medium"
+        priority: "medium",
+        color
     };
 
     const options = {
