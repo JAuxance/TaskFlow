@@ -12,4 +12,6 @@ crown.txt
 member.txt
 outsider.txt
 owner.txt
+app/static/avatars/
+app/static/workspace_icons/
 EXPLICATION.md
