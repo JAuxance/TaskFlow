@@ -1,5 +1,10 @@
 const API_BASE_URL = "http://localhost:5000";
 
+export function apiAssetUrl(path) {
+    if (typeof path !== "string" || !/^\/static\/(avatars|workspace_icons)\/[\w-]+\.(png|jpe?g|webp)$/i.test(path)) return "";
+    return `${API_BASE_URL}${path}`;
+}
+
 export async function apiRequest(endpoint, options = {}) {
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -13,7 +18,9 @@ export async function apiRequest(endpoint, options = {}) {
             return {
                 ok: false,
                 status: response.status,
-                data: { error: "The server returned an unexpected response. Please try again." }
+                data: { error: response.status === 413
+                    ? "This image is too large. Choose a smaller file (under 5 MB)."
+                    : "The server returned an unexpected response. Please try again." }
             };
         }
         if (!response.ok && (!data || typeof data.error !== "string")) {

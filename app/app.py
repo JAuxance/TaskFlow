@@ -27,13 +27,18 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = app_env == "production"
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
+# Upload routes cap files at 5 MiB; allow room for multipart form headers.
+app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(workspaces_bp)
 app.register_blueprint(projects_bp)
 app.register_blueprint(tasks_bp)
 
+
+@app.errorhandler(413)
+def request_too_large(error):
+    return {"error": "request is too large; images must be at most 5MB"}, 413
 
 
 @app.route("/health")

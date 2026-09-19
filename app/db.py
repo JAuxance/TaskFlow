@@ -59,7 +59,7 @@ def get_user_by_id(user_id):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT id, username, email
+                SELECT id, username, email, first_name, avatar_url
                 FROM users
                 WHERE id = %s;
                 """,
@@ -67,13 +67,39 @@ def get_user_by_id(user_id):
             )
             return cursor.fetchone()
 
+def update_user_first_name(user_id, first_name):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE users
+                SET first_name = %s
+                WHERE id = %s
+                RETURNING id, username, email, first_name, avatar_url;
+                """,
+                (first_name, user_id),
+            )
+            return cursor.fetchone()
+def update_user_avatar(user_id, avatar_url):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE users
+                SET avatar_url = %s
+                WHERE id = %s
+                RETURNING id, username, email, first_name, avatar_url;
+                """,
+                (avatar_url, user_id),
+            )
+            return cursor.fetchone()
 
 def get_workspaces_by_member(user_id, limit, offset):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT w.id, w.owner_id, w.name, w.created_at
+                SELECT w.id, w.owner_id, w.name, w.created_at, w.icon_type, w.icon_value, w.color
                 FROM workspaces AS w
                 JOIN workspace_members AS m ON m.workspace_id = w.id
                 WHERE m.user_id = %s
@@ -91,7 +117,7 @@ def get_workspace_by_id(workspace_id):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT id, owner_id, name, created_at
+                SELECT id, owner_id, name, created_at, icon_type, icon_value, color
                 FROM workspaces
                 WHERE id = %s;
                 """,
@@ -122,7 +148,7 @@ def update_workspace(workspace_id, name):
                 UPDATE workspaces
                 SET name = %s
                 WHERE id = %s
-                RETURNING id, owner_id, name, created_at;
+                RETURNING id, owner_id, name, created_at, icon_type, icon_value, color;
                 """,
                 (
                     name,
@@ -215,7 +241,7 @@ def deleted_project(project_id):
 
 
 def create_task(
-    project_id, creator_id, assignee_id, title, description, status, priority, due_date
+    project_id, creator_id, assignee_id, title, description, status, priority, color, due_date
 ):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
@@ -223,10 +249,11 @@ def create_task(
                 """
             INSERT INTO tasks (
                 project_id, creator_id, assignee_id, title, description,
-                status, priority, due_date
+                status, priority, color, due_date
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id, project_id, title, description, status, priority, due_date;
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, project_id, creator_id, assignee_id, title,
+                description, status, priority, due_date, color;
             """,
                 (
                     project_id,
@@ -236,6 +263,7 @@ def create_task(
                     description,
                     status,
                     priority,
+                    color,
                     due_date,
                 ),
             )
@@ -248,7 +276,7 @@ def get_tasks_by_project(project_id, limit, offset):
             cursor.execute(
                 """
                 SELECT id, project_id, creator_id, assignee_id, title,
-                       description, status, priority, due_date
+                       description, status, priority, due_date, color
                 FROM tasks
                 WHERE project_id = %s
                 ORDER BY id
@@ -266,7 +294,7 @@ def get_task_by_id(task_id):
             cursor.execute(
                 """
             SELECT id, project_id, creator_id, assignee_id, title,
-                description, status, priority, due_date
+                description, status, priority, due_date, color
             FROM tasks
             WHERE id = %s
             """,
@@ -275,17 +303,17 @@ def get_task_by_id(task_id):
             return cursor.fetchone()
 
 
-def update_task_db(task_id, title, description, status, priority, due_date, assignee_id):
+def update_task_db(task_id, title, description, status, priority, due_date, assignee_id, color):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
             UPDATE tasks
             SET title = %s, description = %s, status = %s, priority = %s,
-                due_date = %s, assignee_id = %s
+                due_date = %s, assignee_id = %s, color = %s
             WHERE id = %s
             RETURNING id, project_id, creator_id, assignee_id, title,
-                description, status, priority, due_date;
+                description, status, priority, due_date, color;
             """,
                 (
                     title,
@@ -294,6 +322,7 @@ def update_task_db(task_id, title, description, status, priority, due_date, assi
                     priority,
                     due_date,
                     assignee_id,
+                    color,
                     task_id,
                 ),
             )
@@ -347,7 +376,7 @@ def get_workspace_members(workspace_id, limit, offset):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT wm.id, wm.workspace_id, wm.user_id, wm.role, wm.joined_at, u.username, u.email
+                SELECT wm.id, wm.workspace_id, wm.user_id, wm.role, wm.joined_at, u.username, u.email, u.avatar_url
                 FROM workspace_members AS wm
                 JOIN users AS u
                     ON u.id = wm.user_id
@@ -368,7 +397,7 @@ def create_workspace_with_owner(owner_id, name):
                 """
                 INSERT INTO workspaces (owner_id, name)
                 VALUES (%s, %s)
-                RETURNING id, owner_id, name, created_at;
+                RETURNING id, owner_id, name, created_at, icon_type, icon_value, color;
                 """,
                 (owner_id, name),
             )
@@ -382,6 +411,20 @@ def create_workspace_with_owner(owner_id, name):
                 (workspace[0], owner_id),
             )
             return workspace
+
+def update_workspace_icon_db(workspace_id, icon_type, icon_value):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE workspaces
+                SET icon_type = %s, icon_value = %s
+                WHERE id = %s
+                RETURNING id, owner_id, name, created_at, icon_type, icon_value, color;
+                """,
+                (icon_type, icon_value, workspace_id),
+            )
+            return cursor.fetchone()
 
 def update_role_member(workspace_id, user_id, role):
     with get_db_connection() as connection:
@@ -419,7 +462,7 @@ def crowned_king(owner_id, workspace_id):
                     UPDATE workspaces
                     SET owner_id = %s
                     WHERE id = %s
-                    RETURNING id, owner_id, name, created_at;
+                    RETURNING id, owner_id, name, created_at, icon_type, icon_value, color;
                     """,
                     (owner_id, workspace_id),
                 )

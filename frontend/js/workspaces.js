@@ -86,3 +86,28 @@ export async function deleteWorkspace(workspaceId) {
         }
     );
 }
+
+export async function updateWorkspaceEmoji(workspaceId, emoji) {
+    return await apiRequest(`/api/workspaces/${workspaceId}/icon`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji }),
+    });
+}
+
+export async function uploadWorkspaceIcon(workspaceId, file) {
+    const body = new FormData();
+    body.append("icon", file);
+    return await apiRequest(`/api/workspaces/${workspaceId}/icon`, {
+        method: "POST",
+        body,
+    });
+}
+
+export async function transferWorkspaceOwner(workspaceId, userId) {
+    return await apiRequest(`/api/workspaces/${workspaceId}/owner`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId }),
+    });
+}

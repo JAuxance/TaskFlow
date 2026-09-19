@@ -1,15 +1,19 @@
 from datetime import datetime, timedelta, timezone
+import os
+import os
+
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from flask import Blueprint, session
+from flask import Blueprint, session, request
 from psycopg.errors import UniqueViolation
 from email_validator import validate_email, EmailNotValidError
 from app.extensions import limiter
 import secrets
+import uuid
 from app.permissions import get_authenticated_user, resource_not_found
 from app.validation import get_json_object, is_valid_text
-from app.db import create_session, create_user, get_user_by_email, get_user_by_id, get_session_by_token, revoke_session
+from app.db import create_session, create_user, get_user_by_email, get_user_by_id, get_session_by_token, revoke_session, update_user_avatar, update_user_first_name
 
 auth_bp = Blueprint("auth", __name__)
 password_hasher = PasswordHasher()
@@ -115,8 +119,93 @@ def get_current_user():
 
     if not user:
         return resource_not_found()
-    return {"id": user[0], "username": user[1], "email": user[2]}, 200
+    return {"id": user[0], "username": user[1], "email": user[2], "first_name": user[3], "avatar_url": user[4]}, 200
 
+@auth_bp.route("/api/users/me", methods=["PATCH"])
+def first_name_edit():
+    user_id, error = get_authenticated_user()
+
+    if error:
+        return error
+
+    data, error = get_json_object()
+
+    if error:
+        return error
+
+    first_name = data.get("first_name")
+
+    if not isinstance(first_name, str):
+        return {"error": "first_name must be a string"}, 400
+
+    first_name = first_name.strip()
+
+    if not first_name:
+        return {"error": "first_name cannot be empty"}, 400
+
+    if not is_valid_text(first_name, max_length=100):
+        return {"error": "invalid first_name value"}, 400
+
+    user = update_user_first_name(user_id, first_name)
+
+    if not user:
+        return resource_not_found()
+
+    return {
+        "id": user[0],
+        "username": user[1],
+        "email": user[2],
+        "first_name": user[3],
+        "avatar_url": user[4],
+    }, 200
+
+@auth_bp.route("/api/users/me/avatar", methods=["POST"])
+def upload_avatar():
+    user_id, error = get_authenticated_user()
+
+    if error:
+        return error
+
+    new_avatar = request.files.get("avatar")
+    if new_avatar is None:
+        return {"error": "avatar file is required"}, 400
+    if new_avatar.filename == "":
+        return {"error": "avatar file must have a filename"}, 400
+    if not new_avatar.content_type.startswith("image/"):
+        return {"error": "avatar file must be an image"}, 400
+    if len(new_avatar.read()) > 5 * 1024 * 1024:  # 5MB limit
+        return {"error": "avatar file size must be less than 5MB"}, 400
+    if "." not in new_avatar.filename:
+        return {"error": "avatar file must have an extension"}, 400
+    extension = new_avatar.filename.rsplit(".", 1)[1].lower()
+    if extension not in ["jpg", "jpeg", "png", "webp"]:
+        return {"error": "avatar file must be a jpg, jpeg, png, or webp"}, 400
+    filename = f"{user_id}_{uuid.uuid4().hex}.{extension}"
+    save_path = f"app/static/avatars/{filename}"
+    old_user = get_user_by_id(user_id)
+    if not old_user:
+        return resource_not_found()
+    old_avatar_url = old_user[4]
+
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    new_avatar.seek(0)
+    new_avatar.save(save_path)
+
+    user = update_user_avatar(user_id, f"/static/avatars/{filename}")
+    if not user:
+        if os.path.exists(save_path):
+            os.remove(save_path)
+
+        return resource_not_found()
+    if old_avatar_url and old_avatar_url != "/static/avatars/default.png":
+        old_filename = os.path.basename(old_avatar_url)
+        old_avatar_path = os.path.join("app/static/avatars", old_filename)
+        if os.path.exists(old_avatar_path):
+            try:
+                os.remove(old_avatar_path)
+            except OSError:
+                pass
+    return {"id": user[0], "username": user[1], "email": user[2], "first_name": user[3], "avatar_url": user[4]}, 200
 
 @auth_bp.route("/api/auth/logout", methods=["POST"])
 def logout():
