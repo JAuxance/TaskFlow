@@ -4,7 +4,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>TaskFlow</title>
+    <script>
+        (() => {
+            let preference = "system";
+            try {
+                const saved = localStorage.getItem("taskflow-theme");
+                if (["light", "dark"].includes(saved)) preference = saved;
+            } catch {}
+            document.documentElement.dataset.themePreference = preference;
+            document.documentElement.dataset.theme = preference === "dark"
+                || (preference === "system" && matchMedia("(prefers-color-scheme: dark)").matches)
+                ? "dark" : "light";
+        })();
+    </script>
     <link rel="preload" href="./assets/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="./css/style.css">
 </head>
