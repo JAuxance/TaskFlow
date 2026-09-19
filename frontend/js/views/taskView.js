@@ -1,4 +1,4 @@
-import { updateTask, deleteTask } from "../task.js";
+import { updateTask, deleteTask, TASK_COLORS } from "../task.js";
 
 const pad = value => String(value).padStart(2, "0");
 const hasOffset = value => /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value || "");
@@ -25,62 +25,85 @@ export async function renderTask(task, project, workspace, navigation) {
     const current = () => content.isConnected && (!navigation.isCurrent || navigation.isCurrent());
     const canEdit = ["owner", "admin", "member"].includes(role);
     const disabled = canEdit ? "" : " disabled";
-    const state = { ...task };
+    const state = { ...task, color: Object.hasOwn(TASK_COLORS, task.color) ? task.color : "gray" };
 
     content.innerHTML = `
-        <div class="page-actions">
-            <button id="back-task-button" type="button" class="btn-secondary">← Back to project</button>
-            ${canEdit ? '<button id="delete-task-button" type="button" class="btn-danger">Delete task</button>' : ""}
-        </div>
-        <div class="page-heading"><h1>Task details</h1></div>
-        <form id="task-form" class="task-form">
-            <div class="field">
-                <label for="task-title">Title</label>
-                <input id="task-title" name="title" type="text" value="${escapeHTML(task.title)}" maxlength="100" required${disabled}>
+        <div class="page-heading page-heading-row">
+            <div class="heading-copy">
+                <h1 class="task-heading-title">${escapeHTML(task.title)}</h1>
+                <p class="secondary-text">${escapeHTML(project.name)}</p>
             </div>
-            <div class="field task-description-field">
-                <label for="task-description">Description</label>
-                <textarea id="task-description" name="description" rows="6"${disabled}>${escapeHTML(task.description || "")}</textarea>
+            <div class="header-actions">
+                <button id="back-task-button" type="button" class="btn-secondary">← Back to project</button>
+                ${canEdit ? '<button id="save-task-button" type="submit" form="task-form" class="btn-primary">Save changes</button>' : ""}
+            </div>
+        </div>
+        <form id="task-form" class="task-form" data-color="${state.color}">
+            <div class="task-editor-main">
+                <div class="field">
+                    <label for="task-title">Title</label>
+                    <input id="task-title" name="title" type="text" value="${escapeHTML(task.title)}" maxlength="100" required${disabled}>
+                </div>
+                <div class="field task-description-field">
+                    <label for="task-description">Description</label>
+                    <textarea id="task-description" name="description" rows="10" placeholder="Add details about this task…"${disabled}>${escapeHTML(task.description || "")}</textarea>
+                </div>
+                ${canEdit ? '<p class="secondary-text autosave-hint">Use Save changes to save the title, description and planning.</p>' : ""}
+                <p id="task-message" class="form-message" role="status" hidden></p>
             </div>
             <div class="task-properties">
-                <div class="field-grid">
-                    <div class="field">
-                        <label for="task-status">Status</label>
-                        <select id="task-status" name="status" aria-describedby="task-autosave-hint"${disabled}>
-                            <option value="todo">Todo</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="review">Review</option>
-                            <option value="done">Done</option>
-                        </select>
+                <h2>Task properties</h2>
+                <div class="task-property-group">
+                    <div class="field-grid">
+                        <div class="field">
+                            <label for="task-status">Status</label>
+                            <select id="task-status" name="status" aria-describedby="task-autosave-hint"${disabled}>
+                                <option value="todo">Todo</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="review">Review</option>
+                                <option value="done">Done</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="task-priority">Priority</label>
+                            <select id="task-priority" name="priority" aria-describedby="task-autosave-hint"${disabled}>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="field">
-                        <label for="task-priority">Priority</label>
-                        <select id="task-priority" name="priority" aria-describedby="task-autosave-hint"${disabled}>
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                            <option value="urgent">Urgent</option>
-                        </select>
+                    <div class="field task-color-field">
+                        <label for="task-color">Color</label>
+                        <div class="color-control" data-color="${state.color}">
+                            <span class="color-swatch" aria-hidden="true"></span>
+                            <select id="task-color" name="color" aria-describedby="task-autosave-hint"${disabled}>
+                                ${Object.entries(TASK_COLORS).map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}
+                            </select>
+                        </div>
                     </div>
+                    <p id="task-autosave-hint" class="secondary-text autosave-hint">${canEdit ? "Status, priority and color are saved automatically." : "You have read-only access to this task."}</p>
+                    <p id="autosave-message" class="form-message" role="status" hidden></p>
                 </div>
-                <p id="task-autosave-hint" class="secondary-text autosave-hint">${canEdit ? "Status and priority changes are saved automatically." : "You have read-only access to this task."}</p>
-                <p id="autosave-message" class="form-message" role="status" hidden></p>
-                <div class="field-grid">
-                    <div class="field">
-                        <label for="task-due-date">Due date</label>
-                        <input id="task-due-date" name="due_date" type="datetime-local" step="any"${disabled}>
+                <div class="task-property-group">
+                    <h3>Planning</h3>
+                    <div class="field-grid">
+                        <div class="field">
+                            <label for="task-due-date">Due date</label>
+                            <input id="task-due-date" name="due_date" type="datetime-local" step="any"${disabled}>
+                        </div>
+                        <div class="field">
+                            <label for="task-assignee">Assignee</label>
+                            <select id="task-assignee" name="assignee_id"${!canEdit || members === null ? " disabled" : ""}>
+                                <option value="">Unassigned</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="field">
-                        <label for="task-assignee">Assignee</label>
-                        <select id="task-assignee" name="assignee_id"${!canEdit || members === null ? " disabled" : ""}>
-                            <option value="">Unassigned</option>
-                        </select>
-                    </div>
+                    <p id="assignee-message" class="form-message" role="status" hidden></p>
                 </div>
-                <p id="assignee-message" class="form-message" role="status" hidden></p>
+                ${canEdit ? '<div class="task-danger-zone"><button id="delete-task-button" type="button" class="btn-danger">Delete task</button></div>' : ""}
             </div>
-            ${canEdit ? '<button id="save-task-button" type="submit" class="btn-primary">Save</button>' : ""}
-            <p id="task-message" class="form-message" role="status" hidden></p>
         </form>
     `;
 
@@ -91,12 +114,14 @@ export async function renderTask(task, project, workspace, navigation) {
     const assigneeSelect = content.querySelector("#task-assignee");
     const statusSelect = content.querySelector("#task-status");
     const prioritySelect = content.querySelector("#task-priority");
+    const colorSelect = content.querySelector("#task-color");
     const message = content.querySelector("#task-message");
     const autosaveMessage = content.querySelector("#autosave-message");
     const saveButton = content.querySelector("#save-task-button");
     const deleteButton = content.querySelector("#delete-task-button");
     statusSelect.value = task.status;
     prioritySelect.value = task.priority;
+    colorSelect.value = state.color;
     dueDateInput.value = localDateValue(task.due_date);
     // Compare the browser's normalized value so an untouched timestamp is never rewritten.
     let savedDueInput = dueDateInput.value;
@@ -120,8 +145,9 @@ export async function renderTask(task, project, workspace, navigation) {
     if (membersError) setMessage(content.querySelector("#assignee-message"), "Workspace members could not be loaded. The current assignee will be kept.");
 
     // PATCH currently reads and writes a full database row. Serial requests prevent
-    // independent status, priority and form saves from overwriting each other.
+    // independent status, priority, color and form saves from overwriting each other.
     let mutationQueue = Promise.resolve();
+    let navigatingBack = false;
     function queueMutation(action) {
         const pending = mutationQueue.then(action);
         mutationQueue = pending.catch(() => {});
@@ -134,19 +160,27 @@ export async function renderTask(task, project, workspace, navigation) {
         control.addEventListener("change", () => { editRevision += 1; });
     }
 
-    for (const [field, select] of [["status", statusSelect], ["priority", prioritySelect]]) {
+    for (const [field, select] of [["status", statusSelect], ["priority", prioritySelect], ["color", colorSelect]]) {
         select.addEventListener("change", async () => {
-            if (!canEdit || select.disabled || deleteButton?.disabled) return;
+            if (!canEdit || navigatingBack || select.disabled || deleteButton?.disabled) return;
             const value = select.value;
+            if (field === "color") {
+                select.closest(".color-control").dataset.color = value;
+                form.dataset.color = value;
+            }
             setMessage(autosaveMessage, "Saving…", "info");
             await withBusy(select, () => queueMutation(async () => {
                 const result = await updateTask(task.id, { [field]: value });
                 if (!current()) return;
                 if (result.ok) {
                     state[field] = value;
-                    setMessage(autosaveMessage, `${field === "status" ? "Status" : "Priority"} saved.`, "success");
+                    setMessage(autosaveMessage, `${field[0].toUpperCase() + field.slice(1)} saved.`, "success");
                 } else {
                     select.value = state[field];
+                    if (field === "color") {
+                        select.closest(".color-control").dataset.color = state.color;
+                        form.dataset.color = state.color;
+                    }
                     setMessage(autosaveMessage, result.data?.error || `Unable to save ${field}. Please try again.`);
                 }
             }));
@@ -155,7 +189,7 @@ export async function renderTask(task, project, workspace, navigation) {
 
     form.addEventListener("submit", async event => {
         event.preventDefault();
-        if (!canEdit || saveButton.disabled || deleteButton.disabled) return;
+        if (!canEdit || navigatingBack || saveButton.disabled || deleteButton.disabled) return;
         const title = titleInput.value.trim();
         if (!title) {
             setMessage(message, "Enter a task title.");
@@ -179,6 +213,7 @@ export async function renderTask(task, project, workspace, navigation) {
                 return;
             }
             Object.assign(state, data);
+            content.querySelector(".task-heading-title").textContent = title;
             savedDueInput = submittedDueInput;
             savedAssigneeInput = submittedAssignee;
             if (editRevision === revision) {
@@ -190,7 +225,7 @@ export async function renderTask(task, project, workspace, navigation) {
     });
 
     deleteButton?.addEventListener("click", async () => {
-        if (deleteButton.disabled || saveButton.disabled) return;
+        if (navigatingBack || deleteButton.disabled || saveButton.disabled) return;
         if (!window.confirm("Delete this task? This cannot be undone.")) return;
         await withBusy(deleteButton, () => queueMutation(async () => {
             const result = await deleteTask(task.id);
@@ -203,7 +238,22 @@ export async function renderTask(task, project, workspace, navigation) {
         }));
     });
 
-    content.querySelector("#back-task-button").addEventListener("click", () => navigation.renderProject(project, workspace));
+    const backButton = content.querySelector("#back-task-button");
+    backButton.addEventListener("click", async () => {
+        if (navigatingBack) return;
+        navigatingBack = true;
+        // Finish pending saves before loading the board, keeping the queue closed.
+        content.inert = true;
+        try {
+            await withBusy(backButton, async () => {
+                await mutationQueue;
+                if (current()) await navigation.renderProject(project, workspace);
+            });
+        } finally {
+            content.inert = false;
+            navigatingBack = false;
+        }
+    });
 }
 
 function escapeHTML(value = "") {

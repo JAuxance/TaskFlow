@@ -1,5 +1,5 @@
 import { updateProject, deleteProject } from "../projects.js";
-import { getTasks, createTask, getTaskById } from "../task.js";
+import { getTasks, createTask, getTaskById, TASK_COLORS } from "../task.js";
 
 const STATUSES = [
     ["todo", "Todo"],
@@ -27,53 +27,101 @@ export async function renderProject(project, workspace, navigation) {
     const memberNames = new Map((members || []).map(member => [String(member.user_id), member.user_name]));
 
     content.innerHTML = `
-        <div class="page-heading">
-            <h1>${escapeHTML(project.name)}</h1>
-            ${project.description ? `<p class="secondary-text">${escapeHTML(project.description)}</p>` : ""}
+        <div class="page-heading page-heading-row">
+            <div class="heading-copy">
+                <h1>${escapeHTML(project.name)}</h1>
+                ${project.description ? `<p class="secondary-text">${escapeHTML(project.description)}</p>` : ""}
+            </div>
+            <div class="header-actions">
+                ${canEditProject ? '<button id="project-settings-button" type="button" class="btn-secondary">Project settings</button>' : ""}
+                ${canEditTasks ? '<button id="new-task-button" type="button" class="btn-primary">New task</button>' : ""}
+            </div>
         </div>
-        ${canEditTasks ? `
-            <form id="create-task-form" class="inline-form">
-                <div class="field field-wide">
-                    <label for="task-title-input">Task title</label>
-                    <input id="task-title-input" name="title" type="text" placeholder="Enter a task title" maxlength="100" required>
-                </div>
-                <button type="submit" class="btn-primary">Create task</button>
-            </form>
-            <p id="create-task-message" class="form-message" role="status" hidden></p>
-        ` : ""}
         <p id="tasks-message" class="form-message" role="status" hidden></p>
         <div class="kanban-board" aria-label="Project task board">
             ${STATUSES.map(([value, label]) => `
                 <section class="kanban-column" data-status="${value}" aria-labelledby="heading-${value}">
-                    <h2 id="heading-${value}" class="kanban-heading">${label}</h2>
+                    <h2 id="heading-${value}" class="kanban-heading">${label}<span class="kanban-count" aria-label="Loading tasks">—</span></h2>
                     <div class="task-cards"><p class="empty-state">Loading tasks…</p></div>
                 </section>
             `).join("")}
         </div>
+        ${canEditTasks ? `
+            <dialog id="create-task-dialog" class="app-dialog" aria-labelledby="create-task-heading">
+                <div class="dialog-header">
+                    <h2 id="create-task-heading">New task</h2>
+                    <button type="button" class="dialog-close" data-close-dialog aria-label="Close new task">×</button>
+                </div>
+                <form id="create-task-form" class="dialog-body">
+                    <div class="field">
+                        <label for="task-title-input">Task title</label>
+                        <input id="task-title-input" name="title" type="text" placeholder="Enter a task title" maxlength="100" required autofocus>
+                    </div>
+                    <div class="field task-color-field">
+                        <label for="new-task-color">Color</label>
+                        <div class="color-control" data-color="gray">
+                            <span class="color-swatch" aria-hidden="true"></span>
+                            <select id="new-task-color" name="color">
+                                ${Object.entries(TASK_COLORS).map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}
+                            </select>
+                        </div>
+                    </div>
+                    <p id="create-task-message" class="form-message" role="status" hidden></p>
+                    <div class="dialog-actions">
+                        <button type="button" class="btn-secondary" data-close-dialog>Cancel</button>
+                        <button type="submit" class="btn-primary">Create task</button>
+                    </div>
+                </form>
+            </dialog>
+        ` : ""}
         ${canEditProject ? `
-            <details class="project-properties">
-                <summary>Project settings</summary>
-                <form id="project-settings-form" class="task-form">
+            <dialog id="project-settings-dialog" class="app-dialog" aria-labelledby="project-settings-heading">
+                <div class="dialog-header">
+                    <h2 id="project-settings-heading">Project settings</h2>
+                    <button type="button" class="dialog-close" data-close-dialog aria-label="Close project settings">×</button>
+                </div>
+                <form id="project-settings-form" class="dialog-body">
                     <div class="field">
                         <label for="project-name">Project name</label>
-                        <input id="project-name" name="name" type="text" value="${escapeHTML(project.name)}" maxlength="50" required>
+                        <input id="project-name" name="name" type="text" value="${escapeHTML(project.name)}" maxlength="50" required autofocus>
                     </div>
                     <div class="field">
                         <label for="project-description">Description</label>
                         <textarea id="project-description" name="description" rows="3">${escapeHTML(project.description || "")}</textarea>
                     </div>
-                    <div class="task-form-actions">
-                        <button id="save-project-button" type="submit" class="btn-primary">Save project</button>
+                    <p id="project-message" class="form-message" role="status" hidden></p>
+                    <div class="dialog-actions">
+                        <button type="button" class="btn-secondary" data-close-dialog>Cancel</button>
+                        <button id="save-project-button" type="submit" class="btn-primary">Save changes</button>
+                    </div>
+                    <div class="danger-zone">
+                        <div>
+                            <h3>Delete project</h3>
+                            <p class="secondary-text">Permanently delete this project and all its tasks.</p>
+                        </div>
                         <button id="delete-project-button" type="button" class="btn-danger">Delete project</button>
                     </div>
-                    <p id="project-message" class="form-message" role="status" hidden></p>
                 </form>
-            </details>
+            </dialog>
         ` : ""}
     `;
 
     const tasksMessage = content.querySelector("#tasks-message");
     let loadVersion = 0;
+
+    for (const [buttonId, dialogId] of [["new-task-button", "create-task-dialog"], ["project-settings-button", "project-settings-dialog"]]) {
+        const dialog = content.querySelector(`#${dialogId}`);
+        if (!dialog) continue;
+        content.querySelector(`#${buttonId}`).addEventListener("click", () => dialog.showModal());
+        for (const button of dialog.querySelectorAll("[data-close-dialog]")) {
+            button.addEventListener("click", () => {
+                if (!dialog.querySelector('[aria-busy="true"]')) dialog.close();
+            });
+        }
+        dialog.addEventListener("cancel", event => {
+            if (dialog.querySelector('[aria-busy="true"]')) event.preventDefault();
+        });
+    }
 
     async function loadTasks() {
         const version = ++loadVersion;
@@ -90,6 +138,9 @@ export async function renderProject(project, workspace, navigation) {
         for (const [status] of STATUSES) {
             const column = content.querySelector(`[data-status="${status}"] .task-cards`);
             const tasks = result.data.filter(task => task.status === status);
+            const count = content.querySelector(`[data-status="${status}"] .kanban-count`);
+            count.textContent = String(tasks.length);
+            count.setAttribute("aria-label", `${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}`);
             column.replaceChildren();
             if (!tasks.length) {
                 column.innerHTML = '<p class="empty-state">No tasks yet.</p>';
@@ -99,6 +150,7 @@ export async function renderProject(project, workspace, navigation) {
                 const card = document.createElement("button");
                 card.type = "button";
                 card.className = "task-card";
+                card.dataset.color = Object.hasOwn(TASK_COLORS, task.color) ? task.color : "gray";
                 const assignee = task.assignee_id == null
                     ? "Unassigned"
                     : memberNames.get(String(task.assignee_id)) || "Member unavailable";
@@ -126,14 +178,19 @@ export async function renderProject(project, workspace, navigation) {
     }
 
     const createForm = content.querySelector("#create-task-form");
+    const colorSelect = content.querySelector("#new-task-color");
+    colorSelect?.addEventListener("change", () => {
+        colorSelect.closest(".color-control").dataset.color = colorSelect.value;
+    });
     createForm?.addEventListener("submit", async event => {
         event.preventDefault();
         const input = createForm.querySelector("input");
-        const button = createForm.querySelector("button");
+        const button = createForm.querySelector('button[type="submit"]');
         const message = content.querySelector("#create-task-message");
         if (button.disabled) return;
         const enteredTitle = input.value;
         const title = enteredTitle.trim();
+        const color = colorSelect.value;
         if (!title) {
             setMessage(message, "Enter a task title.");
             input.focus();
@@ -141,16 +198,15 @@ export async function renderProject(project, workspace, navigation) {
         }
         setMessage(message, "");
         await withBusy(button, async () => {
-            const result = await createTask(project.id, title);
+            const result = await createTask(project.id, title, color);
             if (!current()) return;
             if (!result.ok) {
                 setMessage(message, result.data?.error || "Unable to create the task.");
                 return;
             }
             if (input.value === enteredTitle) input.value = "";
-            setMessage(message, "Task created.", "success");
+            content.querySelector("#create-task-dialog").close();
             await loadTasks();
-            if (current()) input.focus();
         });
     });
 

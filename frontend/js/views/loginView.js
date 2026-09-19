@@ -9,9 +9,10 @@ export function renderLogin({ renderApp }, initialError = "") {
                 <div class="login-heading">
                     <div class="login-brand">
                         <img class="icon icon-mark" src="./assets/icons/mark.svg" alt="" width="32" height="32">
-                        <h1>TaskFlow</h1>
+                        <span>TaskFlow</span>
                     </div>
-                    <p class="secondary-text">Welcome back. Let’s get to work.</p>
+                    <h1>Sign in</h1>
+                    <p class="secondary-text">Welcome back. Open your workspaces and pick up where you left off.</p>
                 </div>
                 <div class="login-fields">
                     <div class="field">
