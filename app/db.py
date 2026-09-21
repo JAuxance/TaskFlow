@@ -507,3 +507,92 @@ def revoke_session(session_token):
                 (session_token,),
             )
             return cursor.fetchone()
+
+def create_workspace_message(workspace_id, user_id, content):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO workspace_messages (workspace_id, user_id, content)
+                VALUES (%s, %s, %s)
+                RETURNING id, workspace_id, user_id, content, created_at;
+                """,
+                (workspace_id, user_id, content),
+            )
+            return cursor.fetchone()
+
+def get_workspace_messages_db(workspace_id, limit, offset):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    wm.id,
+                    wm.workspace_id,
+                    wm.user_id,
+                    wm.content,
+                    wm.created_at,
+                    u.username,
+                    u.first_name,
+                    u.avatar_url
+                FROM workspace_messages AS wm
+                LEFT JOIN users AS u
+                    ON u.id = wm.user_id
+                WHERE wm.workspace_id = %s
+                ORDER BY wm.created_at DESC, wm.id DESC
+                LIMIT %s
+                OFFSET %s;
+                """,
+                (workspace_id, limit, offset),
+            )
+            return cursor.fetchall()
+
+def users_share_workspace(user_a_id, user_b_id):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 1
+                FROM workspace_members AS a
+                JOIN workspace_members AS b
+                    ON a.workspace_id = b.workspace_id
+                WHERE a.user_id = %s
+                  AND b.user_id = %s
+                LIMIT 1;
+                """,
+                (user_a_id, user_b_id),
+            )
+
+            return cursor.fetchone() is not None
+
+def create_direct_message(sender_id, receiver_id, content):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO direct_messages (sender_id, receiver_id, content)
+                VALUES (%s, %s, %s)
+                RETURNING id, sender_id, receiver_id, content, created_at;
+                """,
+                (sender_id, receiver_id, content),
+            )
+            return cursor.fetchone()
+
+
+def get_direct_messages_db(user_id, other_user_id, limit, offset):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT dm.id, dm.sender_id, dm.receiver_id, dm.content,
+                       dm.created_at, u.username, u.first_name, u.avatar_url
+                FROM direct_messages AS dm
+                JOIN users AS u ON u.id = dm.sender_id
+                WHERE (dm.sender_id = %s AND dm.receiver_id = %s)
+                   OR (dm.sender_id = %s AND dm.receiver_id = %s)
+                ORDER BY dm.created_at DESC, dm.id DESC
+                LIMIT %s OFFSET %s;
+                """,
+                (user_id, other_user_id, other_user_id, user_id, limit, offset),
+            )
+            return cursor.fetchall()

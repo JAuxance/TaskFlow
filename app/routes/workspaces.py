@@ -3,14 +3,18 @@ import uuid
 
 from flask import Blueprint, current_app, request
 from psycopg.errors import UniqueViolation
+from app.extensions import socketio
 
 from app.db import (
     add_workspace_member,
+    create_workspace_message,
     create_workspace_with_owner,
     delet_workspace,
     get_user_by_email,
+    get_user_by_id,
     get_workspace_member,
     get_workspace_members,
+    get_workspace_messages_db,
     get_workspaces_by_member,
     update_workspace,
     update_role_member,
@@ -29,6 +33,10 @@ from app.validation import get_json_object, get_pagination, is_valid_id, is_vali
 
 workspaces_bp = Blueprint("workspaces", __name__)
 
+def register_socketio_events(socketio):
+    @socketio.on("connect")
+    def handle_connect():
+        print("Socket client connected")
 
 @workspaces_bp.route("/api/workspaces", methods=["POST"])
 def create_workspace_endpoint():
@@ -476,3 +484,82 @@ def update_workspace_emoji_route(workspace_id):
         "icon_value": updated_workspace[5],
         "created_at": updated_workspace[3].isoformat(),
     }, 200
+
+@workspaces_bp.route("/api/workspaces/<int:workspace_id>/messages", methods=["POST"])
+def work_space_message(workspace_id):
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+
+    workspace, error = get_workspace_with_permission(
+        workspace_id, user_id
+    )
+    if error:
+        return error
+
+    data, error = get_json_object()
+    if error:
+        return error
+
+    message = data.get("message")
+
+    if not isinstance(message, str):
+        return {"error": "message must be a string"}, 400
+    message = message.strip()
+    if not message:
+        return {"error": "message is required"}, 400
+    if not is_valid_text(message, allow_empty=False, max_length=2000):
+        return {"error": "invalid message"}, 400
+    user = get_user_by_id(user_id)
+    if not user:
+        return resource_not_found()
+
+    created_message = create_workspace_message(workspace_id, user_id, message)
+    if not created_message:
+        return {"error": "message creation failed"}, 500
+    message_data = {
+        "id": created_message[0],
+        "workspace_id": created_message[1],
+        "user_id": created_message[2],
+        "message": created_message[3],
+        "created_at": created_message[4].isoformat(),
+        "author": {
+            "username": user[1],
+            "first_name": user[3],
+            "avatar_url": user[4],
+        },
+    }
+    room = f"workspace_{workspace_id}"
+    socketio.emit("new_message", message_data, to=room)
+    return message_data, 201
+
+@workspaces_bp.route("/api/workspaces/<int:workspace_id>/messages", methods=["GET"])
+def get_workspace_messages(workspace_id):
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+
+    workspace, error = get_workspace_with_permission(
+        workspace_id, user_id
+    )
+    if error:
+        return error
+
+    pagination, error = get_pagination()
+    if error:
+        return error
+    limit, offset = pagination
+    messages = get_workspace_messages_db(workspace_id, limit, offset)
+    return [
+        {
+            "id": message[0],
+            "workspace_id": message[1],
+            "user_id": message[2],
+            "message": message[3],
+            "created_at": message[4].isoformat(),
+            "user_name": message[5],
+            "first_name": message[6],
+            "avatar_url": message[7],
+        }
+        for message in messages
+    ], 200
