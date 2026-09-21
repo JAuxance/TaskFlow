@@ -11,6 +11,7 @@ import {
 import { getProjects, createProject, getProjectById } from "../projects.js";
 import { getTasks, getTaskById, TASK_COLORS } from "../task.js";
 import { apiAssetUrl } from "../api.js";
+import { renderWorkspaceChat } from "./workspaceChatView.js";
 
 const roleLabels = {
     owner: "Owner",
@@ -37,7 +38,7 @@ export async function renderWorkspace(workspace, navigation) {
         ? `<span class="workspace-icon workspace-icon-large" data-color="${color}" aria-hidden="true">${escapeHTML(workspace.icon_value)}</span>`
         : `<img class="workspace-icon workspace-icon-large" data-color="${color}" src="${escapeHTML(imageUrl || "./assets/icons/folder.svg")}" width="48" height="48" alt="">`;
 
-    const tabs = canManage ? ["projects", "members", "settings"] : ["projects", "members"];
+    const tabs = canManage ? ["projects", "messages", "members", "settings"] : ["projects", "messages", "members"];
     let activeTab = tabs.includes(navigation.initialTab) ? navigation.initialTab : "projects";
 
     content.innerHTML = `
@@ -59,6 +60,7 @@ export async function renderWorkspace(workspace, navigation) {
 
         <div class="page-tabs" role="tablist" aria-label="Workspace sections">
             <button id="tab-projects" class="page-tab" type="button" role="tab" aria-controls="panel-projects">Overview</button>
+            <button id="tab-messages" class="page-tab" type="button" role="tab" aria-controls="panel-messages">Messages</button>
             <button id="tab-members" class="page-tab" type="button" role="tab" aria-controls="panel-members">Members <span class="tab-count">${Array.isArray(members) ? members.length : "—"}</span></button>
             ${canManage ? '<button id="tab-settings" class="page-tab" type="button" role="tab" aria-controls="panel-settings">Settings</button>' : ""}
         </div>
@@ -96,6 +98,8 @@ export async function renderWorkspace(workspace, navigation) {
                 </section>
             </div>
         </section>
+
+        <section id="panel-messages" class="tab-panel" role="tabpanel" aria-labelledby="tab-messages" tabindex="0" hidden></section>
 
         <section id="panel-members" class="tab-panel" role="tabpanel" aria-labelledby="tab-members" tabindex="0" hidden>
             <div class="section-heading">
@@ -210,6 +214,7 @@ export async function renderWorkspace(workspace, navigation) {
     `;
 
     const tabButtons = [...content.querySelectorAll(".page-tab")];
+    let chat;
     function selectTab(tab, focus = false) {
         activeTab = tab;
         tabButtons.forEach(button => {
@@ -222,9 +227,13 @@ export async function renderWorkspace(workspace, navigation) {
         const createButton = content.querySelector("#open-create-project-button");
         const memberButton = content.querySelector("#open-add-member-button");
         const headerActions = content.querySelector(".header-actions");
-        if (headerActions) headerActions.hidden = tab === "settings";
+        if (headerActions) headerActions.hidden = tab === "settings" || tab === "messages";
         if (createButton) createButton.hidden = tab !== "projects";
         if (memberButton) memberButton.hidden = tab !== "members";
+        if (tab === "messages") {
+            chat ??= renderWorkspaceChat(content.querySelector("#panel-messages"), workspace, user, navigation);
+            chat.activate();
+        }
     }
     tabButtons.forEach((button, index) => {
         button.addEventListener("click", () => selectTab(tabs[index]));
@@ -466,10 +475,11 @@ export async function renderWorkspace(workspace, navigation) {
                         ${roleOptions}
                     </select>
                 ` : escapeHTML(roleLabels[member.role] || member.role)}</td>
-                <td>${canManageMember ? `
+                <td>${!ownMembership ? `<button type="button" class="btn-quiet direct-message-button"
+                    aria-label="Send a private message to ${escapeHTML(member.user_name)}">Message</button>` : ""}${canManageMember ? `
                     <button type="button" class="btn-quiet btn-danger-quiet delete-member-button"
                         aria-label="Remove ${escapeHTML(member.user_name)} from workspace">Remove</button>
-                ` : '<span aria-label="No available actions">—</span>'}</td>
+                ` : ownMembership ? '<span aria-label="No available actions">—</span>' : ""}</td>
             `;
             const avatarUrl = apiAssetUrl(member.avatar_url);
             if (avatarUrl) {
@@ -479,6 +489,8 @@ export async function renderWorkspace(workspace, navigation) {
                 image.hidden = false;
             }
             body.appendChild(row);
+            row.querySelector(".direct-message-button")?.addEventListener("click", () =>
+                navigation.renderDirectMessages(member, workspace));
             if (!canManageMember) continue;
 
             const roleSelect = row.querySelector(".member-role-select");

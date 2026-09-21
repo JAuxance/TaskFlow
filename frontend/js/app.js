@@ -6,9 +6,11 @@ import { renderDashboard } from "./views/dashboardView.js";
 import { renderWorkspace as renderWorkspaceView } from "./views/workspaceView.js";
 import { renderProject as renderProjectView } from "./views/projectView.js";
 import { renderTask as renderTaskView } from "./views/taskView.js";
+import { renderDirectMessages as renderDirectMessagesView } from "./views/directMessagesView.js";
 
 let viewVersion = 0;
-const navigation = { renderLogin, renderApp, renderWorkspace, renderProject, renderTask };
+let viewCleanups = [];
+const navigation = { renderLogin, renderApp, renderWorkspace, renderProject, renderTask, renderDirectMessages };
 const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
 
 function applyTheme(preference) {
@@ -33,7 +35,16 @@ window.addEventListener("storage", event => {
 
 async function showView(render, layout) {
     const version = ++viewVersion;
-    const context = { ...navigation, isCurrent: () => version === viewVersion };
+    viewCleanups.forEach(cleanup => cleanup());
+    viewCleanups = [];
+    const context = {
+        ...navigation,
+        isCurrent: () => version === viewVersion,
+        onCleanup(cleanup) {
+            if (version === viewVersion) viewCleanups.push(cleanup);
+            else cleanup();
+        }
+    };
     if (layout) {
         const page = await renderLayout({ ...layout, navigation: context });
         if (!page) return;
@@ -64,6 +75,17 @@ function renderWorkspace(workspace, initialTab = "projects") {
     return showView(context => renderWorkspaceView(workspace, { ...context, initialTab }), {
         workspace, pageClass: "workspace-page",
         breadcrumbs: [{ label: "Workspaces", action: () => renderApp() }, { label: workspace.name }]
+    });
+}
+
+function renderDirectMessages(member, workspace) {
+    return showView(context => renderDirectMessagesView(member, workspace, context), {
+        workspace, pageClass: "direct-messages-page",
+        breadcrumbs: [
+            { label: "Workspaces", action: () => renderApp() },
+            { label: workspace.name, action: () => renderWorkspace(workspace, "members") },
+            { label: "Direct messages" }
+        ]
     });
 }
 

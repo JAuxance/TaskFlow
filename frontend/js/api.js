@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:5000";
+export const API_BASE_URL = "http://localhost:5000";
 
 export function apiAssetUrl(path) {
     if (typeof path !== "string" || !/^\/static\/(avatars|workspace_icons)\/[\w-]+\.(png|jpe?g|webp)$/i.test(path)) return "";
@@ -18,15 +18,19 @@ export async function apiRequest(endpoint, options = {}) {
             return {
                 ok: false,
                 status: response.status,
-                data: { error: response.status === 413
-                    ? "This image is too large. Choose a smaller file (under 5 MB)."
-                    : "The server returned an unexpected response. Please try again." }
+                data: {
+                    error: response.status === 413 ?
+                        "This image is too large. Choose a smaller file (under 5 MB)." :
+                        "The server returned an unexpected response. Please try again."
+                }
             };
         }
         if (!response.ok && (!data || typeof data.error !== "string")) {
-            data = { error: response.status === 429
-                ? "Too many requests. Please wait a moment and try again."
-                : "This action could not be completed. Please try again." };
+            data = {
+                error: response.status === 429 ?
+                    "Too many requests. Please wait a moment and try again." :
+                    "This action could not be completed. Please try again."
+            };
         }
         return { ok: response.ok, status: response.status, data };
     } catch {
@@ -42,14 +46,17 @@ export async function apiRequest(endpoint, options = {}) {
 // never silently omit tasks or the current user's workspace membership.
 export async function apiCollection(endpoint) {
     const items = [];
-    for (let page = 1; ; page += 1) {
+    for (let page = 1;; page += 1) {
         const result = await apiRequest(`${endpoint}?limit=100&page=${page}`);
         if (!result.ok) return result;
         if (!Array.isArray(result.data)) {
-            return { ok: false, status: result.status,
-                data: { error: "The server returned an unexpected list. Please try again." } };
+            return {
+                ok: false,
+                status: result.status,
+                data: { error: "The server returned an unexpected list. Please try again." }
+            };
         }
         items.push(...result.data);
-        if (result.data.length < 100) return { ...result, data: items };
+        if (result.data.length < 100) return {...result, data: items };
     }
 }
