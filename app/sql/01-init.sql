@@ -194,3 +194,17 @@ CREATE TABLE workspace_messages (
         REFERENCES users(id)
         ON DELETE SET NULL
 );
+CREATE TABLE direct_messages (
+    id SERIAL PRIMARY KEY,
+
+    sender_id INTEGER NOT NULL
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    receiver_id INTEGER NOT NULL
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    content TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
