@@ -596,3 +596,45 @@ def get_direct_messages_db(user_id, other_user_id, limit, offset):
                 (user_id, other_user_id, other_user_id, user_id, limit, offset),
             )
             return cursor.fetchall()
+
+def get_direct_conversations_db(user_id):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT users.id, latest_conversations.content,
+                       latest_conversations.created_at, users.username,
+                       users.first_name, users.avatar_url
+                FROM (
+                    SELECT DISTINCT ON (other_user_id) *
+                    FROM (
+                        SELECT
+                            id,
+                            sender_id,
+                            receiver_id,
+                            content,
+                            created_at,
+                            CASE
+                                WHEN sender_id = %s THEN receiver_id
+                                ELSE sender_id
+                            END AS other_user_id
+                        FROM direct_messages
+                        WHERE sender_id = %s
+                           OR receiver_id = %s
+                    ) AS conversations
+                    ORDER BY other_user_id, created_at DESC, id DESC
+                ) AS latest_conversations
+                JOIN users
+                    ON users.id = latest_conversations.other_user_id
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM workspace_members AS a
+                    JOIN workspace_members AS b ON a.workspace_id = b.workspace_id
+                    WHERE a.user_id = %s AND b.user_id = users.id
+                )
+                ORDER BY latest_conversations.created_at DESC, latest_conversations.id DESC
+                """,
+                (user_id, user_id, user_id, user_id),
+            )
+
+            return cursor.fetchall()

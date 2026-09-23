@@ -1,7 +1,7 @@
 from flask import Blueprint
 
 from app.db import (
-    create_direct_message, get_direct_messages_db, get_user_by_id,
+    create_direct_message, get_direct_conversations_db, get_direct_messages_db, get_user_by_id,
     users_share_workspace,
 )
 from app.extensions import socketio
@@ -79,3 +79,18 @@ def get_direct_messages(user_id):
     return [message_data(row, {
         "username": row[5], "first_name": row[6], "avatar_url": row[7],
     }) for row in rows], 200
+
+@direct_messages_bp.route("/api/direct_conversations", methods=["GET"])
+def get_direct_conversation():
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    conversations = get_direct_conversations_db(user_id)
+    return [{
+        "user_id": row[0],
+        "username": row[3],
+        "first_name": row[4],
+        "avatar_url": row[5],
+        "last_message": row[1],
+        "last_message_time": row[2].isoformat() if row[2] else None,
+    } for row in conversations], 200

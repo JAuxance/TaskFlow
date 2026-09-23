@@ -5,6 +5,10 @@ export function getDirectMessages(userId, page = 1) {
     return apiRequest(`/api/users/${userId}/direct_messages?limit=${MESSAGE_PAGE_SIZE}&page=${page}`);
 }
 
+export function getDirectConversations() {
+    return apiRequest("/api/direct_conversations");
+}
+
 export function sendDirectMessage(userId, message) {
     return apiRequest(`/api/users/${userId}/direct_messages`, {
         method: "POST",
