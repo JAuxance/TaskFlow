@@ -1,4 +1,17 @@
 import { apiRequest } from "./api.js";
+export async function register(username, email, password) {
+    return await apiRequest("/api/users", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            username,
+            email,
+            password
+        })
+    });
+}
 
 export async function login(email, password) {
     const body = {

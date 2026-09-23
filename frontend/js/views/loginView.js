@@ -1,6 +1,6 @@
 import { login } from "../auth.js";
 
-export function renderLogin({ renderApp }, initialError = "") {
+export function renderLogin({ renderApp, renderRegister }, initialError = "") {
     const app = document.getElementById("app");
     app.removeAttribute("aria-busy");
     app.innerHTML = `
@@ -11,8 +11,7 @@ export function renderLogin({ renderApp }, initialError = "") {
                         <img class="icon icon-mark" src="./assets/icons/mark.svg" alt="" width="32" height="32">
                         <span>TaskFlow</span>
                     </div>
-                    <h1>Sign in</h1>
-                    <p class="secondary-text">Welcome back. Open your workspaces and pick up where you left off.</p>
+                    <h1>Login</h1>
                 </div>
                 <div class="login-fields">
                     <div class="field">
@@ -25,24 +24,29 @@ export function renderLogin({ renderApp }, initialError = "") {
                     </div>
                     <p id="message" class="form-message login-message" role="alert" aria-live="polite" hidden></p>
                 </div>
-                <button type="submit" class="btn-primary">Sign in</button>
+                <button type="submit" class="btn-primary">Login</button>
+                <button type="button" id="register-button" class="btn-quiet">Create an account</button>
             </form>
         </main>`;
     const form = app.querySelector("#login-form");
     const message = app.querySelector("#message");
     const submit = form.querySelector('button[type="submit"]');
+    const registerButton = app.querySelector("#register-button");
+    registerButton.addEventListener("click", () => {
+        renderRegister();
+    });
     setMessage(message, initialError);
 
     form.addEventListener("submit", event => {
         event.preventDefault();
         if (submit.disabled) return;
-        withBusy(submit, async () => {
+        withBusy(submit, async() => {
             setMessage(message);
             const result = await login(form.elements.email.value.trim(), form.elements.password.value);
             if (!form.isConnected) return;
             if (result.ok) await renderApp(result.data);
-            else setMessage(message, result.status === 401
-                ? "Invalid email or password. Please try again." : result.data.error);
+            else setMessage(message, result.status === 401 ?
+                "Invalid email or password. Please try again." : result.data.error);
         });
     });
 }
