@@ -20,14 +20,15 @@ export function renderWorkspaceChat(panel, workspace, user, navigation) {
 export function renderChat(panel, user, navigation, config) {
     panel.innerHTML = `
         <div class="workspace-chat">
-            <header class="chat-header">
+            ${config.embedded ? "" : `<header class="chat-header">
                 <div><h2></h2><p class="section-description"></p></div>
                 <div class="chat-tools">
-                    <span class="chat-status" role="status" data-state="connecting">Connecting…</span>
                     <button type="button" class="btn-secondary chat-refresh">Refresh</button>
                 </div>
-            </header>
-            <p class="chat-connection-note field-hint" hidden>Live updates are unavailable. Refresh to check for new messages.</p>
+            </header>`}
+            <p class="chat-connection-note field-hint" hidden>${config.embedded
+                ? "Connection lost. Reload the page to check for new messages."
+                : "Live updates are unavailable. Refresh to check for new messages."}</p>
             <p class="chat-history-error form-message" role="alert" hidden></p>
             <div class="chat-thread" tabindex="0" aria-label="Message history" aria-busy="true">
                 <div class="chat-history-actions"><button type="button" class="btn-quiet chat-older" hidden>Load older messages</button></div>
@@ -55,8 +56,10 @@ export function renderChat(panel, user, navigation, config) {
     const jump = panel.querySelector(".chat-jump");
     const form = panel.querySelector(".chat-composer");
     const input = form.elements.message;
-    panel.querySelector(".chat-header h2").textContent = config.title;
-    panel.querySelector(".chat-header .section-description").textContent = config.description;
+    if (!config.embedded) {
+        panel.querySelector(".chat-header h2").textContent = config.title;
+        panel.querySelector(".chat-header .section-description").textContent = config.description;
+    }
     list.setAttribute("aria-label", config.title);
     input.placeholder = config.placeholder;
     const submit = form.querySelector('[type="submit"]');
@@ -104,6 +107,7 @@ export function renderChat(panel, user, navigation, config) {
             fresh.push(row);
         }
         if (!fresh.length) return;
+        config.onMessagesChanged?.();
         // Both the HTTP response and the live event may contain the same message.
         const ordered = [...messages.values()].sort((a, b) =>
             a.message.created_at.localeCompare(b.message.created_at) || Number(a.message.id) - Number(b.message.id));
@@ -134,10 +138,8 @@ export function renderChat(panel, user, navigation, config) {
         denied = true;
         disconnect();
         feedback(historyError, config.accessError);
-        panel.querySelector(".chat-status").textContent = "Access unavailable";
-        panel.querySelector(".chat-status").dataset.state = "offline";
         older.hidden = true;
-        refresh.disabled = true;
+        if (refresh) refresh.disabled = true;
         updateComposer();
     }
 
@@ -148,7 +150,7 @@ export function renderChat(panel, user, navigation, config) {
             return;
         }
         loading = true;
-        refresh.disabled = true;
+        if (refresh) refresh.disabled = true;
         older.disabled = true;
         thread.setAttribute("aria-busy", "true");
         feedback(historyError);
@@ -161,7 +163,9 @@ export function renderChat(panel, user, navigation, config) {
                 const result = await config.getMessages(page);
                 if (!current() || !checkAccess(result)) return;
                 if (!result.ok || !Array.isArray(result.data)) {
-                    feedback(historyError, result.data?.error || "Could not load messages. Use Refresh to try again.");
+                    feedback(historyError, result.data?.error || (config.embedded
+                        ? "Could not load messages. Reload the page to try again."
+                        : "Could not load messages. Use Refresh to try again."));
                     if (!messages.size) empty.querySelector("h3").textContent = "Messages are unavailable";
                     return;
                 }
@@ -182,7 +186,7 @@ export function renderChat(panel, user, navigation, config) {
             loading = false;
             if (current()) {
                 thread.setAttribute("aria-busy", "false");
-                refresh.disabled = denied;
+                if (refresh) refresh.disabled = denied;
                 older.disabled = false;
                 older.hidden = !hasOlder || denied;
                 if (refreshPending) {
@@ -200,9 +204,6 @@ export function renderChat(panel, user, navigation, config) {
         },
         onStatus(state) {
             if (!current()) return;
-            const status = panel.querySelector(".chat-status");
-            status.dataset.state = state;
-            status.textContent = { live: "Live", connecting: "Connecting…", offline: "Offline" }[state];
             panel.querySelector(".chat-connection-note").hidden = state !== "offline";
         },
         onJoined() { void loadHistory(); },
@@ -217,7 +218,7 @@ export function renderChat(panel, user, navigation, config) {
         disconnect();
     });
 
-    refresh.addEventListener("click", () => void loadHistory());
+    refresh?.addEventListener("click", () => void loadHistory());
     older.addEventListener("click", () => void loadHistory(true));
     jump.addEventListener("click", scrollToLatest);
     thread.addEventListener("scroll", () => {

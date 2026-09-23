@@ -7,17 +7,19 @@ import { renderWorkspace as renderWorkspaceView } from "./views/workspaceView.js
 import { renderProject as renderProjectView } from "./views/projectView.js";
 import { renderTask as renderTaskView } from "./views/taskView.js";
 import { renderDirectMessages as renderDirectMessagesView } from "./views/directMessagesView.js";
+import { renderRegister as renderRegisterView } from "./views/registerView.js";
+import { getDirectConversations } from "./directMessages.js";
 
 let viewVersion = 0;
 let viewCleanups = [];
-const navigation = { renderLogin, renderApp, renderWorkspace, renderProject, renderTask, renderDirectMessages };
+const navigation = { renderLogin, renderRegister, renderApp, renderWorkspace, renderProject, renderTask, renderDirectMessages, };
 const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
 
 function applyTheme(preference) {
     if (!["system", "light", "dark"].includes(preference)) preference = "system";
     document.documentElement.dataset.themePreference = preference;
-    document.documentElement.dataset.theme = preference === "dark"
-        || (preference === "system" && systemTheme.matches) ? "dark" : "light";
+    document.documentElement.dataset.theme = preference === "dark" ||
+        (preference === "system" && systemTheme.matches) ? "dark" : "light";
     const toggle = document.querySelector("#theme-toggle");
     if (toggle) {
         const label = document.documentElement.dataset.theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
@@ -46,7 +48,7 @@ async function showView(render, layout) {
         }
     };
     if (layout) {
-        const page = await renderLayout({ ...layout, navigation: context });
+        const page = await renderLayout({...layout, navigation: context });
         if (!page) return;
         Object.assign(context, page);
     }
@@ -57,7 +59,7 @@ async function showView(render, layout) {
         heading.id = "page-title";
         heading.tabIndex = -1;
         document.title = heading.textContent === "TaskFlow" ? "TaskFlow — Sign in" : `${heading.textContent} — TaskFlow`;
-        document.getElementById("page-content")?.setAttribute("aria-labelledby", heading.id);
+        document.getElementById("page-content") ?.setAttribute("aria-labelledby", heading.id);
         heading.focus({ preventScroll: true });
     }
     window.scrollTo(0, 0);
@@ -67,23 +69,30 @@ function renderLogin(error = "") {
     return showView(context => renderLoginView(context, error));
 }
 
+function renderRegister() {
+    return showView(context => renderRegisterView(context));
+}
+
 function renderApp(user) {
     return showView(context => renderDashboard(user, context), { user, pageClass: "dashboard-page" });
 }
 
 function renderWorkspace(workspace, initialTab = "projects") {
-    return showView(context => renderWorkspaceView(workspace, { ...context, initialTab }), {
-        workspace, pageClass: "workspace-page",
+    return showView(context => renderWorkspaceView(workspace, {...context, initialTab }), {
+        workspace,
+        pageClass: "workspace-page",
         breadcrumbs: [{ label: "Workspaces", action: () => renderApp() }, { label: workspace.name }]
     });
 }
 
-function renderDirectMessages(member, workspace) {
+function renderDirectMessages(member, workspace = null) {
     return showView(context => renderDirectMessagesView(member, workspace, context), {
-        workspace, pageClass: "direct-messages-page",
+        workspace,
+        activeConversationId: member.user_id,
+        pageClass: "direct-messages-page",
         breadcrumbs: [
             { label: "Workspaces", action: () => renderApp() },
-            { label: workspace.name, action: () => renderWorkspace(workspace, "members") },
+            ...(workspace ? [{ label: workspace.name, action: () => renderWorkspace(workspace, "members") }] : []),
             { label: "Direct messages" }
         ]
     });
@@ -91,7 +100,8 @@ function renderDirectMessages(member, workspace) {
 
 function renderProject(project, workspace) {
     return showView(context => renderProjectView(project, workspace, context), {
-        workspace, pageClass: "project-page",
+        workspace,
+        pageClass: "project-page",
         breadcrumbs: [
             { label: "Workspaces", action: () => renderApp() },
             { label: workspace.name, action: () => renderWorkspace(workspace) },
@@ -102,7 +112,8 @@ function renderProject(project, workspace) {
 
 function renderTask(task, project, workspace) {
     return showView(context => renderTaskView(task, project, workspace, context), {
-        workspace, pageClass: "task-page",
+        workspace,
+        pageClass: "task-page",
         breadcrumbs: [
             { label: "Workspaces", action: () => renderApp() },
             { label: workspace.name, action: () => renderWorkspace(workspace) },
@@ -118,15 +129,22 @@ async function initApp() {
     else await renderLogin(result.status === 401 ? "" : result.data.error);
 }
 
-async function renderLayout({ navigation, user, workspace = null,
-    breadcrumbs = [{ label: "Workspaces" }], pageClass = "" }) {
+async function renderLayout({
+    navigation,
+    user,
+    workspace = null,
+    activeConversationId = null,
+    breadcrumbs = [{ label: "Workspaces" }],
+    pageClass = ""
+}) {
     const app = document.getElementById("app");
     app.setAttribute("aria-busy", "true");
-    const [userResult, workspaceResult, membersResult] = await Promise.all([
+    const [userResult, workspaceResult, membersResult, conversationsResult] = await Promise.all([
         user && "first_name" in user && "avatar_url" in user
             ? Promise.resolve({ ok: true, data: user }) : getCurrentUser(),
         getWorkspaces(),
-        workspace ? getWorkspacesMembers(workspace.id) : Promise.resolve({ ok: true, data: [] })
+        workspace ? getWorkspacesMembers(workspace.id) : Promise.resolve({ ok: true, data: [] }),
+        getDirectConversations()
     ]);
     if (navigation.isCurrent && !navigation.isCurrent()) return null;
     app.removeAttribute("aria-busy");
@@ -134,7 +152,7 @@ async function renderLayout({ navigation, user, workspace = null,
         navigation.renderLogin(userResult.status === 401 ? "" : userResult.data.error);
         return null;
     }
-    if (workspaceResult.status === 401 || membersResult.status === 401) {
+    if (workspaceResult.status === 401 || membersResult.status === 401 || conversationsResult.status === 401) {
         navigation.renderLogin();
         return null;
     }
@@ -143,19 +161,23 @@ async function renderLayout({ navigation, user, workspace = null,
     const workspaces = workspaceResult.ok ? workspaceResult.data : [];
     const members = membersResult.ok ? membersResult.data : null;
     const isOwner = Boolean(workspace && Number(workspace.owner_id) === Number(user.id));
-    const role = isOwner ? "owner" : members?.find(member =>
-        Number(member.user_id) === Number(user.id))?.role ?? null;
+    const role = isOwner ? "owner" : members ?.find(member =>
+        Number(member.user_id) === Number(user.id)) ?.role ?? null;
 
     app.innerHTML = `
         <div class="app-layout">
             <aside class="sidebar" aria-label="Workspace navigation">
                 <div class="sidebar-header"><img class="icon icon-mark" src="./assets/icons/mark.svg" width="24" height="24" alt="" aria-hidden="true"><span>TaskFlow</span></div>
                 <nav class="sidebar-navigation" aria-label="Workspaces">
-                    <button type="button" id="all-workspaces-button" class="workspace-button ${workspace ? "" : "is-active"}"
-                        ${workspace ? "" : 'aria-current="page"'}><img class="icon icon-workspace" src="./assets/icons/workspace.svg" width="18" height="18" alt="" aria-hidden="true"><span>All workspaces</span></button>
-                    <p class="sidebar-label">Workspaces</p>
+                    <button type="button" id="all-workspaces-button" class="workspace-button ${workspace || activeConversationId ? "" : "is-active"}"
+                        ${workspace || activeConversationId ? "" : 'aria-current="page"'}><img class="icon icon-workspace" src="./assets/icons/workspace.svg" width="18" height="18" alt="" aria-hidden="true"><span>All workspaces</span></button>
+                   <p class="sidebar-label">Workspaces</p>
                     <div id="workspace-list"></div>
                     <p id="sidebar-message" class="form-message" role="alert" hidden></p>
+
+                    <p class="sidebar-label">Messages</p>
+                    <div id="conversation-list"></div>
+                    <p id="conversation-message" class="form-message" role="alert" hidden></p>
                 </nav>
                 <div class="sidebar-account">
                     <button type="button" id="profile-button" class="account-profile" aria-label="Edit your profile">
@@ -179,6 +201,8 @@ async function renderLayout({ navigation, user, workspace = null,
     const content = app.querySelector("#page-content");
     const sidebarMessage = app.querySelector("#sidebar-message");
     const workspaceList = app.querySelector("#workspace-list");
+    const conversationList = app.querySelector("#conversation-list");
+    const conversationMessage = app.querySelector("#conversation-message");
     const breadcrumbList = app.querySelector(".breadcrumbs");
     const themeToggle = app.querySelector("#theme-toggle");
     applyTheme(document.documentElement.dataset.themePreference);
@@ -196,8 +220,8 @@ async function renderLayout({ navigation, user, workspace = null,
         Object.assign(user, updated);
         const name = user.first_name || user.username || user.email;
         app.querySelector(".account-name").textContent = name;
-        app.querySelector(".avatar-initial").textContent = Array.from(name)[0]?.toUpperCase() || "?";
-        const avatar = app.querySelector(".avatar img");
+        app.querySelector(".avatar-initial").textContent = Array.from(name)[0] ?.toUpperCase() || "?";
+        const avatar = app.querySelector("#profile-button .avatar img");
         const url = apiAssetUrl(user.avatar_url);
         avatar.hidden = !url;
         avatar.onerror = () => { avatar.hidden = true; };
@@ -239,16 +263,19 @@ async function renderLayout({ navigation, user, workspace = null,
         else {
             const image = document.createElement("img");
             image.alt = "";
-            image.onerror = () => { image.onerror = null; image.src = "./assets/icons/folder.svg"; };
+            image.onerror = () => {
+                image.onerror = null;
+                image.src = "./assets/icons/folder.svg";
+            };
             image.src = item.icon_type === "image" && apiAssetUrl(item.icon_value) || "./assets/icons/folder.svg";
             icon.appendChild(image);
         }
         button.title = item.name;
-        if (workspace && Number(item.id) === Number(workspace.id)) {
+        if (!activeConversationId && workspace && Number(item.id) === Number(workspace.id)) {
             button.classList.add("is-active");
             button.setAttribute("aria-current", "page");
         }
-        button.addEventListener("click", () => withBusy(button, async () => {
+        button.addEventListener("click", () => withBusy(button, async() => {
             setMessage(sidebarMessage);
             const result = await getWorkspaceById(item.id);
             if (!current()) return;
@@ -264,9 +291,61 @@ async function renderLayout({ navigation, user, workspace = null,
         empty.textContent = "No workspaces yet.";
         workspaceList.appendChild(empty);
     }
-    return { content, user, updateUser, workspaces, members, role, isOwner,
+    function displayConversations(result) {
+        setMessage(conversationMessage, result.ok ? "" : result.data.error);
+        if (!result.ok) return;
+        conversationList.replaceChildren();
+        for (const conversation of result.data) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "workspace-button conversation-button";
+            const name = conversation.first_name || conversation.username || "User";
+            const initial = Array.from(name)[0]?.toUpperCase() || "?";
+            button.innerHTML = `
+                <span class="avatar" aria-hidden="true"><span>${escapeHTML(initial)}</span><img alt="" hidden></span>
+                <span class="conversation-copy"><span>${escapeHTML(name)}</span><span class="conversation-preview"></span></span>`;
+            button.title = name;
+            button.querySelector(".conversation-preview").textContent = conversation.last_message;
+            const avatar = button.querySelector("img");
+            const url = apiAssetUrl(conversation.avatar_url);
+            avatar.hidden = !url;
+            avatar.onerror = () => { avatar.hidden = true; };
+            if (url) avatar.src = url;
+            if (Number(conversation.user_id) === Number(activeConversationId)) {
+                button.classList.add("is-active");
+                button.setAttribute("aria-current", "page");
+            }
+            button.addEventListener("click", () => navigation.renderDirectMessages(conversation));
+            conversationList.appendChild(button);
+        }
+        if (!result.data.length) {
+            const empty = document.createElement("p");
+            empty.className = "sidebar-empty";
+            empty.textContent = "No conversations yet.";
+            conversationList.appendChild(empty);
+        }
+    }
+    let conversationVersion = 0;
+    async function refreshConversations() {
+        const version = ++conversationVersion;
+        const result = await getDirectConversations();
+        if (!current() || version !== conversationVersion) return;
+        if (result.status === 401) return navigation.renderLogin();
+        displayConversations(result);
+    }
+    displayConversations(conversationsResult);
+    return {
+        content,
+        user,
+        updateUser,
+        refreshConversations,
+        workspaces,
+        members,
+        role,
+        isOwner,
         membersError: membersResult.ok ? "" : membersResult.data.error,
-        workspacesError: workspaceResult.ok ? "" : workspaceResult.data.error };
+        workspacesError: workspaceResult.ok ? "" : workspaceResult.data.error
+    };
 }
 
 function setupProfileDialog(app, user, updateUser, current, navigation) {
@@ -317,7 +396,7 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
     const profileAvatarForm = dialog.querySelector("#profile-avatar-form");
     const profileButtons = dialog.querySelectorAll('button[type="submit"], #logout-button');
     let profileBusy = false;
-    dialog.querySelector("#logout-button").addEventListener("click", async () => {
+    dialog.querySelector("#logout-button").addEventListener("click", async() => {
         if (profileBusy) return;
         profileBusy = true;
         dialog.setAttribute("aria-busy", "true");
@@ -336,7 +415,7 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
         }
     });
     const displayProfile = () => {
-        dialog.querySelector("#profile-initial").textContent = Array.from(user.first_name || user.username || user.email)[0]?.toUpperCase() || "?";
+        dialog.querySelector("#profile-initial").textContent = Array.from(user.first_name || user.username || user.email)[0] ?.toUpperCase() || "?";
         const avatar = dialog.querySelector("#profile-avatar");
         const url = apiAssetUrl(user.avatar_url);
         avatar.hidden = !url;
@@ -345,7 +424,7 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
         else avatar.removeAttribute("src");
     };
     displayProfile();
-    const saveProfile = async (request, feedback, onSuccess) => {
+    const saveProfile = async(request, feedback, onSuccess) => {
         if (profileBusy) return;
         profileBusy = true;
         dialog.setAttribute("aria-busy", "true");
@@ -392,7 +471,7 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
     });
 
     const copy = dialog.querySelector("#copy-email-button");
-    copy.addEventListener("click", () => withBusy(copy, async () => {
+    copy.addEventListener("click", () => withBusy(copy, async() => {
         try {
             await navigator.clipboard.writeText(user.email);
             if (!current()) return;
@@ -407,7 +486,11 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
 
 function escapeHTML(value = "") {
     return String(value ?? "").replace(/[&<>"']/g, character => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
     }[character]));
 }
 
