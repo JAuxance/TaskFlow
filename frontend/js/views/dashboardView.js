@@ -1,3 +1,4 @@
+import { escapeHTML, setMessage, withBusy } from "../ui.js";
 import { createWorkspace, getWorkspaceById, getWorkspacesMembers } from "../workspaces.js";
 import { apiAssetUrl } from "../api.js";
 import { getProjects } from "../projects.js";
@@ -269,31 +270,4 @@ export async function renderDashboard(user, navigation) {
     statusFilter.addEventListener("change", displayTasks);
     retryButton.addEventListener("click", () => workspacesError ? navigation.renderApp(user) : loadOverview());
     loadOverview();
-}
-
-function escapeHTML(value = "") {
-    return String(value ?? "").replace(/[&<>"']/g, character => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[character]));
-}
-
-
-function setMessage(element, text = "", type = "error") {
-    if (!element) return;
-    element.textContent = text;
-    element.hidden = !text;
-    element.dataset.type = type;
-    element.setAttribute("role", type === "error" ? "alert" : "status");
-}
-
-async function withBusy(control, action) {
-    const wasDisabled = control.disabled;
-    control.disabled = true;
-    control.setAttribute("aria-busy", "true");
-    try {
-        return await action();
-    } finally {
-        control.disabled = wasDisabled;
-        control.removeAttribute("aria-busy");
-    }
 }

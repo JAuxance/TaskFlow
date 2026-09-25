@@ -9,7 +9,7 @@ from app.db import (
     add_workspace_member,
     create_workspace_message,
     create_workspace_with_owner,
-    delet_workspace,
+    delete_workspace_db,
     get_user_by_email,
     get_user_by_id,
     get_workspace_member,
@@ -17,9 +17,9 @@ from app.db import (
     get_workspace_messages_db,
     get_workspaces_by_member,
     update_workspace,
-    update_role_member,
-    delete_member_db,
-    crowned_king,
+    update_workspace_member_role,
+    delete_workspace_member,
+    transfer_workspace_owner,
     update_workspace_icon_db,
 )
 from app.permissions import (
@@ -33,10 +33,18 @@ from app.validation import get_json_object, get_pagination, is_valid_id, is_vali
 
 workspaces_bp = Blueprint("workspaces", __name__)
 
-def register_socketio_events(socketio):
-    @socketio.on("connect")
-    def handle_connect():
-        print("Socket client connected")
+
+def _workspace_response(workspace):
+    return {
+        "id": workspace[0],
+        "owner_id": workspace[1],
+        "name": workspace[2],
+        "created_at": workspace[3].isoformat(),
+        "icon_type": workspace[4],
+        "icon_value": workspace[5],
+        "color": workspace[6],
+    }
+
 
 @workspaces_bp.route("/api/workspaces", methods=["POST"])
 def create_workspace_endpoint():
@@ -52,15 +60,7 @@ def create_workspace_endpoint():
     if not is_valid_text(name, allow_empty=False, max_length=50):
         return {"error": "invalid name"}, 400
     workspace = create_workspace_with_owner(user_id, name)
-    return {
-        "id": workspace[0],
-        "owner_id": workspace[1],
-        "name": workspace[2],
-        "created_at": workspace[3].isoformat(),
-        "icon_type": workspace[4],
-        "icon_value": workspace[5],
-        "color": workspace[6],
-    }, 201
+    return _workspace_response(workspace), 201
 
 
 @workspaces_bp.route("/api/workspaces", methods=["GET"])
@@ -73,18 +73,7 @@ def get_workspaces():
         return error
     limit, offset = pagination
     workspaces = get_workspaces_by_member(user_id, limit, offset)
-    return [
-        {
-            "id": workspace[0],
-            "owner_id": workspace[1],
-            "name": workspace[2],
-            "created_at": workspace[3].isoformat(),
-            "icon_type": workspace[4],
-            "icon_value": workspace[5],
-            "color": workspace[6],
-        }
-        for workspace in workspaces
-    ], 200
+    return [_workspace_response(workspace) for workspace in workspaces], 200
 
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>", methods=["GET"])
@@ -95,28 +84,18 @@ def get_workspaces_by_id_route(workspace_id):
     workspace, error = get_workspace_with_permission(workspace_id, user_id)
     if error:
         return error
-    return {
-        "id": workspace[0],
-        "owner_id": workspace[1],
-        "name": workspace[2],
-        "created_at": workspace[3].isoformat(),
-        "icon_type": workspace[4],
-        "icon_value": workspace[5],
-        "color": workspace[6],
-    }, 200
+    return _workspace_response(workspace), 200
 
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>", methods=["DELETE"])
-def del_workspace(workspace_id):
+def delete_workspace(workspace_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
-    _, error = get_workspace_with_permission(
-        workspace_id, user_id, require_owner=True
-    )
+    _, error = get_workspace_with_permission(workspace_id, user_id, require_owner=True)
     if error:
         return error
-    if not delet_workspace(workspace_id):
+    if not delete_workspace_db(workspace_id):
         return resource_not_found()
     return {"message": "workspace deleted successfuly"}, 200
 
@@ -126,9 +105,7 @@ def workspace_update(workspace_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
-    _, error = get_workspace_with_permission(
-        workspace_id, user_id, ("owner", "admin")
-    )
+    _, error = get_workspace_with_permission(workspace_id, user_id, ("owner", "admin"))
     if error:
         return error
     data, error = get_json_object()
@@ -142,15 +119,7 @@ def workspace_update(workspace_id):
     edited_workspace = update_workspace(workspace_id, name)
     if not edited_workspace:
         return resource_not_found()
-    return {
-        "id": edited_workspace[0],
-        "owner_id": edited_workspace[1],
-        "name": edited_workspace[2],
-        "created_at": edited_workspace[3].isoformat(),
-        "icon_type": edited_workspace[4],
-        "icon_value": edited_workspace[5],
-        "color": edited_workspace[6],
-    }, 200
+    return _workspace_response(edited_workspace), 200
 
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/members", methods=["POST"])
@@ -266,8 +235,8 @@ def update_member_role(workspace_id, user_id):
 
     if current_member_role == "admin" and target_member[3] == "admin":
         return insufficient_privileges()
-    
-    updated_member = update_role_member(workspace_id, user_id, role)
+
+    updated_member = update_workspace_member_role(workspace_id, user_id, role)
 
     if not updated_member:
         return resource_not_found()
@@ -284,7 +253,7 @@ def update_member_role(workspace_id, user_id):
 @workspaces_bp.route(
     "/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["DELETE"]
 )
-def delet_member_route(workspace_id, user_id):
+def delete_member(workspace_id, user_id):
     requester_id, error = get_authenticated_user()
     if error:
         return error
@@ -310,7 +279,7 @@ def delet_member_route(workspace_id, user_id):
     if requester_role == "owner" and target_member_role == "owner":
         if requester_id != workspace[1]:
             return insufficient_privileges()
-    deleted_member = delete_member_db(workspace_id, user_id)
+    deleted_member = delete_workspace_member(workspace_id, user_id)
     if not deleted_member:
         return resource_not_found()
     return {"message": f"member {deleted_member[0]} has been deleted"}, 200
@@ -320,7 +289,7 @@ def delet_member_route(workspace_id, user_id):
     "/api/workspaces/<int:workspace_id>/owner",
     methods=["PATCH"],
 )
-def transfer_crown(workspace_id):
+def transfer_owner(workspace_id):
     user_id, error = get_authenticated_user()
 
     if error:
@@ -350,7 +319,7 @@ def transfer_crown(workspace_id):
     if error:
         return error
 
-    updated_workspace = crowned_king(
+    updated_workspace = transfer_workspace_owner(
         target_user_id,
         workspace_id,
     )
@@ -368,6 +337,7 @@ def transfer_crown(workspace_id):
         "icon_value": updated_workspace[5],
         "color": updated_workspace[6],
     }, 200
+
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/icon", methods=["POST"])
 def update_workspace_icon_route(workspace_id):
@@ -391,7 +361,7 @@ def update_workspace_icon_route(workspace_id):
     if extension not in ["jpg", "jpeg", "png", "webp"]:
         return {"error": "icon file must be a jpg, jpeg, png, or webp"}, 400
     if "." not in new_icon.filename:
-            return {"error": "icon file must have an extension"}, 400
+        return {"error": "icon file must have an extension"}, 400
     if not new_icon.content_type or not new_icon.content_type.startswith("image/"):
         return {"error": "icon file must be an image"}, 400
     if len(new_icon.read(5 * 1024 * 1024 + 1)) > 5 * 1024 * 1024:
@@ -409,7 +379,9 @@ def update_workspace_icon_route(workspace_id):
         current_app.logger.exception("Could not save the workspace icon")
         return {"error": "could not save the workspace icon"}, 500
     try:
-        updated_workspace = update_workspace_icon_db(workspace_id, "image", f"/static/workspace_icons/{filename}")
+        updated_workspace = update_workspace_icon_db(
+            workspace_id, "image", f"/static/workspace_icons/{filename}"
+        )
     except Exception:
         if os.path.exists(save_path):
             os.remove(save_path)
@@ -418,7 +390,11 @@ def update_workspace_icon_route(workspace_id):
         if os.path.exists(save_path):
             os.remove(save_path)
         return resource_not_found()
-    if old_icon_type == "image" and old_icon_value and old_icon_value != "/static/workspace_icons/default.png":
+    if (
+        old_icon_type == "image"
+        and old_icon_value
+        and old_icon_value != "/static/workspace_icons/default.png"
+    ):
         old_filename = os.path.basename(old_icon_value)
         old_icon_path = os.path.join(icon_directory, old_filename)
         if os.path.exists(old_icon_path):
@@ -436,6 +412,8 @@ def update_workspace_icon_route(workspace_id):
         "icon_value": updated_workspace[5],
         "created_at": updated_workspace[3].isoformat(),
     }, 200
+
+
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/icon", methods=["PATCH"])
 def update_workspace_emoji_route(workspace_id):
     user_id, error = get_authenticated_user()
@@ -465,9 +443,15 @@ def update_workspace_emoji_route(workspace_id):
     updated_workspace = update_workspace_icon_db(workspace_id, "emoji", emoji)
     if not updated_workspace:
         return resource_not_found()
-    if old_icon_type == "image" and old_icon_value and old_icon_value != "/static/workspace_icons/default.png":
+    if (
+        old_icon_type == "image"
+        and old_icon_value
+        and old_icon_value != "/static/workspace_icons/default.png"
+    ):
         old_filename = os.path.basename(old_icon_value)
-        old_icon_path = os.path.join(current_app.static_folder, "workspace_icons", old_filename)
+        old_icon_path = os.path.join(
+            current_app.static_folder, "workspace_icons", old_filename
+        )
         if os.path.exists(old_icon_path):
             try:
                 os.remove(old_icon_path)
@@ -485,15 +469,14 @@ def update_workspace_emoji_route(workspace_id):
         "created_at": updated_workspace[3].isoformat(),
     }, 200
 
+
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/messages", methods=["POST"])
-def work_space_message(workspace_id):
+def send_workspace_message(workspace_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
 
-    workspace, error = get_workspace_with_permission(
-        workspace_id, user_id
-    )
+    workspace, error = get_workspace_with_permission(workspace_id, user_id)
     if error:
         return error
 
@@ -533,15 +516,14 @@ def work_space_message(workspace_id):
     socketio.emit("new_message", message_data, to=room)
     return message_data, 201
 
+
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/messages", methods=["GET"])
 def get_workspace_messages(workspace_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
 
-    workspace, error = get_workspace_with_permission(
-        workspace_id, user_id
-    )
+    workspace, error = get_workspace_with_permission(workspace_id, user_id)
     if error:
         return error
 

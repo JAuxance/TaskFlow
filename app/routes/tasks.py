@@ -1,6 +1,8 @@
-from flask import Blueprint
 from datetime import datetime
+
+from flask import Blueprint
 from psycopg import DataError
+
 from app.db import (
     create_task,
     delete_task,
@@ -30,9 +32,7 @@ def _validate_task_fields(data, *, partial=False):
             return {"error": "invalid status value"}, 400
     if not partial or "priority" in data:
         priority = data.get("priority")
-        if priority not in (
-            "low", "medium", "high", "urgent"
-        ):
+        if priority not in ("low", "medium", "high", "urgent"):
             return {"error": "invalid priority value"}, 400
     if "color" in data:
         if data["color"] not in allowed_colors:
@@ -71,13 +71,13 @@ def create_task_route(project_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
-    
+
     project, error = get_project_with_permission(
         project_id, user_id, ("owner", "admin", "member")
     )
     if error:
         return error
-    
+
     data, error = get_json_object()
     if error:
         return error
@@ -146,7 +146,9 @@ def update_task_route(task_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
-    task, error = get_task_with_permission(task_id, user_id, ("owner", "admin", "member"))
+    task, error = get_task_with_permission(
+        task_id, user_id, ("owner", "admin", "member")
+    )
     if error:
         return error
     data, error = get_json_object()

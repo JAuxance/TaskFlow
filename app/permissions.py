@@ -65,15 +65,15 @@ def get_task_with_permission(task_id, user_id, roles=None):
 def get_authenticated_user():
     token = session.get("session_token")
     if not token:
-        return None ,({"error":"token is missing"}, 401)
+        return None, ({"error": "token is missing"}, 401)
     db_session = get_session_by_token(token)
     if not db_session:
-        return None ,({"error": "session is missing"}, 401)
+        return None, ({"error": "session is missing"}, 401)
 
     if db_session[5]:
-        return None ,({"error": "revoked session"}, 401)
+        return None, ({"error": "revoked session"}, 401)
 
     if db_session[4] <= datetime.now(timezone.utc):
-        return None ,({"error": "session expired"}, 401)
+        return None, ({"error": "session expired"}, 401)
 
     return db_session[1], None

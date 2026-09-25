@@ -1,3 +1,4 @@
+import { escapeHTML, setMessage, withBusy } from "../ui.js";
 import { updateTask, deleteTask, TASK_COLORS } from "../task.js";
 
 const pad = value => String(value).padStart(2, "0");
@@ -254,31 +255,4 @@ export async function renderTask(task, project, workspace, navigation) {
             navigatingBack = false;
         }
     });
-}
-
-function escapeHTML(value = "") {
-    return String(value ?? "").replace(/[&<>"']/g, character => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[character]));
-}
-
-
-function setMessage(element, text = "", type = "error") {
-    if (!element) return;
-    element.textContent = text;
-    element.hidden = !text;
-    element.dataset.type = type;
-    element.setAttribute("role", type === "error" ? "alert" : "status");
-}
-
-async function withBusy(control, action) {
-    const wasDisabled = control.disabled;
-    control.disabled = true;
-    control.setAttribute("aria-busy", "true");
-    try {
-        return await action();
-    } finally {
-        control.disabled = wasDisabled;
-        control.removeAttribute("aria-busy");
-    }
 }

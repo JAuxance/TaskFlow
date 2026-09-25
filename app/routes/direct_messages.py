@@ -1,14 +1,16 @@
 from flask import Blueprint
 
 from app.db import (
-    create_direct_message, get_direct_conversations_db, get_direct_messages_db, get_user_by_id,
+    create_direct_message,
+    get_direct_conversations_db,
+    get_direct_messages_db,
+    get_user_by_id,
     users_share_workspace,
 )
 from app.extensions import socketio
 from app.permissions import get_authenticated_user
 from app.sockets.direct_messages import publish_direct_message
 from app.validation import get_json_object, get_pagination, is_valid_id, is_valid_text
-
 
 direct_messages_bp = Blueprint("direct_messages", __name__)
 
@@ -20,7 +22,10 @@ def conversation_access(user_id):
     if not is_valid_id(user_id):
         return None, ({"error": "Invalid receiver ID."}, 400)
     if sender_id == user_id:
-        return None, ({"error": "Cannot open a direct conversation with yourself."}, 400)
+        return None, (
+            {"error": "Cannot open a direct conversation with yourself."},
+            400,
+        )
     if not get_user_by_id(user_id):
         return None, ({"error": "Receiver not found."}, 404)
     if not users_share_workspace(sender_id, user_id):
@@ -59,9 +64,14 @@ def send_direct_message(user_id):
     created = create_direct_message(sender_id, user_id, content)
     if not created:
         return {"error": "Message creation failed."}, 500
-    message = message_data(created, {
-        "username": sender[1], "first_name": sender[3], "avatar_url": sender[4],
-    })
+    message = message_data(
+        created,
+        {
+            "username": sender[1],
+            "first_name": sender[3],
+            "avatar_url": sender[4],
+        },
+    )
     publish_direct_message(socketio, message)
     return message, 201
 
@@ -76,9 +86,18 @@ def get_direct_messages(user_id):
         return error
     limit, offset = pagination
     rows = get_direct_messages_db(current_user_id, user_id, limit, offset)
-    return [message_data(row, {
-        "username": row[5], "first_name": row[6], "avatar_url": row[7],
-    }) for row in rows], 200
+    return [
+        message_data(
+            row,
+            {
+                "username": row[5],
+                "first_name": row[6],
+                "avatar_url": row[7],
+            },
+        )
+        for row in rows
+    ], 200
+
 
 @direct_messages_bp.route("/api/direct_conversations", methods=["GET"])
 def get_direct_conversation():
@@ -86,11 +105,14 @@ def get_direct_conversation():
     if error:
         return error
     conversations = get_direct_conversations_db(user_id)
-    return [{
-        "user_id": row[0],
-        "username": row[3],
-        "first_name": row[4],
-        "avatar_url": row[5],
-        "last_message": row[1],
-        "last_message_time": row[2].isoformat() if row[2] else None,
-    } for row in conversations], 200
+    return [
+        {
+            "user_id": row[0],
+            "username": row[3],
+            "first_name": row[4],
+            "avatar_url": row[5],
+            "last_message": row[1],
+            "last_message_time": row[2].isoformat() if row[2] else None,
+        }
+        for row in conversations
+    ], 200

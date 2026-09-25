@@ -21,7 +21,10 @@ def register_direct_message_events(socketio):
             emit("socket_error", {"message": "unauthorized"})
             return
         if current_user_id == other_user_id:
-            emit("socket_error", {"message": "cannot open a direct conversation with yourself"})
+            emit(
+                "socket_error",
+                {"message": "cannot open a direct conversation with yourself"},
+            )
             return
         if not get_user_by_id(other_user_id):
             emit("socket_error", {"message": "user not found"})
@@ -30,7 +33,9 @@ def register_direct_message_events(socketio):
             emit("socket_error", {"message": "direct message access denied"})
             return
         # Recheck expiry/logout when delivering messages to an existing socket.
-        socketio.server.save_session(request.sid, {"dm_token": session["session_token"]})
+        socketio.server.save_session(
+            request.sid, {"dm_token": session["session_token"]}
+        )
         join_room(get_direct_message_room(current_user_id, other_user_id))
         emit("direct_message_joined", {"user_id": other_user_id})
 
@@ -45,9 +50,12 @@ def publish_direct_message(socketio, message):
             # A browser can disconnect while the recipient list is being read.
             continue
         db_session = get_session_by_token(token) if token else None
-        if (not db_session or db_session[5]
-                or db_session[4] <= datetime.now(timezone.utc)
-                or db_session[1] not in (message["sender_id"], message["receiver_id"])):
+        if (
+            not db_session
+            or db_session[5]
+            or db_session[4] <= datetime.now(timezone.utc)
+            or db_session[1] not in (message["sender_id"], message["receiver_id"])
+        ):
             socketio.server.leave_room(sid, room)
             socketio.emit("socket_error", {"message": "unauthorized"}, to=sid)
             continue
