@@ -48,6 +48,14 @@ export function uploadAvatar(file) {
     return apiRequest("/api/users/me/avatar", { method: "POST", body });
 }
 
+export function deleteAccount(password) {
+    return apiRequest("/api/users/me", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+    });
+}
+
 export async function logout() {
     return await apiRequest("/api/auth/logout", {
         method: "POST"

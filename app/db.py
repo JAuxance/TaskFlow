@@ -61,6 +61,36 @@ def get_user_by_id(user_id):
             return cursor.fetchone()
 
 
+def get_user_password_hash(user_id):
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT password_hash FROM users WHERE id = %s;", (user_id,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+
+def delete_user_account(user_id):
+    """Delete the account and return uploaded image paths to remove after commit."""
+    with get_db_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT avatar_url FROM users WHERE id = %s FOR UPDATE;", (user_id,)
+            )
+            user = cursor.fetchone()
+            if user is None:
+                return None
+            cursor.execute(
+                """
+                SELECT icon_value FROM workspaces
+                WHERE owner_id = %s AND icon_type = 'image' FOR UPDATE;
+                """,
+                (user_id,),
+            )
+            images = [user[0], *(row[0] for row in cursor.fetchall())]
+            cursor.execute("DELETE FROM users WHERE id = %s;", (user_id,))
+    return images
+
+
 def update_user_first_name(user_id, first_name):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:

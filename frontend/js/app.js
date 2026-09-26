@@ -1,5 +1,5 @@
 import { escapeHTML, setMessage, withBusy } from "./ui.js";
-import { getCurrentUser, logout, updateFirstName, uploadAvatar } from "./auth.js";
+import { getCurrentUser, logout, updateFirstName, uploadAvatar, deleteAccount } from "./auth.js";
 import { apiAssetUrl } from "./api.js";
 import { getWorkspaces, getWorkspacesMembers, getWorkspaceById } from "./workspaces.js";
 import { renderLogin as renderLoginView } from "./views/loginView.js";
@@ -388,6 +388,16 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
                 <button type="button" id="logout-button" class="btn-secondary">Sign out</button>
                 <p id="profile-logout-message" class="form-message" role="alert" hidden></p>
             </div>
+            <form id="profile-delete-form" class="settings-form profile-section">
+                <h3>Delete account</h3>
+                <p id="profile-delete-help" class="field-hint">Permanently delete your account and direct messages. Workspaces you own, including their projects, tasks and chat history, will also be deleted for all members. Transfer ownership first to keep them. Tasks and messages in other workspaces remain without your name.</p>
+                <div class="field">
+                    <label for="profile-delete-password">Current password</label>
+                    <input id="profile-delete-password" name="password" type="password" autocomplete="current-password" required aria-describedby="profile-delete-help">
+                </div>
+                <button type="submit" class="btn-danger">Delete my account</button>
+                <p id="profile-delete-message" class="form-message" role="alert" hidden></p>
+            </form>
         </div>`;
     app.appendChild(dialog);
     app.querySelector("#profile-button").addEventListener("click", () => dialog.showModal());
@@ -397,6 +407,34 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
     const profileAvatarForm = dialog.querySelector("#profile-avatar-form");
     const profileButtons = dialog.querySelectorAll('button[type="submit"], #logout-button');
     let profileBusy = false;
+    const deleteForm = dialog.querySelector("#profile-delete-form");
+    deleteForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (profileBusy) return;
+        const feedback = dialog.querySelector("#profile-delete-message");
+        setMessage(feedback);
+        const password = deleteForm.elements.password.value;
+        if (!password.trim()) return setMessage(feedback, "Enter your current password.");
+        if (!window.confirm("Permanently delete your account, direct messages, and all workspaces you own with their projects, tasks and chat history? This cannot be undone.")) return;
+        profileBusy = true;
+        dialog.setAttribute("aria-busy", "true");
+        profileButtons.forEach(button => { button.disabled = true; });
+        try {
+            const result = await deleteAccount(password);
+            if (!current()) return;
+            if (result.ok || result.status === 401) {
+                dialog.close();
+                await navigation.renderLogin();
+            } else {
+                setMessage(feedback, result.data.error);
+            }
+        } finally {
+            deleteForm.elements.password.value = "";
+            profileBusy = false;
+            dialog.removeAttribute("aria-busy");
+            profileButtons.forEach(button => { button.disabled = false; });
+        }
+    });
     dialog.querySelector("#logout-button").addEventListener("click", async() => {
         if (profileBusy) return;
         profileBusy = true;

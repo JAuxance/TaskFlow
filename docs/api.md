@@ -22,6 +22,7 @@ List endpoints accept `page` (default `1`) and `limit` (default `20`, maximum `1
 | GET | `/api/auth/me` | None. | `200`: current user profile. |
 | POST | `/api/auth/logout` | None. | `200`: confirmation; revokes the session. |
 | PATCH | `/api/users/me` | Required: `first_name`. | `200`: updated user profile. |
+| DELETE | `/api/users/me` | Required: current `password`. | `200`: confirmation; deletes the authenticated account and clears the cookie. |
 | POST | `/api/users/me/avatar` | Multipart file field `avatar`. | `200`: updated user profile. |
 
 Registration and login are public; the other routes require authentication. Registration accepts a nonblank username of at most 50 characters, a valid email of at most 255 characters, and a password of at least 8 characters. Duplicate emails return `409`. Invalid login credentials return `401`.
@@ -29,6 +30,8 @@ Registration and login are public; the other routes require authentication. Regi
 Registration is limited to 3 requests per hour per IP address; login is limited to 5 per minute per IP address. Sessions expire after 24 hours. `first_name` is trimmed, must be nonblank, and is limited to 100 characters.
 
 Registration returns `id`, `username`, `email`, and `created_at`. A user profile contains `id`, `username`, `email`, `first_name`, and `avatar_url`.
+
+Account deletion requires the current password (`403` if incorrect) and is limited to 5 requests per minute per IP. It always targets the authenticated user. Deletion removes all database sessions, memberships, direct messages, and owned workspaces with their projects, tasks, and chat history. Tasks and messages in other workspaces remain with user references set to `null`. Transfer workspace ownership first to preserve shared work. Uploaded avatars and owned workspace icons are removed after the database transaction commits; file removal failures are logged. This action is irreversible.
 
 ## Workspaces
 

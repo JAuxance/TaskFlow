@@ -20,18 +20,34 @@ app = Flask(__name__)
 if app_env == "development":
     CORS(
         app,
-        resources={r"/api/.*": {"origins": ["http://localhost:5500"]}},
+        resources={
+            r"/api/.*": {
+                "origins": ["http://localhost:5500"]
+            }
+        },
         supports_credentials=True,
     )
+
 limiter.init_app(app)
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+
+secret_key = os.getenv("SECRET_KEY")
+
+if app_env == "production" and not secret_key:
+    raise RuntimeError("SECRET_KEY must be configured in production")
+
+app.config["SECRET_KEY"] = secret_key
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = app_env == "production"
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-# Upload routes cap files at 5 MiB; allow room for multipart form headers.
 app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024
 
-socketio.init_app(app, cors_allowed_origins="http://localhost:5500")
+if app_env == "development":
+    socketio.init_app(
+        app,
+        cors_allowed_origins="http://localhost:5500"
+    )
+else:
+    socketio.init_app(app)
 register_workspace_chat_events(socketio)
 register_direct_message_events(socketio)
 app.register_blueprint(auth_bp)

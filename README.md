@@ -4,7 +4,7 @@ A collaborative project and task management application. TaskFlow organizes work
 
 ## Features
 
-- User registration, sign-in, and profile management.
+- User registration, sign-in, profile management, and account deletion.
 - Workspaces with member management and roles: owner, admin, member, and guest.
 - Projects and tasks with status, priority, assignee, and due date.
 - Real-time workspace chat and direct messages.

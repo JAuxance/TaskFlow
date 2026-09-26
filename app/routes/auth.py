@@ -1,19 +1,23 @@
 import os
+import re
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from email_validator import EmailNotValidError, validate_email
-from flask import Blueprint, request, session
+from flask import Blueprint, current_app, request, session
 from psycopg.errors import UniqueViolation
 
 from app.db import (
     create_session,
     create_user,
+    delete_user_account,
     get_user_by_email,
     get_user_by_id,
+    get_user_password_hash,
     revoke_session,
     update_user_avatar,
     update_user_first_name,
@@ -172,6 +176,45 @@ def first_name_edit():
         return resource_not_found()
 
     return _user_response(user), 200
+
+
+@auth_bp.route("/api/users/me", methods=["DELETE"])
+@limiter.limit("5 per minute")
+def delete_current_user():
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    data, error = get_json_object()
+    if error:
+        return error
+    password = data.get("password")
+    if not is_valid_text(password, allow_empty=False, allow_nul=True):
+        return {"error": "password is required"}, 400
+    password_hash = get_user_password_hash(user_id)
+    if password_hash is None:
+        return resource_not_found()
+    try:
+        password_hasher.verify(password_hash, password)
+    except VerifyMismatchError:
+        return {"error": "incorrect password"}, 403
+
+    images = delete_user_account(user_id)
+    if images is None:
+        return resource_not_found()
+    session.clear()
+    for image in images:
+        # Only remove generated uploads, never defaults or arbitrary stored paths.
+        if not image or not re.fullmatch(
+            r"/static/(avatars|workspace_icons)/[0-9]+_[a-f0-9]{32}\.(jpg|jpeg|png|webp)",
+            image,
+        ):
+            continue
+        path = Path(current_app.static_folder) / image.removeprefix("/static/")
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            current_app.logger.exception("Could not remove deleted account image")
+    return {"message": "account deleted successfully"}, 200
 
 
 @auth_bp.route("/api/users/me/avatar", methods=["POST"])

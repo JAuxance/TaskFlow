@@ -1,4 +1,10 @@
-export const API_BASE_URL = "http://localhost:5000";
+const isDevelopment =
+    window.location.hostname === "localhost"
+    || window.location.hostname === "127.0.0.1";
+
+export const API_BASE_URL = isDevelopment
+    ? "http://localhost:5000"
+    : "";
 
 export function apiAssetUrl(path) {
     if (typeof path !== "string" || !/^\/static\/(avatars|workspace_icons)\/[\w-]+\.(png|jpe?g|webp)$/i.test(path)) return "";
@@ -42,8 +48,6 @@ export async function apiRequest(endpoint, options = {}) {
     }
 }
 
-// The API defaults to 20 rows. Load every page so the board and member selectors
-// never silently omit tasks or the current user's workspace membership.
 export async function apiCollection(endpoint) {
     const items = [];
     for (let page = 1;; page += 1) {
