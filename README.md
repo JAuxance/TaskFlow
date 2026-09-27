@@ -120,5 +120,6 @@ Tests are in `app/tests/`. They use Flask and Socket.IO test clients with databa
 - [API security audit](docs/audit-securite-api.md)
 - [Audit closure report](docs/cloture-audit-securite-api.md)
 - [UI mockups](docs/design/figma-desktop/README.md)
+- [RNCP5 real application screenshots](docs/design/mockup/captures-reelles/README.md)
 
 The `/health` check verifies API and database availability separately from the automated tests.
