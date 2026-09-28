@@ -1,12 +1,10 @@
-name: taskflow-prod
-
 services:
   backend:
     build: .
     container_name: taskflow_backend
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:5000:5000"
+    expose:
+      - "5000"
     environment:
       APP_ENV: production
       DATABASE_HOST: db
@@ -44,6 +42,23 @@ services:
       timeout: 5s
       retries: 5
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: taskflow_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
   redis:
     image: redis:8-alpine
     container_name: taskflow_redis
@@ -53,3 +68,5 @@ volumes:
   postgres_data:
   avatars_data:
   workspace_icons_data:
+  caddy_data:
+  caddy_config:
