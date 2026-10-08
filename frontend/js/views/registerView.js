@@ -53,6 +53,7 @@ export function renderRegister({ renderApp, renderLogin }) {
                     
                 </div>
 
+                <p class="field-hint">Your username, email and password are needed to create and secure your account. Read how your data is used in the <a href="/confidentialite/">Privacy information</a>.</p>
                 <button type="submit" class="btn-primary">
                     Create account
                 </button>

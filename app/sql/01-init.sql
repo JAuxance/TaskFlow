@@ -8,6 +8,13 @@ CREATE TABLE users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Also supplied as a conservative migration for existing databases.
+CREATE TABLE file_cleanup_jobs (
+    path TEXT PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    attempts INTEGER NOT NULL DEFAULT 0
+);
+
 
 CREATE TABLE workspaces (
     id SERIAL PRIMARY KEY,

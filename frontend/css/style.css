@@ -460,6 +460,9 @@ body:has(dialog[open]) { overflow: hidden; }
 .login-brand .icon-mark { width: 32px; height: 32px; }
 .login-fields { display: flex; flex-direction: column; gap: 20px; }
 .login-form .btn-primary { width: 100%; min-height: 42px; }
+.login-fields ul, .login-fields ol { margin: 0; padding-left: 1.25em; }
+.privacy-check { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; font-weight: 600; line-height: 20px; }
+.privacy-check input { width: 16px; height: 16px; min-height: 16px; margin: 2px 0 0; padding: 0; }
 
 html[data-theme="dark"] [data-color] { --item-color: #91a0b8; --item-tint: #29364a; --item-ink: #c4cede; }
 html[data-theme="dark"] [data-color="blue"] { --item-color: #79a8f8; --item-tint: #223a5c; --item-ink: #a9caff; }

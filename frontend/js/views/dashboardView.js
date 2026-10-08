@@ -1,6 +1,6 @@
 import { escapeHTML, setMessage, withBusy } from "../ui.js";
 import { createWorkspace, getWorkspaceById, getWorkspacesMembers } from "../workspaces.js";
-import { apiAssetUrl } from "../api.js";
+import { showProtectedImage } from "../api.js";
 import { getProjects } from "../projects.js";
 import { getTasks, getTaskById, TASK_COLORS } from "../task.js";
 
@@ -87,8 +87,7 @@ export async function renderDashboard(user, navigation) {
         else {
             const image = document.createElement("img");
             image.alt = "";
-            image.onerror = () => { image.onerror = null; image.src = "./assets/icons/folder.svg"; };
-            image.src = workspace.icon_type === "image" && apiAssetUrl(workspace.icon_value) || "./assets/icons/folder.svg";
+            showProtectedImage(image, workspace.icon_type === "image" ? workspace.icon_value : "", "./assets/icons/folder.svg");
             icon.appendChild(image);
         }
         row.addEventListener("click", () => withBusy(row, async () => {

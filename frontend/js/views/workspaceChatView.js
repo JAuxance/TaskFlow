@@ -1,4 +1,4 @@
-import { apiAssetUrl } from "../api.js";
+import { showProtectedImage } from "../api.js";
 import {
     getWorkspaceMessages, sendWorkspaceMessage, subscribeWorkspaceChat, MESSAGE_PAGE_SIZE
 } from "../workspaceChat.js";
@@ -280,14 +280,11 @@ function messageRow(message, user) {
     row.querySelector("strong").textContent = name;
     row.querySelector(".chat-you").hidden = !own;
     row.querySelector(".chat-message-body").textContent = message.message;
-    const url = apiAssetUrl(author.avatar_url);
-    if (url) {
-        const image = document.createElement("img");
-        image.alt = "";
-        image.src = url;
-        image.addEventListener("error", () => image.remove(), { once: true });
-        row.querySelector(".avatar").appendChild(image);
-    }
+    const image = document.createElement("img");
+    image.alt = "";
+    image.hidden = true;
+    row.querySelector(".avatar").appendChild(image);
+    showProtectedImage(image, author.avatar_url, "");
     const time = row.querySelector("time");
     // PostgreSQL stores these timestamps in UTC without an offset in the API.
     const timestamp = /(?:Z|[+-]\d{2}:\d{2})$/i.test(message.created_at)

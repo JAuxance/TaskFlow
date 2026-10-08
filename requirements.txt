@@ -9,3 +9,4 @@ Flask-SocketIO==5.6.1
 gunicorn
 simple-websocket
 redis
+Pillow==11.3.0

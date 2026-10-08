@@ -11,7 +11,7 @@ import {
 } from "../workspaces.js";
 import { getProjects, createProject, getProjectById } from "../projects.js";
 import { getTasks, getTaskById, TASK_COLORS } from "../task.js";
-import { apiAssetUrl } from "../api.js";
+import { showProtectedImage } from "../api.js";
 import { renderWorkspaceChat } from "./workspaceChatView.js";
 
 const roleLabels = {
@@ -34,10 +34,9 @@ export async function renderWorkspace(workspace, navigation) {
         .join("");
     const colors = ["gray", "blue", "green", "yellow", "orange", "red", "purple"];
     const color = colors.includes(workspace.color) ? workspace.color : "gray";
-    const imageUrl = workspace.icon_type === "image" ? apiAssetUrl(workspace.icon_value) : "";
     const icon = workspace.icon_type === "emoji" && workspace.icon_value
         ? `<span class="workspace-icon workspace-icon-large" data-color="${color}" aria-hidden="true">${escapeHTML(workspace.icon_value)}</span>`
-        : `<img class="workspace-icon workspace-icon-large" data-color="${color}" src="${escapeHTML(imageUrl || "./assets/icons/folder.svg")}" width="48" height="48" alt="">`;
+        : `<img class="workspace-icon workspace-icon-large" data-color="${color}" src="./assets/icons/folder.svg" width="48" height="48" alt="">`;
 
     const tabs = canManage ? ["projects", "messages", "members", "settings"] : ["projects", "messages", "members"];
     let activeTab = tabs.includes(navigation.initialTab) ? navigation.initialTab : "projects";
@@ -272,9 +271,8 @@ export async function renderWorkspace(workspace, navigation) {
     const addMemberMessage = content.querySelector("#add-member-message");
     const deleteMessage = content.querySelector("#workspace-delete-message");
     const settingsForm = content.querySelector("#workspace-settings-form");
-    content.querySelector(".workspace-title-row img")?.addEventListener("error", event => {
-        event.currentTarget.src = "./assets/icons/folder.svg";
-    }, { once: true });
+    const titleIcon = content.querySelector(".workspace-title-row img");
+    if (titleIcon) showProtectedImage(titleIcon, workspace.icon_type === "image" ? workspace.icon_value : "", "./assets/icons/folder.svg");
 
     const iconMessage = content.querySelector("#workspace-icon-message");
     const iconControls = content.querySelectorAll(".workspace-customization input, .workspace-customization button");
@@ -330,7 +328,7 @@ export async function renderWorkspace(workspace, navigation) {
         const eligible = (members || []).filter(member => member.role === "owner"
             && String(member.user_id) !== String(workspace.owner_id));
         transferSelect.replaceChildren(new Option("Choose an owner", ""));
-        eligible.forEach(member => transferSelect.add(new Option(member.user_name || member.user_email, member.user_id)));
+        eligible.forEach(member => transferSelect.add(new Option(member.user_name || "Member", member.user_id)));
         if (eligible.some(member => String(member.user_id) === previousValue)) transferSelect.value = previousValue;
         transferSelect.disabled = eligible.length === 0;
         transferForm.querySelector("button").disabled = eligible.length === 0;
@@ -452,7 +450,7 @@ export async function renderWorkspace(workspace, navigation) {
         membersList.innerHTML = `
             <table class="member-table">
                 <thead><tr>
-                    <th scope="col">Name</th><th scope="col">Email</th>
+                    <th scope="col">Name</th>
                     <th scope="col">Role</th><th scope="col">Actions</th>
                 </tr></thead>
                 <tbody></tbody>
@@ -466,11 +464,10 @@ export async function renderWorkspace(workspace, navigation) {
                 && (role !== "admin" || ["member", "guest"].includes(member.role));
             const ownMembership = String(member.user_id) === String(user.id);
             const memberName = `${member.user_name}${ownMembership ? " (you)" : ""}`;
-            const initial = Array.from(member.user_name || member.user_email || "?")[0].toUpperCase();
+            const initial = Array.from(member.user_name || "?")[0].toUpperCase();
             const row = document.createElement("tr");
             row.innerHTML = `
                 <td><span class="member-identity"><span class="avatar" aria-hidden="true"><span>${escapeHTML(initial)}</span><img alt="" hidden></span><span class="member-name">${escapeHTML(memberName)}</span></span></td>
-                <td class="member-email">${escapeHTML(member.user_email)}</td>
                 <td class="member-role-cell" data-label="Role">${canManageMember ? `
                     <select class="member-role-select" aria-label="Role for ${escapeHTML(member.user_name)}">
                         ${roleOptions}
@@ -482,13 +479,7 @@ export async function renderWorkspace(workspace, navigation) {
                         aria-label="Remove ${escapeHTML(member.user_name)} from workspace">Remove</button>
                 ` : ownMembership ? '<span aria-label="No available actions">—</span>' : ""}</td>
             `;
-            const avatarUrl = apiAssetUrl(member.avatar_url);
-            if (avatarUrl) {
-                const image = row.querySelector(".avatar img");
-                image.onerror = () => { image.hidden = true; };
-                image.src = avatarUrl;
-                image.hidden = false;
-            }
+            showProtectedImage(row.querySelector(".avatar img"), member.avatar_url, "");
             body.appendChild(row);
             row.querySelector(".direct-message-button")?.addEventListener("click", () =>
                 navigation.renderDirectMessages(member, workspace));

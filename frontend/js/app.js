@@ -1,6 +1,7 @@
 import { escapeHTML, setMessage, withBusy } from "./ui.js";
-import { getCurrentUser, logout, updateFirstName, uploadAvatar, deleteAccount } from "./auth.js";
-import { apiAssetUrl } from "./api.js";
+import { getCurrentUser, logout, updateFirstName, uploadAvatar, removeAvatar, exportMyData, getDeletionPreview, deleteAccount } from "./auth.js";
+import { setupPrivacyContact } from "./privacy-contact.js";
+import { showProtectedImage } from "./api.js";
 import { getWorkspaces, getWorkspacesMembers, getWorkspaceById } from "./workspaces.js";
 import { renderLogin as renderLoginView } from "./views/loginView.js";
 import { renderDashboard } from "./views/dashboardView.js";
@@ -222,12 +223,7 @@ async function renderLayout({
         const name = user.first_name || user.username || user.email;
         app.querySelector(".account-name").textContent = name;
         app.querySelector(".avatar-initial").textContent = Array.from(name)[0] ?.toUpperCase() || "?";
-        const avatar = app.querySelector("#profile-button .avatar img");
-        const url = apiAssetUrl(user.avatar_url);
-        avatar.hidden = !url;
-        avatar.onerror = () => { avatar.hidden = true; };
-        if (url) avatar.src = url;
-        else avatar.removeAttribute("src");
+        showProtectedImage(app.querySelector("#profile-button .avatar img"), user.avatar_url, "");
     };
     updateUser(user);
     setupProfileDialog(app, user, updateUser, current, navigation);
@@ -268,7 +264,7 @@ async function renderLayout({
                 image.onerror = null;
                 image.src = "./assets/icons/folder.svg";
             };
-            image.src = item.icon_type === "image" && apiAssetUrl(item.icon_value) || "./assets/icons/folder.svg";
+            showProtectedImage(image, item.icon_type === "image" ? item.icon_value : "", "./assets/icons/folder.svg");
             icon.appendChild(image);
         }
         button.title = item.name;
@@ -307,11 +303,7 @@ async function renderLayout({
                 <span class="conversation-copy"><span>${escapeHTML(name)}</span><span class="conversation-preview"></span></span>`;
             button.title = name;
             button.querySelector(".conversation-preview").textContent = conversation.last_message;
-            const avatar = button.querySelector("img");
-            const url = apiAssetUrl(conversation.avatar_url);
-            avatar.hidden = !url;
-            avatar.onerror = () => { avatar.hidden = true; };
-            if (url) avatar.src = url;
+            showProtectedImage(button.querySelector("img"), conversation.avatar_url, "");
             if (Number(conversation.user_id) === Number(activeConversationId)) {
                 button.classList.add("is-active");
                 button.setAttribute("aria-current", "page");
@@ -369,8 +361,9 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
             </div>
             <form id="profile-name-form" class="settings-form profile-section">
                 <div class="field">
-                    <label for="profile-first-name">First name</label>
-                    <input id="profile-first-name" name="first_name" value="${escapeHTML(user.first_name)}" autocomplete="given-name" maxlength="100" placeholder="Enter your first name" required>
+                    <label for="profile-first-name">First name (optional)</label>
+                    <input id="profile-first-name" name="first_name" value="${escapeHTML(user.first_name)}" autocomplete="given-name" maxlength="100" placeholder="Enter your first name" aria-describedby="profile-name-help">
+                    <p id="profile-name-help" class="field-hint">Leave empty to use your username instead.</p>
                 </div>
                 <button type="submit" class="btn-primary">Save name</button>
                 <p id="profile-name-message" class="form-message" role="status" hidden></p>
@@ -382,7 +375,21 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
                     <p id="profile-avatar-help" class="field-hint">JPG, PNG or WebP · up to 5 MB</p>
                 </div>
                 <button type="submit" class="btn-secondary">Upload picture</button>
+                <button type="button" id="remove-avatar-button" class="btn-quiet">Remove picture</button>
                 <p id="profile-avatar-message" class="form-message" role="status" hidden></p>
+            </form>
+            <form id="profile-export-form" class="settings-form profile-section">
+                <h3>My data</h3>
+                <p id="profile-export-help" class="field-hint">Download a JSON copy of your profile, memberships, tasks you created or are assigned to in accessible workspaces, and messages you sent. The file contains personal information: keep it somewhere private. Downloading does not delete your account.</p>
+                <div class="field">
+                    <label for="profile-export-password">Current password for download</label>
+                    <input id="profile-export-password" name="password" type="password" autocomplete="current-password" required aria-describedby="profile-export-help">
+                </div>
+                <button type="submit" class="btn-secondary">Download my data</button>
+                <p id="profile-export-message" class="form-message" role="status" hidden></p>
+                <p class="field-hint">For image copies, logs, other data or a username/email correction, use the privacy contact. An email change requires verification.</p>
+                <p class="field-hint" data-privacy-contact>For data requests: <a href="mailto:contact@auxance.dev?subject=TaskFlow%20-%20personal%20data%20request">contact@auxance.dev</a>. Please never send your password.</p>
+                <nav class="privacy-links" aria-label="Privacy information"><a href="/confidentialite/">Privacy</a><a href="/cookies/">Cookies &amp; storage</a></nav>
             </form>
             <div class="settings-form profile-section">
                 <button type="button" id="logout-button" class="btn-secondary">Sign out</button>
@@ -390,12 +397,16 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
             </div>
             <form id="profile-delete-form" class="settings-form profile-section">
                 <h3>Delete account</h3>
-                <p id="profile-delete-help" class="field-hint">Permanently delete your account and direct messages. Workspaces you own, including their projects, tasks and chat history, will also be deleted for all members. Transfer ownership first to keep them. Tasks and messages in other workspaces remain without your name.</p>
+                <p id="profile-delete-help" class="field-hint">Review what will be deleted before continuing. If you own a workspace with other members, transfer ownership or explicitly delete that workspace first. Deleting this account removes your direct messages for both participants. Text in other workspaces can remain and may still contain personal information.</p>
+                <button type="button" id="review-deletion-button" class="btn-secondary">Review deletion</button>
+                <div id="profile-delete-summary" class="deletion-summary" aria-live="polite" hidden></div>
+                <p class="field-hint">Counts describe the current data and can change. Use the privacy contact for personal information in shared content. Backup retention is described in the privacy notice.</p>
+                <label class="deletion-confirm"><input id="confirm-account-deletion" type="checkbox" required disabled> I have reviewed the summary and understand this cannot be undone.</label>
                 <div class="field">
                     <label for="profile-delete-password">Current password</label>
                     <input id="profile-delete-password" name="password" type="password" autocomplete="current-password" required aria-describedby="profile-delete-help">
                 </div>
-                <button type="submit" class="btn-danger">Delete my account</button>
+                <button type="submit" id="delete-account-button" class="btn-danger" disabled>Delete my account</button>
                 <p id="profile-delete-message" class="form-message" role="alert" hidden></p>
             </form>
         </div>`;
@@ -405,8 +416,114 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
     dialog.addEventListener("cancel", event => { if (profileBusy) event.preventDefault(); });
     const profileNameForm = dialog.querySelector("#profile-name-form");
     const profileAvatarForm = dialog.querySelector("#profile-avatar-form");
-    const profileButtons = dialog.querySelectorAll('button[type="submit"], #logout-button');
+    const profileButtons = dialog.querySelectorAll('button[type="submit"], #logout-button, #remove-avatar-button, #review-deletion-button');
     let profileBusy = false;
+    let deletionPreview = null;
+    const deletionConfirm = dialog.querySelector("#confirm-account-deletion");
+    const deleteButton = dialog.querySelector("#delete-account-button");
+    function updateDeleteButton() {
+        deletionConfirm.disabled = profileBusy || !deletionPreview?.can_delete;
+        deleteButton.disabled = profileBusy || !deletionPreview?.can_delete || !deletionConfirm.checked;
+    }
+    deletionConfirm.addEventListener("change", updateDeleteButton);
+    function showDeletionSummary(preview) {
+        deletionPreview = preview;
+        deletionConfirm.checked = false;
+        const summary = dialog.querySelector("#profile-delete-summary");
+        summary.hidden = false;
+        summary.replaceChildren();
+        const title = document.createElement("strong");
+        title.textContent = preview.can_delete ? "Your deletion summary" : "Handle these shared workspaces first";
+        summary.appendChild(title);
+        const list = document.createElement("ul");
+        for (const workspace of preview.blocked_workspaces) {
+            const item = document.createElement("li");
+            item.textContent = `${workspace.name} — ${workspace.other_members} other member(s). Transfer ownership in Members, or delete the workspace in its settings.`;
+            list.appendChild(item);
+        }
+        const count = preview.counts;
+        const lines = [
+            "Your profile and all memberships will be removed; all sessions will end.",
+            `${count.direct_messages} direct message(s) will be removed for both participants.`,
+            `${count.images} current uploaded image(s) will be removed; failed file cleanup is retried separately.`,
+            `Workspaces deleted (no other members): ${preview.workspaces_to_delete.map(w => w.name).join(", ") || "none"}.`,
+            `Inside these workspaces: ${count.projects} project(s), ${count.tasks} task(s), ${count.workspace_messages} chat message(s).`,
+            `In other owners' workspaces: ${count.retained_tasks} related task(s) and ${count.retained_messages} authored message(s) remain, with account links removed.`
+        ];
+        for (const line of lines) {
+            const item = document.createElement("li");
+            item.textContent = line;
+            list.appendChild(item);
+        }
+        summary.appendChild(list);
+        updateDeleteButton();
+    }
+    async function loadDeletionSummary() {
+        if (profileBusy) return;
+        profileBusy = true;
+        deletionPreview = null;
+        deletionConfirm.checked = false;
+        updateDeleteButton();
+        profileButtons.forEach(button => { button.disabled = true; });
+        const feedback = dialog.querySelector("#profile-delete-message");
+        setMessage(feedback, "Loading deletion summary…", "info");
+        try {
+            const result = await getDeletionPreview();
+            if (!current()) return;
+            if (result.ok) {
+                showDeletionSummary(result.data);
+                setMessage(feedback);
+            } else {
+                dialog.querySelector("#profile-delete-summary").hidden = true;
+                setMessage(feedback, result.data.error);
+            }
+        } finally {
+            profileBusy = false;
+            profileButtons.forEach(button => { button.disabled = false; });
+            updateDeleteButton();
+        }
+    }
+    dialog.querySelector("#review-deletion-button").addEventListener("click", loadDeletionSummary);
+    setupPrivacyContact(dialog);
+    const exportForm = dialog.querySelector("#profile-export-form");
+    exportForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (profileBusy) return;
+        profileBusy = true;
+        profileButtons.forEach(button => { button.disabled = true; });
+        dialog.setAttribute("aria-busy", "true");
+        const feedback = dialog.querySelector("#profile-export-message");
+        setMessage(feedback, "Preparing your download…", "info");
+        try {
+            const result = await exportMyData(exportForm.elements.password.value);
+            if (!current()) return;
+            if (!result.ok) return setMessage(feedback, result.data.error);
+            const file = new Blob([JSON.stringify(result.data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(file);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "taskflow-my-data.json";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+            setMessage(feedback, "Download requested. Check your browser downloads.", "success");
+        } finally {
+            exportForm.elements.password.value = "";
+            profileBusy = false;
+            dialog.removeAttribute("aria-busy");
+            profileButtons.forEach(button => { button.disabled = false; });
+            updateDeleteButton();
+        }
+    });
+    dialog.addEventListener("close", () => {
+        exportForm.elements.password.value = "";
+        dialog.querySelector("#profile-delete-password").value = "";
+        deletionPreview = null;
+        deletionConfirm.checked = false;
+        dialog.querySelector("#profile-delete-summary").hidden = true;
+        updateDeleteButton();
+    });
     const deleteForm = dialog.querySelector("#profile-delete-form");
     deleteForm.addEventListener("submit", async event => {
         event.preventDefault();
@@ -415,17 +532,25 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
         setMessage(feedback);
         const password = deleteForm.elements.password.value;
         if (!password.trim()) return setMessage(feedback, "Enter your current password.");
-        if (!window.confirm("Permanently delete your account, direct messages, and all workspaces you own with their projects, tasks and chat history? This cannot be undone.")) return;
+        if (!deletionPreview?.can_delete || !deletionConfirm.checked) {
+            return setMessage(feedback, "Review and confirm the deletion summary first.");
+        }
+        if (!window.confirm("Delete your account, direct messages and the solo workspaces listed in the summary? This cannot be undone.")) return;
         profileBusy = true;
         dialog.setAttribute("aria-busy", "true");
         profileButtons.forEach(button => { button.disabled = true; });
         try {
-            const result = await deleteAccount(password);
+            const result = await deleteAccount(password, deletionPreview.workspaces_to_delete.map(workspace => workspace.id));
             if (!current()) return;
             if (result.ok || result.status === 401) {
                 dialog.close();
                 await navigation.renderLogin();
             } else {
+                if (result.status === 409) {
+                    deletionPreview = null;
+                    deletionConfirm.checked = false;
+                    dialog.querySelector("#profile-delete-summary").hidden = true;
+                }
                 setMessage(feedback, result.data.error);
             }
         } finally {
@@ -433,6 +558,7 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
             profileBusy = false;
             dialog.removeAttribute("aria-busy");
             profileButtons.forEach(button => { button.disabled = false; });
+            updateDeleteButton();
         }
     });
     dialog.querySelector("#logout-button").addEventListener("click", async() => {
@@ -451,16 +577,12 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
             profileBusy = false;
             dialog.removeAttribute("aria-busy");
             profileButtons.forEach(button => { button.disabled = false; });
+            updateDeleteButton();
         }
     });
     const displayProfile = () => {
         dialog.querySelector("#profile-initial").textContent = Array.from(user.first_name || user.username || user.email)[0] ?.toUpperCase() || "?";
-        const avatar = dialog.querySelector("#profile-avatar");
-        const url = apiAssetUrl(user.avatar_url);
-        avatar.hidden = !url;
-        avatar.onerror = () => { avatar.hidden = true; };
-        if (url) avatar.src = url;
-        else avatar.removeAttribute("src");
+        showProtectedImage(dialog.querySelector("#profile-avatar"), user.avatar_url, "");
     };
     displayProfile();
     const saveProfile = async(request, feedback, onSuccess) => {
@@ -481,6 +603,7 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
             profileBusy = false;
             dialog.removeAttribute("aria-busy");
             profileButtons.forEach(button => { button.disabled = false; });
+            updateDeleteButton();
         }
     };
     profileNameForm.addEventListener("submit", event => {
@@ -489,9 +612,13 @@ function setupProfileDialog(app, user, updateUser, current, navigation) {
         const enteredName = input.value;
         const name = enteredName.trim();
         const feedback = dialog.querySelector("#profile-name-message");
-        if (!name) return setMessage(feedback, "Enter your first name.");
         saveProfile(() => updateFirstName(name), feedback, () => {
-            if (input.value === enteredName) input.value = user.first_name;
+            if (input.value === enteredName) input.value = user.first_name || "";
+        });
+    });
+    dialog.querySelector("#remove-avatar-button").addEventListener("click", () => {
+        saveProfile(removeAvatar, dialog.querySelector("#profile-avatar-message"), () => {
+            profileAvatarForm.elements.avatar.value = "";
         });
     });
     profileAvatarForm.addEventListener("submit", event => {

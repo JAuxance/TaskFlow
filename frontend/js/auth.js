@@ -48,11 +48,27 @@ export function uploadAvatar(file) {
     return apiRequest("/api/users/me/avatar", { method: "POST", body });
 }
 
-export function deleteAccount(password) {
+export function removeAvatar() {
+    return apiRequest("/api/users/me/avatar", { method: "DELETE" });
+}
+
+export function exportMyData(password) {
+    return apiRequest("/api/users/me/data-export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+    });
+}
+
+export function getDeletionPreview() {
+    return apiRequest("/api/users/me/deletion-preview");
+}
+
+export function deleteAccount(password, confirmedWorkspaceIds) {
     return apiRequest("/api/users/me", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ password, confirmed_workspace_ids: confirmedWorkspaceIds })
     });
 }
 

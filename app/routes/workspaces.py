@@ -1,5 +1,4 @@
-import os
-import uuid
+from pathlib import Path
 
 from flask import Blueprint, current_app, request
 from psycopg.errors import UniqueViolation
@@ -29,6 +28,9 @@ from app.permissions import (
     insufficient_privileges,
     resource_not_found,
 )
+from app.sockets.access import refresh_chat_access
+from app.sockets.workspace_chat import publish_workspace_message
+from app.uploads import read_upload, remove_upload, stored_name
 from app.validation import get_json_object, get_pagination, is_valid_id, is_valid_text
 
 workspaces_bp = Blueprint("workspaces", __name__)
@@ -97,6 +99,7 @@ def delete_workspace(workspace_id):
         return error
     if not delete_workspace_db(workspace_id):
         return resource_not_found()
+    refresh_chat_access(socketio)
     return {"message": "workspace deleted successfuly"}, 200
 
 
@@ -183,8 +186,7 @@ def get_members(workspace_id):
             "role": member[3],
             "created_at": member[4].isoformat(),
             "user_name": member[5],
-            "user_email": member[6],
-            "avatar_url": member[7],
+            "avatar_url": member[6],
         }
         for member in members
     ], 200
@@ -282,6 +284,7 @@ def delete_member(workspace_id, user_id):
     deleted_member = delete_workspace_member(workspace_id, user_id)
     if not deleted_member:
         return resource_not_found()
+    refresh_chat_access(socketio)
     return {"message": f"member {deleted_member[0]} has been deleted"}, 200
 
 
@@ -354,54 +357,32 @@ def update_workspace_icon_route(workspace_id):
     new_icon = request.files.get("icon")
     if new_icon is None:
         return {"error": "icon file is required"}, 400
-    if new_icon.filename == "":
-        return {"error": "icon file must have a filename"}, 400
-
-    extension = new_icon.filename.rsplit(".", 1)[-1].lower()
-    if extension not in ["jpg", "jpeg", "png", "webp"]:
-        return {"error": "icon file must be a jpg, jpeg, png, or webp"}, 400
-    if "." not in new_icon.filename:
-        return {"error": "icon file must have an extension"}, 400
-    if not new_icon.content_type or not new_icon.content_type.startswith("image/"):
-        return {"error": "icon file must be an image"}, 400
-    if len(new_icon.read(5 * 1024 * 1024 + 1)) > 5 * 1024 * 1024:
-        return {"error": "icon file size must be at most 5MB"}, 400
-    filename = f"{workspace_id}_{uuid.uuid4().hex}.{extension}"
-    icon_directory = os.path.join(current_app.static_folder, "workspace_icons")
-    save_path = os.path.join(icon_directory, filename)
+    uploaded = read_upload(new_icon)
+    if uploaded is None:
+        return {"error": "icon file must be a jpg, png, or webp image of at most 5MB"}, 400
+    data, extension = uploaded
+    filename = stored_name(workspace_id, extension)
+    icon_url = f"/static/workspace_icons/{filename}"
+    directory = Path(current_app.static_folder) / "workspace_icons"
     old_icon_type = workspace[4]
     old_icon_value = workspace[5]
     try:
-        os.makedirs(icon_directory, exist_ok=True)
-        new_icon.seek(0)
-        new_icon.save(save_path)
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / filename).write_bytes(data)
     except OSError:
         current_app.logger.exception("Could not save the workspace icon")
         return {"error": "could not save the workspace icon"}, 500
     try:
-        updated_workspace = update_workspace_icon_db(
-            workspace_id, "image", f"/static/workspace_icons/{filename}"
-        )
+        updated_workspace = update_workspace_icon_db(workspace_id, "image", icon_url)
     except Exception:
-        if os.path.exists(save_path):
-            os.remove(save_path)
+        remove_upload(current_app.static_folder, icon_url)
+        current_app.logger.exception("Could not update the workspace icon")
         return {"error": "failed to update workspace icon"}, 500
     if not updated_workspace:
-        if os.path.exists(save_path):
-            os.remove(save_path)
+        remove_upload(current_app.static_folder, icon_url)
         return resource_not_found()
-    if (
-        old_icon_type == "image"
-        and old_icon_value
-        and old_icon_value != "/static/workspace_icons/default.png"
-    ):
-        old_filename = os.path.basename(old_icon_value)
-        old_icon_path = os.path.join(icon_directory, old_filename)
-        if os.path.exists(old_icon_path):
-            try:
-                os.remove(old_icon_path)
-            except OSError:
-                pass
+    if old_icon_type == "image":
+        remove_upload(current_app.static_folder, old_icon_value)
     return {
         "message": "Workspace icon updated successfully",
         "workspace_id": updated_workspace[0],
@@ -443,20 +424,8 @@ def update_workspace_emoji_route(workspace_id):
     updated_workspace = update_workspace_icon_db(workspace_id, "emoji", emoji)
     if not updated_workspace:
         return resource_not_found()
-    if (
-        old_icon_type == "image"
-        and old_icon_value
-        and old_icon_value != "/static/workspace_icons/default.png"
-    ):
-        old_filename = os.path.basename(old_icon_value)
-        old_icon_path = os.path.join(
-            current_app.static_folder, "workspace_icons", old_filename
-        )
-        if os.path.exists(old_icon_path):
-            try:
-                os.remove(old_icon_path)
-            except OSError:
-                pass
+    if old_icon_type == "image":
+        remove_upload(current_app.static_folder, old_icon_value)
 
     return {
         "message": "Workspace icon updated successfully",
@@ -512,8 +481,7 @@ def send_workspace_message(workspace_id):
             "avatar_url": user[4],
         },
     }
-    room = f"workspace_{workspace_id}"
-    socketio.emit("new_message", message_data, to=room)
+    publish_workspace_message(socketio, message_data)
     return message_data, 201
 
 

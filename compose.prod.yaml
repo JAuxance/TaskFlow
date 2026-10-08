@@ -9,6 +9,9 @@ services:
       - "127.0.0.1:5000:5000"
     environment:
       APP_ENV: production
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set the public HTTPS origin}
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-0}
+      PRIVACY_CONTACT_EMAIL: ${PRIVACY_CONTACT_EMAIL:-}
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_NAME: taskflow
@@ -16,9 +19,11 @@ services:
       DATABASE_PASSWORD: ${DATABASE_APP_PASSWORD}
       SECRET_KEY: ${SECRET_KEY}
       RATELIMIT_STORAGE_URI: redis://redis:6379
+      DELETION_LOG_PATH: /var/taskflow/deletions.log
     volumes:
       - avatars_data:/app/app/static/avatars
       - workspace_icons_data:/app/app/static/workspace_icons
+      - deletion_log:/var/taskflow
     depends_on:
       db:
         condition: service_healthy
@@ -53,3 +58,4 @@ volumes:
   postgres_data:
   avatars_data:
   workspace_icons_data:
+  deletion_log:

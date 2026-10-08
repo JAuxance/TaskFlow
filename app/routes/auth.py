@@ -1,20 +1,18 @@
-import os
 import re
 import secrets
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from email_validator import EmailNotValidError, validate_email
-from flask import Blueprint, current_app, request, session
-from psycopg.errors import UniqueViolation
+from flask import Blueprint, current_app, jsonify, request, session
+from psycopg.errors import UniqueViolation, DeadlockDetected, LockNotAvailable
 
 from app.db import (
     create_session,
     create_user,
-    delete_user_account,
+    clear_user_avatar,
     get_user_by_email,
     get_user_by_id,
     get_user_password_hash,
@@ -22,9 +20,14 @@ from app.db import (
     update_user_avatar,
     update_user_first_name,
 )
-from app.extensions import limiter
+from app.extensions import limiter, socketio
+from app.sockets.access import refresh_chat_access
 from app.permissions import get_authenticated_user, resource_not_found
+from app.uploads import read_upload, remove_upload, stored_name
 from app.validation import get_json_object, is_valid_text
+from app.data_export import collect_user_data
+from app.account_deletion import deletion_preview, delete_user_account
+from app.file_cleanup import cleanup_deleted_files
 
 auth_bp = Blueprint("auth", __name__)
 password_hasher = PasswordHasher()
@@ -34,6 +37,7 @@ def _start_session(user_id):
     token = secrets.token_urlsafe(32)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
     create_session(user_id, token, expires_at)
+    session.clear()  # Rotate the anonymous CSRF token after authentication.
     session["session_token"] = token
 
 
@@ -164,18 +168,78 @@ def first_name_edit():
 
     first_name = first_name.strip()
 
-    if not first_name:
-        return {"error": "first_name cannot be empty"}, 400
-
     if not is_valid_text(first_name, max_length=100):
         return {"error": "invalid first_name value"}, 400
 
-    user = update_user_first_name(user_id, first_name)
+    user = update_user_first_name(user_id, first_name or None)
 
     if not user:
         return resource_not_found()
 
     return _user_response(user), 200
+
+
+@auth_bp.route("/api/users/me/avatar", methods=["DELETE"])
+def remove_avatar():
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+
+    def remove_file(url):
+        if url and re.fullmatch(rf"/static/avatars/{user_id}_[a-f0-9]{{32}}\.(jpg|jpeg|png|webp)", url):
+            path = Path(current_app.static_folder) / url.removeprefix("/static/")
+            path.unlink(missing_ok=True)
+
+    try:
+        user = clear_user_avatar(user_id, remove_file)
+    except OSError:
+        current_app.logger.warning("Avatar removal failed; profile was preserved for retry")
+        return {"error": "Your picture could not be removed. Please try again later."}, 503
+    if user is None:
+        return resource_not_found()
+    return _user_response(user), 200
+
+
+@auth_bp.route("/api/users/me/data-export", methods=["POST"])
+@limiter.limit("3 per hour")
+def export_my_data():
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    data, error = get_json_object()
+    if error:
+        return error
+    if set(data) != {"password"}:
+        return {"error": "Only your current password is accepted."}, 400
+    if not is_valid_text(data["password"], allow_empty=False, allow_nul=True):
+        return {"error": "password is required"}, 400
+    password_hash = get_user_password_hash(user_id)
+    if password_hash is None:
+        return resource_not_found()
+    try:
+        password_hasher.verify(password_hash, data["password"])
+    except VerifyMismatchError:
+        return {"error": "incorrect password"}, 403
+    data, error = collect_user_data(user_id)
+    if error == "too_large":
+        return {"error": "Your data exceeds the automatic download limit. Please request a copy through the privacy contact.",
+                "code": "export_too_large"}, 409
+    if error:
+        return resource_not_found()
+    response = jsonify(data)
+    response.headers["Content-Disposition"] = 'attachment; filename="taskflow-my-data.json"'
+    return response
+
+
+@auth_bp.route("/api/users/me/deletion-preview", methods=["GET"])
+def preview_account_deletion():
+    user_id, error = get_authenticated_user()
+    if error:
+        return error
+    preview = deletion_preview(user_id)
+    if preview is None:
+        return resource_not_found()
+    return preview
 
 
 @auth_bp.route("/api/users/me", methods=["DELETE"])
@@ -187,33 +251,41 @@ def delete_current_user():
     data, error = get_json_object()
     if error:
         return error
-    password = data.get("password")
+    if set(data) != {"password", "confirmed_workspace_ids"}:
+        return {"error": "Review the deletion summary and confirm its workspace list."}, 400
+    password = data["password"]
+    confirmed = data["confirmed_workspace_ids"]
     if not is_valid_text(password, allow_empty=False, allow_nul=True):
         return {"error": "password is required"}, 400
-    password_hash = get_user_password_hash(user_id)
-    if password_hash is None:
-        return resource_not_found()
+    if (not isinstance(confirmed, list)
+            or any(type(item) is not int or item <= 0 for item in confirmed)
+            or len(set(confirmed)) != len(confirmed)):
+        return {"error": "invalid confirmed workspace list"}, 400
     try:
-        password_hasher.verify(password_hash, password)
-    except VerifyMismatchError:
-        return {"error": "incorrect password"}, 403
-
-    images = delete_user_account(user_id)
-    if images is None:
+        error = delete_user_account(user_id, password, confirmed)
+    except (DeadlockDetected, LockNotAvailable):
+        return {"error": "Your account is being updated. Review the summary and try again.",
+                "code": "deletion_busy"}, 409
+    if error == "not_found":
         return resource_not_found()
+    if error == "incorrect_password":
+        return {"error": "incorrect password"}, 403
+    if error == "shared_workspaces":
+        return {"error": "Transfer ownership or explicitly delete workspaces with other members first.",
+                "code": "shared_workspaces"}, 409
+    if error == "preview_changed":
+        return {"error": "Your workspace list has changed. Review the deletion summary again.",
+                "code": "preview_changed"}, 409
+    if error == "log_failed":
+        return {"error": "The account was kept because the deletion record could not be saved."}, 500
     session.clear()
-    for image in images:
-        # Only remove generated uploads, never defaults or arbitrary stored paths.
-        if not image or not re.fullmatch(
-            r"/static/(avatars|workspace_icons)/[0-9]+_[a-f0-9]{32}\.(jpg|jpeg|png|webp)",
-            image,
-        ):
-            continue
-        path = Path(current_app.static_folder) / image.removeprefix("/static/")
-        try:
-            path.unlink(missing_ok=True)
-        except OSError:
-            current_app.logger.exception("Could not remove deleted account image")
+    refresh_chat_access(socketio)
+    try:
+        result = cleanup_deleted_files(current_app.static_folder)
+        if result["failed"]:
+            current_app.logger.warning("Deleted-account images await cleanup retry")
+    except Exception:
+        current_app.logger.warning("Deleted-account cleanup deferred; retry the cleanup command")
     return {"message": "account deleted successfully"}, 200
 
 
@@ -227,42 +299,32 @@ def upload_avatar():
     new_avatar = request.files.get("avatar")
     if new_avatar is None:
         return {"error": "avatar file is required"}, 400
-    if new_avatar.filename == "":
-        return {"error": "avatar file must have a filename"}, 400
-    if not new_avatar.content_type.startswith("image/"):
-        return {"error": "avatar file must be an image"}, 400
-    if len(new_avatar.read()) > 5 * 1024 * 1024:  # 5MB limit
-        return {"error": "avatar file size must be less than 5MB"}, 400
-    if "." not in new_avatar.filename:
-        return {"error": "avatar file must have an extension"}, 400
-    extension = new_avatar.filename.rsplit(".", 1)[1].lower()
-    if extension not in ["jpg", "jpeg", "png", "webp"]:
-        return {"error": "avatar file must be a jpg, jpeg, png, or webp"}, 400
-    filename = f"{user_id}_{uuid.uuid4().hex}.{extension}"
-    save_path = f"app/static/avatars/{filename}"
+    uploaded = read_upload(new_avatar)
+    if uploaded is None:
+        return {"error": "avatar file must be a jpg, png, or webp image of at most 5MB"}, 400
+    data, extension = uploaded
     old_user = get_user_by_id(user_id)
     if not old_user:
         return resource_not_found()
-    old_avatar_url = old_user[4]
-
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    new_avatar.seek(0)
-    new_avatar.save(save_path)
-
-    user = update_user_avatar(user_id, f"/static/avatars/{filename}")
+    filename = stored_name(user_id, extension)
+    avatar_url = f"/static/avatars/{filename}"
+    directory = Path(current_app.static_folder) / "avatars"
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / filename).write_bytes(data)
+    except OSError:
+        current_app.logger.exception("Could not save the avatar")
+        return {"error": "could not save the avatar"}, 500
+    try:
+        user = update_user_avatar(user_id, avatar_url)
+    except Exception:
+        remove_upload(current_app.static_folder, avatar_url)
+        current_app.logger.exception("Could not update the avatar")
+        return {"error": "failed to update avatar"}, 500
     if not user:
-        if os.path.exists(save_path):
-            os.remove(save_path)
-
+        remove_upload(current_app.static_folder, avatar_url)
         return resource_not_found()
-    if old_avatar_url and old_avatar_url != "/static/avatars/default.png":
-        old_filename = os.path.basename(old_avatar_url)
-        old_avatar_path = os.path.join("app/static/avatars", old_filename)
-        if os.path.exists(old_avatar_path):
-            try:
-                os.remove(old_avatar_path)
-            except OSError:
-                pass
+    remove_upload(current_app.static_folder, old_user[4])
     return _user_response(user), 200
 
 
@@ -280,4 +342,5 @@ def logout():
 
     session.clear()
 
+    refresh_chat_access(socketio)
     return {"message": "logged out succesfully"}, 200

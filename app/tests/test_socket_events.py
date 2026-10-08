@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.extensions import socketio
+from app.sockets.workspace_chat import publish_workspace_message
 
 
 @pytest.mark.parametrize("is_member", [True, False])
@@ -42,7 +43,7 @@ def test_workspace_subscription_checks_membership(app, client, monkeypatch, is_m
             assert events[0]["name"] == "socket_error"
             assert events[0]["args"] == [{"message": "workspace access denied"}]
 
-        socketio.emit("new_message", {"id": 42}, to="workspace_10")
+        publish_workspace_message(socketio, {"id": 42, "workspace_id": 10})
         delivered = connection.get_received()
         assert [event["name"] for event in delivered] == (
             ["new_message"] if is_member else []
@@ -58,5 +59,18 @@ def test_workspace_subscription_requires_authentication(app, client):
         events = connection.get_received()
         assert events[0]["name"] == "socket_error"
         assert events[0]["args"] == [{"message": "unauthorized"}]
+    finally:
+        connection.disconnect()
+
+
+@pytest.mark.parametrize("payload", [None, [], "workspace", {}, {"workspace_id": True},
+                                     {"workspace_id": -1}, {"workspace_id": "10"}])
+def test_workspace_subscription_rejects_invalid_payload(app, client, payload):
+    connection = socketio.test_client(app, flask_test_client=client)
+    try:
+        connection.emit("join_workspace", payload)
+        events = connection.get_received()
+        assert [event["name"] for event in events] == ["socket_error"]
+        assert events[0]["args"] == [{"message": "valid workspace_id is required"}]
     finally:
         connection.disconnect()

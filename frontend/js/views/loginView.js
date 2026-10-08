@@ -27,6 +27,7 @@ export function renderLogin({ renderApp, renderRegister }, initialError = "") {
                 </div>
                 <button type="submit" class="btn-primary">Login</button>
                 <button type="button" id="register-button" class="btn-quiet">Create an account</button>
+                <a class="btn-quiet" href="./confidentialite/">Privacy notice</a>
             </form>
         </main>`;
     const form = app.querySelector("#login-form");

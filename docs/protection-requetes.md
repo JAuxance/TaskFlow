@@ -1,0 +1,74 @@
+# Protection des requêtes — RG-07
+
+## Fonctionnement
+
+Une attaque CSRF cherche à faire envoyer une action par le navigateur d'une personne connectée depuis un autre site. Le cookie d'authentification ne suffit pas à montrer que cette personne a choisi cette action.
+
+`app/security.py` contrôle toutes les requêtes qui modifient `/api/` : inscription, connexion, déconnexion, créations, modifications, suppressions et images. Le contrôle précède le traitement métier.
+
+1. Le frontend demande un jeton aléatoire à `GET /api/auth/csrf`. Flask l'associe à sa session signée.
+2. `frontend/js/api.js` transmet ce jeton dans `X-CSRF-Token` avec le cookie.
+3. Le serveur vérifie l'origine exacte et compare le jeton à celui de la session. Une origine étrangère, une origine absente sans Referer valable ou un jeton incorrect donne `403`.
+4. Après une connexion ou une inscription réussie, la session change et un nouveau jeton sera demandé. Les mutations suivantes récupèrent le jeton courant ; plusieurs sauvegardes simultanées partagent la requête de récupération en cours.
+
+Le jeton est une protection complémentaire : les routes continuent à vérifier l'utilisateur et ses droits. Il n'est ni un mot de passe ni un mécanisme d'autorisation. Une erreur ne déclenche pas une répétition automatique de la mutation. Une requête `FormData` conserve son type multipart et sa frontière générée par le navigateur.
+
+En développement, les origines autorisées sont `http://localhost:5500` et `http://127.0.0.1:5500`. En production, `PUBLIC_ORIGIN` doit être l'origine HTTPS publique exacte, sans chemin. Socket.IO utilise la même liste. Les cookies de production restent `Secure`, `HttpOnly` et `SameSite=Lax`.
+
+## Cache et scripts
+
+Les réponses de l'API et des images utilisateur portent `Cache-Control: no-store, private`, y compris les erreurs, avec `Vary: Cookie`. Nginx ne met pas en cache les réponses transmises au backend. Les futurs exports placés sous `/api/` bénéficieront du même contrôle.
+
+La configuration Nginx ajoute une CSP : scripts, styles et polices locaux, images locales ou `data:`, connexions de l'application, interdiction des objets intégrés et de l'encadrement du site dans une iframe. Elle complète `nosniff`, `DENY` et la politique de Referer. L'initialisation du thème a été déplacée sans changement de comportement dans `theme-init.js` pour éviter d'autoriser les scripts inline. Le client Socket.IO est maintenant hébergé localement ; son ancien CDN a été retiré de la CSP au lot RG-11.
+
+Les en-têtes de cache ne remplacent pas les permissions de lecture des images, prévues au lot RG-08.
+
+## Adresse IP et limitation de débit
+
+La chaîne prévue est : navigateur → Cloudflare → Nginx → backend local.
+
+- Nginx accepte `CF-Connecting-IP` uniquement lorsque son correspondant appartient à une plage officielle Cloudflare. Si un client contacte directement le serveur, ses faux en-têtes sont ignorés.
+- Nginx remplace `X-Forwarded-For` par l'adresse ainsi établie, au lieu de prolonger un en-tête reçu du client. Il fixe aussi le protocole et retire les autres en-têtes non utilisés.
+- Le backend reste publié sur `127.0.0.1:5000`. Avec `TRUST_PROXY_HEADERS=1`, Flask fait confiance à un seul niveau de proxy pour l'IP et le protocole, avant la limitation de débit. La valeur par défaut `0` ignore les en-têtes transmis.
+
+Le test montre que deux adresses transmises par le proxy disposent de quotas distincts. Deux personnes derrière une même adresse publique partagent naturellement le quota par IP. La liste Cloudflare doit être revue avant installation et lors de ses mises à jour.
+
+## Déploiement préparé
+
+Ces étapes concernent la configuration Nginx active ; le fichier Compose Caddy reste une variante de secours. Le correctif est actuellement local.
+
+La branche inclut désormais les pages de préparation RG-02 et les outils de données : finaliser les informations signalées dans [la procédure de publication](donnees-personnelles.md) avant de publier cette version complète. Copier le frontend entier, dont `vendor/`, `confidentialite/` et `cookies/`, et recharger les anciens onglets avec actualisation du cache si nécessaire.
+
+1. Sauvegarder les versions actives du site Nginx, du frontend et l'identifiant de l'image backend pour un retour arrière. Comparer le site proposé à la configuration réelle, notamment les chemins du frontend et des certificats et les réglages Certbot.
+2. Installer les trois fichiers inclus de `deploy/nginx/` dans `/etc/nginx/taskflow/` : `cloudflare-real-ip.conf`, `proxy-headers.conf`, `security-headers.conf`. Actualiser les plages Cloudflare depuis ses listes officielles si nécessaire. Préparer le site `taskflow.auxance.dev.conf` dans le site activé pour ce seul domaine.
+3. Dans Cloudflare, créer une règle **Bypass cache** pour les chemins commençant par `/api/`, `/socket.io/`, `/static/avatars/` et `/static/workspace_icons/`. La placer après toute règle contradictoire : la dernière règle applicable l'emporte pour un réglage en conflit. Purger les éventuelles copies antérieures des données et des anciens fichiers frontend. Prévoir une courte fenêtre de maintenance pour coordonner le changement.
+4. Configurer `PUBLIC_ORIGIN=https://taskflow.auxance.dev` dans le fichier d'environnement du VPS. Conserver la clé secrète existante. Construire l'image backend et préparer les fichiers frontend de la même révision, dont `js/theme-init.js`. Aucune migration SQL ni remise à zéro de la base n'est nécessaire.
+5. Installer le frontend préparé avant d'activer la nouvelle CSP. Vérifier Nginx avec `sudo nginx -t`, puis recharger avec `sudo systemctl reload nginx` uniquement si le contrôle réussit.
+6. Après installation de cette chaîne de proxy et vérification que le backend est toujours lié à l'adresse locale, mettre `TRUST_PROXY_HEADERS=1`, puis recréer le backend avec `docker compose -f compose.prod.yaml up -d --no-deps --build backend`. Ne pas publier PostgreSQL ou Redis. Une ancienne page ouverte devra être rechargée pour utiliser le nouveau client API.
+7. Vérifier sur le domaine public : connexion, création/modification, image, chat, déconnexion ; refus d'une mutation sans jeton ; origine WebSocket autorisée ; en-têtes CSP et `no-store`. Vérifier que les réponses privées ne deviennent jamais `HIT` dans Cloudflare après plusieurs lectures. `DYNAMIC` ou `BYPASS` est attendu selon son traitement.
+8. Contrôler l'IP dans un contexte administrateur, avec deux clients distincts et une tentative d'en-têtes falsifiés vers l'origine. Ne pas ajouter d'endpoint public révélant les informations de diagnostic. En cas d'échec fonctionnel, revenir ensemble à l'image, au frontend, à la configuration Nginx et aux variables sauvegardées.
+
+## Recette locale
+
+Depuis le dépôt, après installation de `requirements.txt` et `requirements-dev.txt` dans un environnement Python :
+
+```bash
+python -m pytest -q
+node --test frontend/tests/api.test.mjs
+docker compose -f compose.chat-tests.yaml up -d --wait
+TASKFLOW_CHAT_INTEGRATION=1 python -m pytest -q app/tests/integration
+python scripts/check_nginx_security.py
+docker compose -f compose.chat-tests.yaml down
+```
+
+Les tests unitaires et réseau doivent rester dans deux processus Python séparés. La base de recette est PostgreSQL 17, en mémoire temporaire, sur `127.0.0.1:55438`. Le script Nginx utilise Docker, OpenSSL et des certificats de test ; il ouvre temporairement `127.0.0.1:54443` et `127.0.0.1:54080`. Il ne contacte pas le VPS.
+
+Résultats à la clôture initiale du lot RG-07, le 8 octobre 2026 : **70 tests Python réussis**, **8 tests JavaScript réussis**, **4 tests HTTP/PostgreSQL CSRF réussis**, **16 tests de régression HTTP/WebSocket réussis**. Les deux modules réseau étaient volontairement ignorés dans le lancement unitaire. Le contrôle Nginx valide la syntaxe, le rejet d'IP falsifiées, le protocole transmis, les en-têtes de cache/CSP et la redirection HTTP. Un parcours supplémentaire dans le navigateur local confirme connexion, création d'espace et déconnexion. Les résultats du lot suivant sont conservés séparément.
+
+## Références
+
+- [OWASP — prévention CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
+- [Flask — proxy inverse](https://flask.palletsprojects.com/en/stable/deploying/proxy_fix/)
+- [Nginx — adresse réelle du client](https://nginx.org/en/docs/http/ngx_http_realip_module.html)
+- [Cloudflare — restitution de l'adresse cliente](https://developers.cloudflare.com/support/troubleshooting/restoring-visitor-ips/restoring-original-visitor-ips/)
+- [Cloudflare — ordre des règles de cache](https://developers.cloudflare.com/cache/how-to/cache-rules/order/)

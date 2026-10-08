@@ -9,7 +9,7 @@ export function renderDirectMessages(member, workspace, navigation) {
             <button type="button" class="btn-secondary direct-back">${workspace ? "Back to members" : "Back to workspaces"}</button>
         </header>
         <section class="direct-chat-panel" aria-label="Private conversation"></section>`;
-    const name = member.first_name || member.username || member.user_name || member.user_email || "Member";
+    const name = member.first_name || member.username || member.user_name || "Member";
     content.querySelector(".direct-recipient").textContent = `Conversation with ${name}`;
     content.querySelector(".direct-back").addEventListener("click", () => workspace
         ? navigation.renderWorkspace(workspace, "members") : navigation.renderApp());

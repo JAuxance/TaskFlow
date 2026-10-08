@@ -62,8 +62,7 @@ def get_task_with_permission(task_id, user_id, roles=None):
     return task, None
 
 
-def get_authenticated_user():
-    token = session.get("session_token")
+def get_session_user(token):
     if not token:
         return None, ({"error": "token is missing"}, 401)
     db_session = get_session_by_token(token)
@@ -77,3 +76,7 @@ def get_authenticated_user():
         return None, ({"error": "session expired"}, 401)
 
     return db_session[1], None
+
+
+def get_authenticated_user():
+    return get_session_user(session.get("session_token"))

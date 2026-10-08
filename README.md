@@ -63,7 +63,7 @@ python3 -m http.server 5500 --directory frontend
 
 Open [http://localhost:5500](http://localhost:5500), then create an account from the registration screen.
 
-Use `localhost` and port `5500` to match the origin allowed by the backend. The Socket.IO client is loaded from a CDN and requires an Internet connection.
+Use `localhost:5500` or `127.0.0.1:5500`; the frontend uses the same hostname for the API on port 5000. Fonts and the Socket.IO client are served locally with the frontend.
 
 ### 4. Check service health
 
@@ -112,10 +112,23 @@ python -m pytest -q
 
 Tests are in `app/tests/`. They use Flask and Socket.IO test clients with database calls replaced by test doubles, so PostgreSQL is not required. They check selected authentication, permissions, validation, and messaging behavior. Database queries and browser rendering are not covered by this suite.
 
+Opt-in network tests use a disposable PostgreSQL database and real HTTP/WebSocket connections. Run them in a separate Python process: see [chat access tests](docs/correction-acces-chat.md) and [request security tests](docs/protection-requetes.md). The latter also describes the JavaScript and Nginx checks.
+
+## Production request security
+
+Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by your deployment. Mutations now require the session's CSRF token and an allowed request origin; `frontend/js/api.js` sends the token automatically, including for login and uploads. Deploy frontend and backend together. Follow the [Nginx, proxy and cache installation procedure](docs/protection-requetes.md) before enabling `TRUST_PROXY_HEADERS=1`.
+
 ## Documentation
 
+- [Account deletion, migration and file cleanup](docs/suppression-compte.md)
+- [Privacy notice](docs/confidentialite.md)
+- [Data requests and incidents](docs/demandes-et-incidents.md)
+- [Retention and backups](docs/retention-sauvegardes.md)
+- [Personal data features and release preparation](docs/donnees-personnelles.md)
 - [Architecture](docs/architecture.md)
 - [API reference](docs/api.md)
+- [Request security and deployment](docs/protection-requetes.md)
+- [Real-time chat access](docs/correction-acces-chat.md)
 - [Database schema](docs/db.md)
 - [API security audit](docs/audit-securite-api.md)
 - [Audit closure report](docs/cloture-audit-securite-api.md)

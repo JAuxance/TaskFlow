@@ -69,28 +69,6 @@ def get_user_password_hash(user_id):
             return row[0] if row else None
 
 
-def delete_user_account(user_id):
-    """Delete the account and return uploaded image paths to remove after commit."""
-    with get_db_connection() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT avatar_url FROM users WHERE id = %s FOR UPDATE;", (user_id,)
-            )
-            user = cursor.fetchone()
-            if user is None:
-                return None
-            cursor.execute(
-                """
-                SELECT icon_value FROM workspaces
-                WHERE owner_id = %s AND icon_type = 'image' FOR UPDATE;
-                """,
-                (user_id,),
-            )
-            images = [user[0], *(row[0] for row in cursor.fetchall())]
-            cursor.execute("DELETE FROM users WHERE id = %s;", (user_id,))
-    return images
-
-
 def update_user_first_name(user_id, first_name):
     with get_db_connection() as connection:
         with connection.cursor() as cursor:
@@ -119,6 +97,21 @@ def update_user_avatar(user_id, avatar_url):
                 (avatar_url, user_id),
             )
             return cursor.fetchone()
+
+
+def clear_user_avatar(user_id, remove_file):
+    """Lock the profile so removing its current image cannot race an update."""
+    with get_db_connection() as connection, connection.cursor() as cursor:
+        cursor.execute("SELECT avatar_url FROM users WHERE id = %s FOR UPDATE;", (user_id,))
+        user = cursor.fetchone()
+        if user is None:
+            return None
+        remove_file(user[0])
+        cursor.execute("""
+            UPDATE users SET avatar_url = NULL WHERE id = %s
+            RETURNING id, username, email, first_name, avatar_url;
+        """, (user_id,))
+        return cursor.fetchone()
 
 
 def get_workspaces_by_member(user_id, limit, offset):
@@ -414,7 +407,7 @@ def get_workspace_members(workspace_id, limit, offset):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT wm.id, wm.workspace_id, wm.user_id, wm.role, wm.joined_at, u.username, u.email, u.avatar_url
+                SELECT wm.id, wm.workspace_id, wm.user_id, wm.role, wm.joined_at, u.username, u.avatar_url
                 FROM workspace_members AS wm
                 JOIN users AS u
                     ON u.id = wm.user_id
