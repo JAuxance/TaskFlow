@@ -17,13 +17,14 @@ Ils complètent les autres suites sans les remplacer : `pytest` (routes et sécu
 | `addresses.spec.ts` | Proxy Vite, protection des adresses selon la session, arrivée dans le premier workspace, renouvellement du jeton CSRF, historique du navigateur. |
 | `workspace-project.spec.ts` | Création d'un workspace depuis le tableau de bord, nom obligatoire, création d'un projet. |
 | `dashboard.spec.ts` | Tâches de chaque projet, filtre par statut, rôle affiché à chaque membre, bascule du thème. |
-| `profile.spec.ts` | Prénom, photo de profil, téléchargement des données avec mot de passe, copie de l'email, oubli des mots de passe à la fermeture, suppression du compte et blocage tant qu'un workspace est partagé. |
+| `profile.spec.ts` | Prénom, photo de profil, téléchargement des données avec mot de passe, copie de l'email, oubli des mots de passe à la fermeture, fermeture par un clic à côté, suppression du compte et blocage tant qu'un workspace est partagé. |
 | `task.spec.ts` | Création d'une tâche, statut et priorité enregistrés automatiquement, titre et description enregistrés sur demande, couleur, responsable et échéance, persistance, suppression. Enregistrements envoyés un par un, attendus avant le retour au tableau, annulés à l'écran si le serveur refuse. |
 | `project.spec.ts` | Renommage, description et suppression d'un projet ; un membre ajoute des tâches sans pouvoir modifier le projet. |
 | `guest.spec.ts` | Un guest voit le workspace sans aucune commande de gestion, lit le tableau et la tâche ; les champs sont désactivés **et** le serveur refuse les mêmes actions (403). |
 | `session.spec.ts` | Session expirée ou cookie absent : retour à la connexion ; message d'expiration dans le chat. |
 | `members.spec.ts` | Ajout d'un membre, changement de rôle, retrait et refus de la confirmation ; limites d'un admin ; le chat ouvert du membre retiré se ferme aussitôt et le serveur répond 404. |
 | `workspace.spec.ts` | Totaux et tâches prioritaires de l'aperçu, renommage, emoji et image du workspace, transfert de la propriété, suppression protégée par le nom exact. |
+| `motion.spec.ts` | Les écrans s'animent, sauf quand le système demande moins d'animations. |
 | `legal.spec.ts` | Pages de confidentialité et de cookies ouvertes à tous, liens entre elles et retour à l'application, capture de la page de confidentialité. |
 | `messaging.spec.ts` | Chat du workspace et messages privés entre deux navigateurs, sans rechargement ; historique lu par pages de cinquante ; message vide impossible, brouillon conservé si le serveur refuse ; conversation privée fermée quand les deux membres ne partagent plus de workspace. |
 | `responsive.spec.ts` | Mise en page à 1440 px et à 390 px : barre latérale, colonnes du Kanban, formulaire de tâche, absence de défilement horizontal. |
@@ -89,6 +90,11 @@ Les images sont dans `e2e/__screenshots__/<profil>/`, avec quatre profils : `des
 
 Elles sont reproductibles parce que les données sont fixes (`e2e/support/seed.ts`), que l'horloge du navigateur est figée au 12 octobre 2026 et que les dates des messages sont réécrites dans la base jetable. Elles ne valent que pour Chromium sous Linux : sur une autre machine, les polices et l'anticrénelage diffèrent.
 
+Deux réglages les rendent fiables :
+
+- **Tolérance de couleur à 0,02**, dix fois plus stricte que celle de Playwright par défaut (0,2). Avec la valeur par défaut, remplacer une couleur sombre par une autre passait inaperçu : c'est arrivé lors du changement de couleur de la barre latérale.
+- **Animations réduites** (`reducedMotion: 'reduce'`) pour tous les tests : l'application ne joue alors aucune animation, donc un clic ne tombe jamais sur un bloc en mouvement et les captures ne dépendent pas du temps. `motion.spec.ts` vérifie le cas animé.
+
 Pour les régénérer **volontairement**, après un changement visuel assumé :
 
 ```bash
@@ -115,4 +121,4 @@ Quelques repères techniques sont utilisés quand aucun rôle ni libellé ne con
 | `pytest` intégration (`TASKFLOW_CHAT_INTEGRATION=1`) | 41 réussis |
 | Tests unitaires du frontend | 84 réussis |
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
-| Playwright | 76 réussis sur les quatre profils |
+| Playwright | 78 réussis sur les quatre profils |

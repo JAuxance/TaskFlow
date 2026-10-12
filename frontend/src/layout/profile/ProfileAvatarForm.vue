@@ -58,8 +58,10 @@ function remove() {
             <input id="profile-avatar-input" ref="input" class="image-upload-input" type="file" name="avatar" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" required aria-describedby="profile-avatar-help">
             <p id="profile-avatar-help" class="field-hint">JPG, PNG or WebP · up to 5 MB</p>
         </div>
-        <button type="submit" class="btn-secondary" :disabled="busy">Upload picture</button>
-        <button id="remove-avatar-button" type="button" class="btn-quiet" :disabled="busy" @click="remove">Remove picture</button>
+        <div class="form-actions">
+            <button type="submit" class="btn-secondary" :disabled="busy">Upload picture</button>
+            <button id="remove-avatar-button" type="button" class="btn-quiet" :disabled="busy" @click="remove">Remove picture</button>
+        </div>
         <FormMessage id="profile-avatar-message" :text="message.text" :type="message.type" />
     </form>
 </template>

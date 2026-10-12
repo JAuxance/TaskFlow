@@ -88,25 +88,30 @@ function submit() {
 </script>
 
 <template>
-    <form id="profile-delete-form" class="settings-form profile-section" @submit.prevent="submit">
-        <h3>Delete account</h3>
-        <p id="profile-delete-help" class="field-hint">Review what will be deleted before continuing. If you own a workspace with other members, transfer ownership or explicitly delete that workspace first. Deleting this account removes your direct messages for both participants. Text in other workspaces can remain and may still contain personal information.</p>
-        <button id="review-deletion-button" type="button" class="btn-secondary" :disabled="busy" @click="review">Review deletion</button>
-        <div id="profile-delete-summary" class="deletion-summary" aria-live="polite" :hidden="!preview">
-            <template v-if="preview">
-                <strong>{{ preview.can_delete ? 'Your deletion summary' : 'Handle these shared workspaces first' }}</strong>
-                <ul>
-                    <li v-for="line in summaryLines" :key="line">{{ line }}</li>
-                </ul>
-            </template>
+    <!-- The explanation on one side, the controls on the other. -->
+    <form id="profile-delete-form" class="profile-section profile-row" @submit.prevent="submit">
+        <div class="profile-row-intro">
+            <h3>Delete account</h3>
+            <p id="profile-delete-help" class="field-hint">Review what will be deleted before continuing. If you own a workspace with other members, transfer ownership or explicitly delete that workspace first. Deleting this account removes your direct messages for both participants. Text in other workspaces can remain and may still contain personal information.</p>
         </div>
-        <p class="field-hint">Counts describe the current data and can change. Use the privacy contact for personal information in shared content. Backup retention is described in the privacy notice.</p>
-        <label class="deletion-confirm"><input id="confirm-account-deletion" v-model="confirmed" type="checkbox" required :disabled="busy || !preview?.can_delete"> I have reviewed the summary and understand this cannot be undone.</label>
-        <div class="field">
-            <label for="profile-delete-password">Current password</label>
-            <input id="profile-delete-password" v-model="password" name="password" type="password" autocomplete="current-password" required aria-describedby="profile-delete-help">
+        <div class="settings-form">
+            <button id="review-deletion-button" type="button" class="btn-secondary" :disabled="busy" @click="review">Review deletion</button>
+            <div id="profile-delete-summary" class="deletion-summary" aria-live="polite" :hidden="!preview">
+                <template v-if="preview">
+                    <strong>{{ preview.can_delete ? 'Your deletion summary' : 'Handle these shared workspaces first' }}</strong>
+                    <ul>
+                        <li v-for="line in summaryLines" :key="line">{{ line }}</li>
+                    </ul>
+                </template>
+            </div>
+            <p class="field-hint">Counts describe the current data and can change. Use the privacy contact for personal information in shared content. Backup retention is described in the privacy notice.</p>
+            <label class="deletion-confirm"><input id="confirm-account-deletion" v-model="confirmed" type="checkbox" required :disabled="busy || !preview?.can_delete"> I have reviewed the summary and understand this cannot be undone.</label>
+            <div class="field">
+                <label for="profile-delete-password">Current password</label>
+                <input id="profile-delete-password" v-model="password" name="password" type="password" autocomplete="current-password" required aria-describedby="profile-delete-help">
+            </div>
+            <button id="delete-account-button" type="submit" class="btn-danger" :disabled="busy || !preview?.can_delete || !confirmed">Delete my account</button>
+            <FormMessage id="profile-delete-message" :text="message.text" :type="message.type" />
         </div>
-        <button id="delete-account-button" type="submit" class="btn-danger" :disabled="busy || !preview?.can_delete || !confirmed">Delete my account</button>
-        <FormMessage id="profile-delete-message" :text="message.text" :type="message.type" />
     </form>
 </template>

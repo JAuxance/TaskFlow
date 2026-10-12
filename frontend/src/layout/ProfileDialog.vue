@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The profile dialog opened from the sidebar: account, first name, picture,
-// data export, sign-out and account deletion, one section per component.
+// The profile dialog opened from the sidebar: who is signed in and the sign-out,
+// then first name, picture, data export and account deletion, one section per component.
 import { computed, provide, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { logout } from '../api/auth';
@@ -79,14 +79,14 @@ defineExpose({ open: () => dialog.value?.open() });
                     <strong>{{ user?.username }}</strong>
                     <div class="email-copy"><span id="user-email" class="secondary-text">{{ user?.email }}</span><button id="copy-email-button" type="button" class="btn-quiet" :disabled="copying" @click="copyEmail">{{ copyLabel }}</button></div>
                 </div>
-            </div>
-            <ProfileNameForm ref="nameForm" />
-            <ProfileAvatarForm />
-            <ProfileExportForm />
-            <div class="settings-form profile-section">
                 <button id="logout-button" type="button" class="btn-secondary" :disabled="busy" @click="signOut">Sign out</button>
-                <FormMessage id="profile-logout-message" :text="logoutMessage" />
             </div>
+            <FormMessage id="profile-logout-message" :text="logoutMessage" />
+            <div class="profile-forms">
+                <ProfileNameForm ref="nameForm" />
+                <ProfileAvatarForm />
+            </div>
+            <ProfileExportForm />
             <ProfileDeletionForm />
         </div>
     </AppDialog>

@@ -21,11 +21,11 @@ export const test = base.extend<Fixtures>({
         await use();
     }, { auto: true }],
 
-    actor: async ({ browser, baseURL, viewport, colorScheme, isMobile, hasTouch, locale, timezoneId }, use) => {
+    actor: async ({ browser, baseURL, viewport, colorScheme, isMobile, hasTouch, locale, timezoneId, contextOptions }, use) => {
         const contexts: BrowserContext[] = [];
         await use(async name => {
             const context = await browser.newContext({
-                baseURL, viewport, colorScheme, isMobile, hasTouch, locale, timezoneId,
+                ...contextOptions, baseURL, viewport, colorScheme, isMobile, hasTouch, locale, timezoneId,
             });
             contexts.push(context);
             // The page and its API context share cookies, so the page opens signed in.

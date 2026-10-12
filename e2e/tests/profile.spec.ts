@@ -190,3 +190,23 @@ test.describe('account deletion', () => {
         expect(sql('SELECT count(*) FROM users')).toBe('2');
     });
 });
+
+test('a click beside the profile closes it, but not the end of a text selection', async ({ actor }) => {
+    const { page } = await actor('alice');
+    const profile = await openProfile(page);
+    const name = profile.getByLabel('First name (optional)');
+    await name.fill('Alice');
+
+    // Selecting the text and releasing the button outside the dialog keeps it open.
+    const field = (await name.boundingBox())!;
+    await page.mouse.move(field.x + field.width - 10, field.y + field.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(8, 8, { steps: 4 });
+    await page.mouse.up();
+    await expect(profile).toBeVisible();
+    await expect(name).toHaveValue('Alice');
+
+    // A click on the area around the dialog closes it, like its close button.
+    await page.mouse.click(8, 8);
+    await expect(profile).toBeHidden();
+});
