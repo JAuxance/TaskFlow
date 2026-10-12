@@ -1,6 +1,6 @@
 # Notice de confidentialité
 
-La page affichée par le site est [frontend/confidentialite/index.html](../frontend/confidentialite/index.html). Le contact des demandes est `contact@auxance.dev`.
+La page affichée par le site est [frontend-vue/src/views/PrivacyView.vue](../frontend-vue/src/views/PrivacyView.vue), à l'adresse `/confidentialite/`. Le contact des demandes est `contact@auxance.dev`.
 
 ## Qui traite les données
 

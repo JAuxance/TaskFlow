@@ -15,7 +15,6 @@ A collaborative project and task management application. TaskFlow organizes work
 - **Backend**: Python 3.12, Flask, Flask-SocketIO, and Psycopg.
 - **Database**: PostgreSQL 17.
 - **Frontend**: Vue 3, TypeScript, and Vite, in `frontend-vue/`. See [Vue frontend](docs/frontend-vue.md).
-- **Previous frontend**: vanilla JavaScript in `frontend/`, replaced by the Vue one and kept until it is removed.
 - **Local environment**: Docker Compose.
 
 ## Local setup
@@ -95,8 +94,7 @@ PostgreSQL data is stored in the `postgres_data` volume. Initialization scripts 
 ```text
 app/          Flask application, data access, routes, and Socket.IO events
 app/sql/      Database schema and application account initialization
-frontend-vue/ Vue 3 frontend
-frontend/     Previous frontend; still holds the stylesheet and icons the Vue one imports
+frontend-vue/ Vue 3 frontend: screens, styles, and visual assets
 e2e/          Browser tests and reference screenshots
 docs/         Documentation and design mockups
 compose.yaml  Docker Compose services
@@ -137,7 +135,7 @@ See [browser tests](docs/tests-e2e.md) for the covered journeys, reports and ref
 
 ## Production request security
 
-Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by your deployment. Mutations now require the session's CSRF token and an allowed request origin; `frontend/js/api.js` sends the token automatically, including for login and uploads. Deploy frontend and backend together. Follow the [Nginx, proxy and cache installation procedure](docs/protection-requetes.md) before enabling `TRUST_PROXY_HEADERS=1`.
+Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by your deployment. Mutations now require the session's CSRF token and an allowed request origin; the frontend HTTP client (`frontend-vue/src/api/client.ts`) sends the token automatically, including for login and uploads. Deploy frontend and backend together. Follow the [Nginx, proxy and cache installation procedure](docs/protection-requetes.md) before enabling `TRUST_PROXY_HEADERS=1`.
 
 ## Documentation
 
