@@ -1,4 +1,4 @@
-// The order is the cascade: tokens, shared blocks, the frame, then each screen.
+// The order is the cascade: tokens, shared blocks, the frame, each screen, then motion.
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/components.css';
@@ -10,6 +10,7 @@ import './styles/project.css';
 import './styles/chat.css';
 import './styles/auth.css';
 import './styles/legal.css';
+import './styles/motion.css';
 
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';

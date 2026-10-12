@@ -54,7 +54,7 @@ La refonte graphique a suivi la migration, une fois le code unique. Elle mélang
 
 | Élément | Choix |
 | --- | --- |
-| Barre latérale | Prune foncé dans les deux thèmes. L'élément ouvert est une pilule lilas. |
+| Barre latérale | Encre, presque noire, dans les deux thèmes. L'élément ouvert est une pilule lilas. |
 | Contenu | Fond gris très clair, cartes blanches sans contour, coins de 16 px. |
 | Actions | Un seul bleu : bouton principal, barres de progression, liens. Les boutons sont des pilules. |
 | Chiffres clés | Un aplat par total : lilas, citron, bleu ciel. Le total des retards passe à l'orange quand il n'est pas nul. |
@@ -64,6 +64,8 @@ La refonte graphique a suivi la migration, une fois le code unique. Elle mélang
 | Onglets | Contrôle segmenté : l'onglet ouvert est relevé en blanc. |
 | Logo | Une coche dont le grand trait s'incurve, blanche sur un carré bleu arrondi. Il sert aussi d'icône d'onglet. |
 | Police | Inter, embarquée ; aucune police n'est chargée depuis un autre site. |
+| Animations | Courtes (0,1 à 0,3 s) : un contrôle répond au pointeur, un écran ou un onglet fait monter ses blocs, une fenêtre s'ouvre et se referme en fondu. Tout est dans `src/styles/motion.css` et rien ne bouge quand le système demande moins d'animations (`prefers-reduced-motion`). |
+| Fenêtres | Une fenêtre se ferme par sa croix, par Échap ou par un clic à côté ; jamais pendant un enregistrement. |
 
 Toutes les couleurs sont dans `src/styles/tokens.css`, pour les deux thèmes ; les autres feuilles n'en écrivent aucune. Chaque aplat est une paire, un fond et son encre : en thème sombre la paire s'inverse, fond profond et encre vive. Les paires ont été choisies pour un contraste d'au moins 4,5 pour 1 entre le texte et son fond.
 
@@ -182,7 +184,7 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
 | Tests unitaires | 86 réussis |
-| Tests navigateur | 76 réussis sur les quatre profils |
+| Tests navigateur | 78 réussis sur les quatre profils |
 | Captures de référence | les 45 identiques au pixel près à celles de l'ancien frontend à la fin de la migration, puis régénérées volontairement pour la refonte graphique |
 | `pytest` | 104 réussis, et 41 tests d'intégration |
 | Contrôle Nginx (`scripts/check_nginx_security.py`) sur le build | tous les contrôles réussis |

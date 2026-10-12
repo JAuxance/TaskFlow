@@ -4,12 +4,12 @@
 .skip-link:focus { top: 8px; }
 .app-loading { margin: 32px; color: var(--color-secondary); }
 .app-layout { position: relative; display: flex; min-height: 100vh; min-height: 100dvh; }
-/* The plum column runs down the whole page, footer included; the sidebar itself stays in view. */
+/* The ink column runs down the whole page, footer included; the sidebar itself stays in view. */
 #app:has(> .app-layout) { position: relative; }
-#app:has(> .app-layout)::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--sidebar-width); background: var(--sidebar-background); }
+#app:has(> .app-layout)::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--sidebar-width); background: var(--sidebar-background); box-shadow: inset -1px 0 var(--sidebar-edge); }
 .app-layout ~ .site-footer { position: relative; margin-left: var(--sidebar-width); }
 
-/* Sidebar: dark plum beside the light content. */
+/* Sidebar: ink beside the light content. */
 .sidebar {
     position: sticky;
     top: 0;

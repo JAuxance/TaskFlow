@@ -49,17 +49,22 @@ function submit() {
 </script>
 
 <template>
-    <form id="profile-export-form" class="settings-form profile-section" @submit.prevent="submit">
-        <h3>My data</h3>
-        <p id="profile-export-help" class="field-hint">Download a JSON copy of your profile, memberships, tasks you created or are assigned to in accessible workspaces, and messages you sent. The file contains personal information: keep it somewhere private. Downloading does not delete your account.</p>
-        <div class="field">
-            <label for="profile-export-password">Current password for download</label>
-            <input id="profile-export-password" v-model="password" name="password" type="password" autocomplete="current-password" required aria-describedby="profile-export-help">
+    <!-- The explanation on one side, the controls on the other. -->
+    <form id="profile-export-form" class="profile-section profile-row" @submit.prevent="submit">
+        <div class="profile-row-intro">
+            <h3>My data</h3>
+            <p id="profile-export-help" class="field-hint">Download a JSON copy of your profile, memberships, tasks you created or are assigned to in accessible workspaces, and messages you sent. The file contains personal information: keep it somewhere private. Downloading does not delete your account.</p>
         </div>
-        <button type="submit" class="btn-secondary" :disabled="busy">Download my data</button>
-        <FormMessage id="profile-export-message" :text="message.text" :type="message.type" />
-        <p class="field-hint">For image copies, logs, other data or a username/email correction, use the privacy contact. An email change requires verification.</p>
-        <p class="field-hint" data-privacy-contact>For data requests: <a :href="`mailto:${contactEmail}?subject=TaskFlow%20-%20personal%20data%20request`">{{ contactEmail }}</a>. Please never send your password.</p>
-        <nav class="privacy-links" aria-label="Privacy information"><a href="/confidentialite/">Privacy</a><a href="/cookies/">Cookies &amp; storage</a></nav>
+        <div class="settings-form">
+            <div class="field">
+                <label for="profile-export-password">Current password for download</label>
+                <input id="profile-export-password" v-model="password" name="password" type="password" autocomplete="current-password" required aria-describedby="profile-export-help">
+            </div>
+            <button type="submit" class="btn-secondary" :disabled="busy">Download my data</button>
+            <FormMessage id="profile-export-message" :text="message.text" :type="message.type" />
+            <p class="field-hint">For image copies, logs, other data or a username/email correction, use the privacy contact. An email change requires verification.</p>
+            <p class="field-hint" data-privacy-contact>For data requests: <a :href="`mailto:${contactEmail}?subject=TaskFlow%20-%20personal%20data%20request`">{{ contactEmail }}</a>. Please never send your password.</p>
+            <nav class="privacy-links" aria-label="Privacy information"><a href="/confidentialite/">Privacy</a><a href="/cookies/">Cookies &amp; storage</a></nav>
+        </div>
     </form>
 </template>

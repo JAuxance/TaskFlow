@@ -12,7 +12,11 @@ export default defineConfig({
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     timeout: 30_000,
-    expect: { timeout: 7_000 },
+    expect: {
+        timeout: 7_000,
+        // Ten times stricter than the default: at 0.2, replacing one dark color by another went unnoticed.
+        toHaveScreenshot: { threshold: 0.02 },
+    },
     globalSetup: './global-setup.ts',
     globalTeardown: './global-teardown.ts',
     // No platform suffix: reference screenshots are produced on Linux with Chromium only.
@@ -27,6 +31,9 @@ export default defineConfig({
         browserName: 'chromium',
         locale: 'en-GB',
         timezoneId: 'Europe/Paris',
+        // The application then plays no animation: a click never lands on a moving block,
+        // and screenshots do not depend on timing. motion.spec.ts covers the animated case.
+        contextOptions: { reducedMotion: 'reduce' },
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
     },
