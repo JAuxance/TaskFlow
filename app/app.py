@@ -33,7 +33,7 @@ if app_env == "production":
         raise RuntimeError("PUBLIC_ORIGIN must be an HTTPS origin, e.g. https://taskflow.auxance.dev")
     allowed_origins = [public_origin]
 else:
-    # The Vite development server of frontend-vue/, which relays API calls.
+    # The Vite development server of frontend/, which relays API calls.
     allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 configure_security(

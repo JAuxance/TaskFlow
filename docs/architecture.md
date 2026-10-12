@@ -26,7 +26,7 @@ app/
   utils/chat.py          Shared direct-message room naming
   sql/                   Database and application role initialization
   tests/                 Pytest tests for HTTP routes and socket subscriptions
-frontend-vue/
+frontend/
   index.html             Application entry page
   src/main.ts            Starts Vue, the router, and the stores
   src/router.ts          Screen addresses and access rules
@@ -43,7 +43,7 @@ frontend-vue/
 
 A task update illustrates the main flow:
 
-1. The task screen calls `updateTask()` in `frontend-vue/src/api/tasks.ts`.
+1. The task screen calls `updateTask()` in `frontend/src/api/tasks.ts`.
 2. `apiRequest()` sends a JSON `PATCH /api/tasks/{task_id}` request with the session cookie.
 3. The route checks authentication, workspace membership, role, and input values.
 4. `app/db.py` executes the update through Psycopg and returns the database row.
@@ -65,7 +65,7 @@ The frontend is a Vue 3 application written in TypeScript and built with Vite. V
 
 The HTTP client includes cookies in requests and converts network or HTTP failures into a consistent result: `{ ok, status, data }`. It keeps the CSRF token in memory, gives up after 15 seconds, and reports any expired session to a single handler that returns to the login screen. Its collection helper loads all pages for workspace, member, project, and task lists. Chat history uses separate pages of 50 messages.
 
-The task screen sends its saves one at a time, because the server rewrites the whole row of a task. See [Vue frontend](frontend-vue.md).
+The task screen sends its saves one at a time, because the server rewrites the whole row of a task. See [Vue frontend](frontend.md).
 
 Theme preference is stored in `localStorage`; authentication uses the session cookie. The Socket.IO client is bundled with the application.
 

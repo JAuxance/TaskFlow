@@ -1,8 +1,8 @@
-# Frontend Vue
+# Frontend
 
 ## D'où vient ce frontend
 
-Le frontend est une application Vue 3, écrite en TypeScript strict et construite avec Vite, dans `frontend-vue/`.
+Le frontend est une application Vue 3, écrite en TypeScript strict et construite avec Vite, dans `frontend/`.
 
 Il remplace un frontend en JavaScript sans framework, qui a été reconstruit écran par écran en octobre 2026. Chaque écran n'a été considéré comme migré qu'une fois passés, sans modification, les tests navigateur et les captures d'écran de l'ancien frontend. L'ancien code est consultable au tag Git `vanilla-frontend-final` ; l'état d'avant la migration est au tag `pre-vue-migration`.
 
@@ -10,7 +10,7 @@ Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, 
 
 ## Contenu
 
-| Fichier (`frontend-vue/`) | Rôle |
+| Fichier (`frontend/`) | Rôle |
 | --- | --- |
 | `vite.config.ts` | Serveur de développement sur le port 5173 et proxy vers le backend. |
 | `src/main.ts` | Démarre Vue, Pinia et le routeur ; charge la feuille de style actuelle. |
@@ -132,11 +132,11 @@ Le backend doit tourner sur le port 5000 (`docker compose up -d`).
 
 | Besoin | Commande |
 | --- | --- |
-| Installer | `npm ci --prefix frontend-vue` |
-| Développer, sur `http://localhost:5173` | `npm run dev --prefix frontend-vue` |
-| Vérifier les types | `npm run typecheck --prefix frontend-vue` |
-| Tests unitaires | `npm test --prefix frontend-vue` |
-| Build de production, dans `frontend-vue/dist/` | `npm run build --prefix frontend-vue` |
+| Installer | `npm ci --prefix frontend` |
+| Développer, sur `http://localhost:5173` | `npm run dev --prefix frontend` |
+| Vérifier les types | `npm run typecheck --prefix frontend` |
+| Tests unitaires | `npm test --prefix frontend` |
+| Build de production, dans `frontend/dist/` | `npm run build --prefix frontend` |
 | Tests navigateur | `npm test --prefix e2e` |
 | Les mêmes, à travers un serveur Vite déjà lancé | `E2E_REUSE_VITE=1 npm test --prefix e2e` |
 
@@ -169,7 +169,7 @@ Le build ne contient ni script ni style en ligne, et n'utilise pas `eval`. Il p�
 
 ## Mise en production
 
-Nginx sert le contenu de `frontend-vue/dist/` et renvoie vers `index.html` toute adresse qui n'est pas un fichier : c'est déjà ce que fait `deploy/nginx/taskflow.auxance.dev.conf`. La procédure complète est dans [la protection des requêtes](protection-requetes.md).
+Nginx sert le contenu de `frontend/dist/` et renvoie vers `index.html` toute adresse qui n'est pas un fichier : c'est déjà ce que fait `deploy/nginx/taskflow.auxance.dev.conf`. La procédure complète est dans [la protection des requêtes](protection-requetes.md).
 
 `scripts/check_nginx_security.py` vérifie ce build derrière le vrai fichier Nginx, dans un conteneur jetable : en-têtes de sécurité et CSP, scripts et styles servis en fichiers, adresses des écrans rendues à l'application.
 

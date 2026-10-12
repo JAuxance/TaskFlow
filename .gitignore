@@ -19,4 +19,4 @@ node_modules/
 reports/
 e2e/test-results/
 e2e/playwright-report/
-frontend-vue/dist/
+frontend/dist/
