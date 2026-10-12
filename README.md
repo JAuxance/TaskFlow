@@ -144,6 +144,6 @@ Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by yo
 - [API security audit](docs/audit-securite-api.md)
 - [Audit closure report](docs/cloture-audit-securite-api.md)
 - [UI mockups](docs/design/figma-desktop/README.md)
-- [RNCP5 real application screenshots](docs/design/mockup/captures-reelles/README.md)
+- [RNCP5 real application screenshots](docs/design/captures-reelles/)
 
 The `/health` check verifies API and database availability separately from the automated tests.
