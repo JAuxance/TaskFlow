@@ -80,3 +80,22 @@ export interface Conversation {
     last_message: string;
     last_message_time: string | null;
 }
+
+/** GET /api/users/me/deletion-preview. */
+export interface DeletionPreview {
+    can_delete: boolean;
+    /** Workspaces the user owns with other members: they block the deletion. */
+    blocked_workspaces: { id: number; name: string; other_members: number }[];
+    /** Workspaces the user is alone in: deleted with the account. */
+    workspaces_to_delete: { id: number; name: string }[];
+    counts: {
+        sessions: number;
+        direct_messages: number;
+        images: number;
+        projects: number;
+        tasks: number;
+        workspace_messages: number;
+        retained_tasks: number;
+        retained_messages: number;
+    };
+}
