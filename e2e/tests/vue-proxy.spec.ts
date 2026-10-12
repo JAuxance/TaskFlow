@@ -1,9 +1,9 @@
-import { expect, test } from '../support/test';
-import { PASSWORD, emailOf, signUp } from '../support/api';
+import { expect, expectSignedIn, test } from '../support/test';
+import { PASSWORD, createWorkspace, emailOf, signUp } from '../support/api';
 
 // Vue frontend only (E2E_FRONTEND=vue). These tests check what the current
-// frontend does not have: the Vite proxy, URLs, and the temporary page shown
-// to a signed-in user until the dashboard is migrated.
+// frontend does not have: the Vite proxy, URLs, and the notice shown in place
+// of the screens that are not migrated yet.
 test.describe('Vite setup', { tag: '@vue-only' }, () => {
     test('the application reads the session through the proxy', async ({ page }) => {
         const profile = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/me');
@@ -54,7 +54,7 @@ test.describe('Vite setup', { tag: '@vue-only' }, () => {
         await signUp(context.request, 'alice');
         await page.goto('/login');
         await expect(page).toHaveURL('/');
-        await expect(page.getByText('Signed in as alice (alice@example.com).')).toBeVisible();
+        await expectSignedIn(page, 'alice');
         await page.goto('/register');
         await expect(page).toHaveURL('/');
     });
@@ -66,14 +66,32 @@ test.describe('Vite setup', { tag: '@vue-only' }, () => {
         page.on('response', response => { if (response.status() === 403) refused.push(response.status()); });
 
         for (let round = 0; round < 2; round++) {
-            await page.getByRole('button', { name: 'Sign out' }).click();
+            await page.getByRole('button', { name: 'Edit your profile' }).click();
+            await page.getByRole('dialog', { name: 'Your profile' }).getByRole('button', { name: 'Sign out' }).click();
             await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
             await page.getByLabel('Email').fill(emailOf('alice'));
             await page.getByLabel('Password').fill(PASSWORD);
             await page.getByRole('button', { name: 'Login', exact: true }).click();
-            await expect(page.getByText('Signed in as alice (alice@example.com).')).toBeVisible();
+            await expectSignedIn(page, 'alice');
         }
         // The token is renewed at each session change: the server never has to refuse one.
         expect(refused).toEqual([]);
+    });
+
+    test('a screen that is not migrated yet says so, and the browser history works', async ({ actor }) => {
+        const { page, request } = await actor('alice');
+        await createWorkspace(request, 'Design studio');
+        await page.reload();
+
+        await page.getByRole('navigation', { name: 'Workspaces' }).getByRole('button', { name: 'Design studio', exact: true }).click();
+        await expect(page).toHaveURL(/\/workspaces\/\d+$/);
+        await expect(page.getByRole('heading', { name: 'Not migrated yet' })).toBeVisible();
+
+        await page.goBack();
+        await expect(page).toHaveURL('/');
+        await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
+        await page.goForward();
+        await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Workspaces' }).click();
+        await expect(page).toHaveURL('/');
     });
 });

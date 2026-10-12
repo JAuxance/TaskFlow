@@ -9,6 +9,11 @@ if (FRONTEND !== 'legacy' && FRONTEND !== 'vue') {
 }
 export const isLegacyFrontend = FRONTEND === 'legacy';
 
+// Screens the Vue frontend already has. A test that crosses several screens
+// stops where the migration stops; on the current frontend it goes all the way.
+const VUE_SCREENS = ['login', 'register', 'dashboard'];
+export const isMigrated = (screen: string) => isLegacyFrontend || VUE_SCREENS.includes(screen);
+
 export const FRONTEND_ORIGIN = isLegacyFrontend ? 'http://localhost:5500' : 'http://localhost:5173';
 export const API_URL = 'http://localhost:5000';
 export const SENTINEL_EMAIL = 'e2e-sentinel@example.com';

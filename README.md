@@ -15,7 +15,7 @@ A collaborative project and task management application. TaskFlow organizes work
 - **Backend**: Python 3.12, Flask, Flask-SocketIO, and Psycopg.
 - **Database**: PostgreSQL 17.
 - **Frontend**: HTML, CSS, and vanilla JavaScript, with no build step.
-- **Frontend rebuild, in progress**: Vue 3, TypeScript, and Vite in `frontend-vue/`. The login and registration screens are migrated; see [Vue frontend](docs/frontend-vue.md).
+- **Frontend rebuild, in progress**: Vue 3, TypeScript, and Vite in `frontend-vue/`. The login, registration and dashboard screens are migrated; see [Vue frontend](docs/frontend-vue.md).
 - **Local environment**: Docker Compose.
 
 ## Local setup

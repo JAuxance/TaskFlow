@@ -76,7 +76,7 @@ test('the login and registration screens lead to each other', { tag: '@vue' }, a
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
 });
 
-test('signing out from the profile closes the session on the server', async ({ actor }) => {
+test('signing out from the profile closes the session on the server', { tag: '@vue' }, async ({ actor }) => {
     const { page } = await actor('alice');
     await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
 

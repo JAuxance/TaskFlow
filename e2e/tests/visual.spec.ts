@@ -1,6 +1,9 @@
 import type { Page } from '@playwright/test';
-import { expect, kanbanColumn, openProject, openTask, openWorkspace, socketEvent, test } from '../support/test';
+import {
+    expect, kanbanColumn, openDashboard, openProject, openTask, openWorkspace, socketEvent, test,
+} from '../support/test';
 import { seedStudio } from '../support/seed';
+import { isMigrated } from '../support/stack';
 
 // Reference screenshots, taken at both widths and in both themes (see
 // playwright.config.ts). They are the visual contract for the migration:
@@ -23,51 +26,72 @@ test('signed-out screens match their reference', { tag: '@vue' }, async ({ page 
     await capture(page, 'register');
 });
 
-test('signed-in screens match their reference', async ({ actor }) => {
+test('signed-in screens match their reference', { tag: '@vue' }, async ({ actor }) => {
     const { alice, gina } = await seedStudio(actor);
     const page = alice.page;
     const messages = page.getByRole('log').getByRole('article');
 
-    await expect(page.locator('#overview-tasks')).toHaveAttribute('aria-busy', 'false');
-    await capture(page, 'dashboard');
+    // Every screen is opened from the dashboard, so each one stands alone and
+    // is compared only if the frontend under test has it.
+    const screens: [name: string, open: (page: Page) => Promise<void>, viewer?: Page][] = [
+        ['dashboard', async () => {
+            await expect(page.locator('#workspace-cards .role-badge')).toHaveText('Owner');
+        }],
+        ['profile', async () => {
+            await page.getByRole('button', { name: 'Edit your profile' }).click();
+            const profile = page.getByRole('dialog', { name: 'Your profile' });
+            await expect(profile.getByRole('link', { name: 'e2e-sentinel@example.com' })).toBeVisible();
+        }],
+        ['workspace-overview', async () => {
+            await openWorkspace(page, 'Design studio');
+            await expect(page.locator('#workspace-focus-list')).toHaveAttribute('aria-busy', 'false');
+        }],
+        ['workspace-members', async () => {
+            await openWorkspace(page, 'Design studio');
+            await page.getByRole('tab', { name: /Members/ }).click();
+            await expect(page.getByLabel('Role for gina')).toHaveValue('guest');
+        }],
+        ['workspace-messages', async () => {
+            await openWorkspace(page, 'Design studio');
+            const joined = socketEvent(page, 'workspace_joined');
+            await page.getByRole('tab', { name: 'Messages' }).click();
+            await joined;
+            await expect(messages).toHaveCount(2);
+        }],
+        ['direct-messages', async () => {
+            await openWorkspace(page, 'Design studio');
+            await page.getByRole('tab', { name: /Members/ }).click();
+            const joined = socketEvent(page, 'direct_message_joined');
+            await page.getByRole('button', { name: 'Send a private message to bob' }).click();
+            await joined;
+            await expect(messages).toHaveCount(2);
+        }],
+        ['kanban', async () => {
+            await openWorkspace(page, 'Design studio');
+            await openProject(page, 'Website redesign');
+            await expect(kanbanColumn(page, 'done').getByRole('button')).toHaveCount(1);
+        }],
+        ['task-details', async () => {
+            await openWorkspace(page, 'Design studio');
+            await openProject(page, 'Website redesign');
+            await openTask(page, 'in_progress', 'Design the home page');
+        }],
+        // The same task as seen by a guest: read-only fields, no save or delete.
+        ['task-details-guest', async viewer => {
+            await openWorkspace(viewer, 'Design studio');
+            await openProject(viewer, 'Website redesign');
+            await openTask(viewer, 'in_progress', 'Design the home page');
+        }, gina.page],
+    ];
 
-    await openWorkspace(page, 'Design studio');
-    await expect(page.locator('#workspace-focus-list')).toHaveAttribute('aria-busy', 'false');
-    await capture(page, 'workspace-overview');
-
-    await page.getByRole('tab', { name: /Members/ }).click();
-    await expect(page.getByLabel('Role for gina')).toHaveValue('guest');
-    await capture(page, 'workspace-members');
-
-    const workspaceChat = socketEvent(page, 'workspace_joined');
-    await page.getByRole('tab', { name: 'Messages' }).click();
-    await workspaceChat;
-    await expect(messages).toHaveCount(2);
-    await capture(page, 'workspace-messages');
-
-    await page.getByRole('tab', { name: /Members/ }).click();
-    const privateChat = socketEvent(page, 'direct_message_joined');
-    await page.getByRole('button', { name: 'Send a private message to bob' }).click();
-    await privateChat;
-    await expect(messages).toHaveCount(2);
-    await capture(page, 'direct-messages');
-
-    await openWorkspace(page, 'Design studio');
-    await openProject(page, 'Website redesign');
-    await expect(kanbanColumn(page, 'done').getByRole('button')).toHaveCount(1);
-    await capture(page, 'kanban');
-
-    await openTask(page, 'in_progress', 'Design the home page');
-    await capture(page, 'task-details');
-
-    await page.getByRole('button', { name: 'Edit your profile' }).click();
-    const profile = page.getByRole('dialog', { name: 'Your profile' });
-    await expect(profile.getByRole('link', { name: 'e2e-sentinel@example.com' })).toBeVisible();
-    await capture(page, 'profile', false);
-
-    // The same task as seen by a guest: read-only fields, no save or delete.
-    await openWorkspace(gina.page, 'Design studio');
-    await openProject(gina.page, 'Website redesign');
-    await openTask(gina.page, 'in_progress', 'Design the home page');
-    await capture(gina.page, 'task-details-guest');
+    for (const [name, open, viewer = page] of screens) {
+        if (!isMigrated(name)) continue;
+        await test.step(name, async () => {
+            await openDashboard(viewer);
+            await open(viewer);
+            // A dialog is captured as seen, over the page; a page in full.
+            await capture(viewer, name, name !== 'profile');
+            if (name === 'profile') await viewer.keyboard.press('Escape');
+        });
+    }
 });

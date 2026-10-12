@@ -21,6 +21,17 @@ export default defineConfig({
             '/socket.io': { target: backend, ws: true },
         },
     },
+    build: {
+        // The stylesheet recognizes some icons by their file name
+        // ([src$="folder.svg"]): keep SVG files as files, under their own name.
+        assetsInlineLimit: file => file.endsWith('.svg') ? false : undefined,
+        rolldownOptions: {
+            output: {
+                assetFileNames: asset => asset.names.some(name => name.endsWith('.svg'))
+                    ? 'assets/icons/[name][extname]' : 'assets/[name]-[hash][extname]',
+            },
+        },
+    },
     test: {
         include: ['src/**/*.test.ts'],
     },

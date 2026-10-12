@@ -90,3 +90,13 @@ export async function expectSignedIn(page: Page, name: string): Promise<void> {
     await expect(page.getByText(emailOf(name)).filter({ visible: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Login' })).toHaveCount(0);
 }
+
+/**
+ * Return to the dashboard and wait until it is rebuilt with fresh data. The
+ * mark tells the new dashboard from the one that may already be displayed.
+ */
+export async function openDashboard(page: Page): Promise<void> {
+    await page.evaluate(() => document.querySelector('#overview-tasks')?.setAttribute('data-stale', ''));
+    await page.getByRole('button', { name: 'All workspaces' }).click();
+    await expect(page.locator('#overview-tasks:not([data-stale])')).toHaveAttribute('aria-busy', 'false');
+}
