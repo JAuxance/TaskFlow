@@ -13,7 +13,7 @@ Une attaque CSRF cherche à faire envoyer une action par le navigateur d'une per
 
 Le jeton est une protection complémentaire : les routes continuent à vérifier l'utilisateur et ses droits. Il n'est ni un mot de passe ni un mécanisme d'autorisation. Une erreur ne déclenche pas une répétition automatique de la mutation. Une requête `FormData` conserve son type multipart et sa frontière générée par le navigateur.
 
-En développement, les origines autorisées sont `http://localhost:5500` et `http://127.0.0.1:5500`. En production, `PUBLIC_ORIGIN` doit être l'origine HTTPS publique exacte, sans chemin. Socket.IO utilise la même liste. Les cookies de production restent `Secure`, `HttpOnly` et `SameSite=Lax`.
+En développement, les origines autorisées sont `http://localhost:5500` et `http://127.0.0.1:5500` pour le frontend actuel, ainsi que `http://localhost:5173` et `http://127.0.0.1:5173` pour le serveur Vite du frontend Vue. En production, `PUBLIC_ORIGIN` doit être l'origine HTTPS publique exacte, sans chemin. Socket.IO utilise la même liste. Les cookies de production restent `Secure`, `HttpOnly` et `SameSite=Lax`.
 
 ## Cache et scripts
 
