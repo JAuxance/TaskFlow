@@ -1,0 +1,82 @@
+/* Workspace: totals, projects, tasks to focus on, members and ownership. */
+
+/* Totals: one flat color block each; the overdue count turns orange when it needs attention. */
+.workspace-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.workspace-stat { --stat-fill: var(--block-lilac); --stat-ink: var(--block-lilac-ink); --stat-soft: var(--block-lilac-soft); display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 16px 20px; border-radius: var(--radius-card); background: var(--stat-fill); }
+.workspace-stat:nth-child(2) { --stat-fill: var(--block-lime); --stat-ink: var(--block-lime-ink); --stat-soft: var(--block-lime-soft); }
+.workspace-stat:nth-child(3) { --stat-fill: var(--block-sky); --stat-ink: var(--block-sky-ink); --stat-soft: var(--block-sky-soft); }
+.workspace-stat:has([data-alert="true"]) { --stat-fill: var(--block-peach); --stat-ink: var(--block-peach-ink); --stat-soft: var(--block-peach-soft); }
+.workspace-stat > span { color: var(--stat-soft); font-size: 12px; font-weight: 500; line-height: 18px; }
+.workspace-stat strong { color: var(--stat-ink); font-family: var(--font-display); font-size: 30px; font-weight: 700; line-height: 36px; letter-spacing: -.5px; }
+
+.workspace-overview { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); align-items: start; gap: 24px; }
+.workspace-projects, .workspace-focus { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.workspace-project-list { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.workspace-project-card { display: grid; grid-template-columns: 40px minmax(0, 1fr) 16px; align-items: center; gap: 16px 12px; padding: 20px; }
+.workspace-project-card .project-card-icon { grid-column: 1; grid-row: 1; background: var(--item-tint); }
+.workspace-project-card .project-card-copy { grid-column: 2; grid-row: 1; gap: 4px; min-width: 0; }
+.workspace-project-card .project-card-footer { grid-column: 3; grid-row: 1; padding: 0; border: 0; font-size: 0; }
+.workspace-project-card .workspace-project-progress { grid-column: 1 / -1; }
+.workspace-project-progress { display: flex; flex-direction: column; gap: 8px; }
+.workspace-project-progress > span { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; line-height: 18px; }
+.workspace-project-progress progress { display: block; width: 100%; height: 6px; overflow: hidden; appearance: none; border: 0; border-radius: var(--radius-pill); background: var(--color-sunken); accent-color: var(--color-primary); }
+.workspace-project-progress progress::-webkit-progress-bar { background: var(--color-sunken); border-radius: var(--radius-pill); }
+.workspace-project-progress progress::-webkit-progress-value { background: var(--color-primary); border-radius: var(--radius-pill); }
+.workspace-project-progress progress::-moz-progress-bar { background: var(--color-primary); border-radius: var(--radius-pill); }
+.workspace-project-detail { color: var(--color-secondary); font-size: 12px; line-height: 18px; }
+
+.workspace-focus { padding: 20px; border-radius: var(--radius-card); background: var(--color-surface); }
+#workspace-focus-list { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.workspace-focus-task { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; min-width: 0; padding: 12px 14px; border: 1px solid transparent; border-radius: 12px; background: var(--color-surface-muted); color: var(--color-text); text-align: left; }
+.workspace-focus-task:hover:not(:disabled) { border-color: var(--color-border-hover); }
+/* The color of the task: a dot before its title. */
+.workspace-focus-title { display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 600; line-height: 22px; overflow-wrap: anywhere; }
+.workspace-focus-title::before { content: ""; flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--item-color); }
+.workspace-focus-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-width: 0; color: var(--color-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
+.workspace-focus-project { flex-basis: 100%; color: var(--color-secondary); }
+.workspace-focus-task time[data-overdue="true"] { color: var(--color-danger); font-weight: 600; }
+#show-more-workspace-tasks, #retry-workspace-tasks { align-self: flex-start; }
+
+.table-scroll { width: 100%; overflow-x: auto; }
+.member-table { width: 100%; min-width: 650px; border-collapse: collapse; text-align: left; table-layout: fixed; }
+.member-table th { height: 44px; padding: 10px 20px; border-bottom: 1px solid var(--color-border); color: var(--color-secondary); font-size: 12px; line-height: 18px; font-weight: 500; }
+.member-table td { height: 60px; padding: 10px 20px; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+/* Name and role have a fixed width; the actions take what is left. */
+.member-table th:first-child { width: 220px; }
+.member-table th:nth-child(2) { width: 168px; }
+.member-table tbody tr:last-child td { border-bottom: 0; }
+.member-table td:first-child { font-size: 14px; font-weight: 600; }
+.member-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.member-name { min-width: 0; overflow-wrap: anywhere; }
+.member-email { color: var(--color-secondary); }
+.member-role-select { width: 160px; max-width: 100%; }
+.member-table .btn-quiet { padding-left: 12px; padding-right: 12px; }
+
+.workspace-transfer { display: flex; flex-direction: column; gap: 12px; }
+.danger-action.workspace-transfer { align-items: stretch; }
+#owner-transfer-form { width: 100%; min-width: 0; }
+
+@media (max-width: 1000px) {
+    .member-table th:first-child { width: 168px; }
+    .workspace-overview { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 700px) {
+    .workspace-summary { gap: 8px; }
+    .workspace-stat { padding: 12px; }
+    .workspace-stat strong { font-size: 24px; line-height: 30px; }
+    .workspace-overview { gap: 20px; }
+    .workspace-project-card, .workspace-focus { padding: 16px; }
+    #members-list.table-scroll { overflow: visible; background: transparent; }
+    .member-table { display: block; min-width: 0; }
+    .member-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .member-table tbody { display: grid; gap: 12px; }
+    .member-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px 12px; padding: 16px; border-radius: var(--radius-card); background: var(--color-surface); }
+    .member-table td { min-width: 0; height: auto; padding: 0; border: 0; }
+    .member-table td:first-child, .member-table .member-email { grid-column: 1 / -1; }
+    .member-table td:first-child { font-size: 15px; }
+    .member-table .member-email { margin-bottom: 4px; font-size: 13px; }
+    .member-role-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+    .member-role-cell::before { content: attr(data-label); color: var(--color-secondary); font-size: 12px; }
+    .member-table td:last-child > span { display: none; }
+}

@@ -1,17 +1,13 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from '../support/test';
+import { expect, openDashboard, test } from '../support/test';
 import { seedStudio } from '../support/seed';
 
 const cards = (page: Page) => page.locator('#workspace-cards');
 const taskCount = (page: Page) => page.locator('#overview-task-count');
 
-async function dashboardLoaded(page: Page) {
-    await expect(page.locator('#overview-tasks')).toHaveAttribute('aria-busy', 'false');
-}
-
 test('the dashboard lists the tasks of every project and filters them by status', async ({ actor }) => {
     const { alice: { page } } = await seedStudio(actor);
-    await dashboardLoaded(page);
+    await openDashboard(page);
 
     // Unfinished tasks by default: five of the six, the overdue one first.
     await expect(taskCount(page)).toHaveText('5');
@@ -37,7 +33,7 @@ test('the dashboard lists the tasks of every project and filters them by status'
 test('each member sees their own role on the workspace card', async ({ actor }) => {
     const { alice, bob, gina } = await seedStudio(actor);
     for (const [member, role] of [[alice, 'Owner'], [bob, 'Member'], [gina, 'Guest']] as const) {
-        await dashboardLoaded(member.page);
+        await openDashboard(member.page);
         await expect(cards(member.page).locator('.role-badge')).toHaveText(role);
     }
     // The private conversation is listed in the sidebar of both participants.

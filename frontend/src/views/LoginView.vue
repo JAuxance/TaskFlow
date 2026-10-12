@@ -38,7 +38,7 @@ function submit() {
         <form id="login-form" class="login-form" @submit.prevent="submit">
             <div class="login-heading">
                 <div class="login-brand">
-                    <img class="icon icon-mark" :src="markIcon" alt="" width="32" height="32">
+                    <img class="icon icon-mark" :src="markIcon" alt="" width="36" height="36">
                     <span>TaskFlow</span>
                 </div>
                 <h1>Login</h1>

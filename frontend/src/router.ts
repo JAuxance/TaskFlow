@@ -1,6 +1,6 @@
 import { nextTick } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
-import { redirectFor } from './guards';
+import { arrivalFor, redirectFor } from './guards';
 import AppLayout from './layout/AppLayout.vue';
 import { resetLayoutState, type Crumb } from './layout/state';
 import { announcePage } from './page';
@@ -29,7 +29,9 @@ declare module 'vue-router' {
     }
 }
 
-const toWorkspaces = { label: 'Workspaces', to: { name: 'home' } };
+const toWorkspaces = { label: 'Workspaces', to: { name: 'workspaces' } };
+/** Never displayed: the guard below sends an arrival to a workspace, or to the list. */
+const Arrival = { render: () => null };
 
 export const router = createRouter({
     history: createWebHistory(),
@@ -44,8 +46,9 @@ export const router = createRouter({
             component: AppLayout,
             meta: { requiresAuth: true },
             children: [
+                { path: '', name: 'home', component: Arrival },
                 {
-                    path: '', name: 'home', component: DashboardView,
+                    path: 'workspaces', name: 'workspaces', component: DashboardView,
                     meta: { pageClass: 'dashboard-page', breadcrumbs: [{ label: 'Workspaces' }] },
                 },
                 {
@@ -77,9 +80,12 @@ router.beforeEach(async to => {
     if (target) return { name: target };
     if (to.meta.requiresAuth) {
         // A screen is always shown with a fresh sidebar.
-        await useSidebarStore().refresh();
+        const sidebar = useSidebarStore();
+        await sidebar.refresh();
         // The refresh may have revealed that the session expired.
         if (session.status !== 'signed-in') return { name: 'login' };
+        // Arriving opens the first workspace straight away; the list is one click away in the sidebar.
+        if (to.name === 'home') return arrivalFor(sidebar.workspaces);
     }
     return true;
 });

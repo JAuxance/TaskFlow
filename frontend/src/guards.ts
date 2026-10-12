@@ -9,3 +9,9 @@ export function redirectFor(rules: AccessRules, signedIn: boolean): 'login' | 'h
     if (rules.guestOnly && signedIn) return 'home';
     return null;
 }
+
+/** Where arriving at the application leads: the first workspace of the sidebar, or the list when there is none. */
+export function arrivalFor(workspaces: readonly { id: number }[]): { name: 'workspace'; params: { id: number } } | { name: 'workspaces' } {
+    const first = workspaces[0];
+    return first ? { name: 'workspace', params: { id: first.id } } : { name: 'workspaces' };
+}

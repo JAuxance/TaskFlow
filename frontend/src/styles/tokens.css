@@ -1,0 +1,165 @@
+/* Design tokens: font, colors of both themes, and the item colors. */
+
+@font-face {
+    font-family: Inter;
+    src: url("../assets/fonts/InterVariable.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+:root {
+    color-scheme: light;
+    --font-body: Inter, "Segoe UI", Arial, sans-serif;
+    /* Titles and large figures. */
+    --font-display: var(--font-body);
+
+    /* Light content: a grey canvas, white cards, one action blue. */
+    --color-background: #f5f5f7;
+    --color-surface: #ffffff;
+    --color-surface-muted: #f5f5f7;
+    --color-sunken: #e9e9ee;
+    --color-raised: #ffffff;
+    --color-veil: rgb(255 255 255 / 72%);
+    --color-bubble: #e9e9ee;
+    --color-border: #e1e1e6;
+    --color-border-hover: #c4c4cc;
+    --color-text: #1d1d1f;
+    --color-secondary: #6e6e73;
+    --color-accent: #1668f0;
+    --color-accent-hover: #0f52c4;
+    --color-primary: #1668f0;
+    --color-primary-hover: #0f55cc;
+    --color-on-primary: #ffffff;
+    --color-active: #e6effe;
+    --color-hover: #efeff3;
+    --color-focus: rgb(22 104 240 / 28%);
+    --color-danger: #c42b1c;
+    --color-danger-hover: #fdf1ef;
+    --color-danger-border: #f1d6d2;
+    --color-success: #1f7a4d;
+    --color-overlay: rgb(24 14 38 / 42%);
+
+    /* Sidebar: dark plum in both themes. */
+    --sidebar-width: 248px;
+    --sidebar-background: #2a1a3f;
+    --sidebar-strong: #ffffff;
+    --sidebar-text: #dbd1e8;
+    --sidebar-muted: #a797bd;
+    --sidebar-hover: #3a2853;
+    --sidebar-border: #47335f;
+    --sidebar-active: #e8c6ff;
+    --sidebar-active-ink: #3a0f5c;
+    --sidebar-active-muted: #5f2f86;
+    --sidebar-alert: #ffb4aa;
+    --color-unread: #ff6a2b;
+
+    /* Color blocks: a flat fill, the ink written on it, and a softer ink for labels. */
+    --block-lilac: #e8c6ff;
+    --block-lilac-ink: #3a0f5c;
+    --block-lilac-soft: #5f2f86;
+    --block-lime: #c3f25a;
+    --block-lime-ink: #063b36;
+    --block-lime-soft: #1f5a4e;
+    --block-sky: #cfe6ff;
+    --block-sky-ink: #1b0a6b;
+    --block-sky-soft: #3a2e94;
+    --block-peach: #ffd9c7;
+    --block-peach-ink: #7a2a05;
+    --block-peach-soft: #96441c;
+    --block-sun: #ffe68a;
+    --block-sun-ink: #543e00;
+    --block-coral: #ffcdc6;
+    --block-coral-ink: #861a0f;
+    --block-grey: #e9edf6;
+    --block-grey-ink: #3a4560;
+
+    /* Status markers of the board. */
+    --status-todo: #7a3fb0;
+    --status-progress: #1668f0;
+    --status-review: #b07d00;
+    --status-done: #2a7a52;
+
+    --radius: 10px;
+    --radius-card: 16px;
+    --radius-pill: 999px;
+    --shadow-raised: 0 1px 2px rgb(24 14 38 / 10%);
+    --shadow-card: 0 12px 40px rgb(24 14 38 / 7%);
+    --shadow-dialog: 0 24px 80px rgb(24 14 38 / 22%);
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --color-background: #131118;
+    --color-surface: #1f1c26;
+    --color-surface-muted: #18151e;
+    --color-sunken: #1a1721;
+    --color-raised: #343040;
+    --color-veil: rgb(8 5 14 / 32%);
+    --color-bubble: #343040;
+    --color-border: #35313f;
+    --color-border-hover: #5a5468;
+    --color-text: #f2f0f5;
+    --color-secondary: #aaa5b5;
+    --color-accent: #8db6ff;
+    --color-accent-hover: #b5cfff;
+    --color-primary: #1668f0;
+    --color-primary-hover: #3c82f6;
+    --color-active: #1e2e4f;
+    --color-hover: #2a2633;
+    --color-focus: rgb(141 182 255 / 35%);
+    --color-danger: #ffaaa0;
+    --color-danger-hover: #40272d;
+    --color-danger-border: #65404a;
+    --color-success: #83d9ac;
+    --color-overlay: rgb(5 3 10 / 70%);
+
+    --sidebar-background: #21153a;
+    --sidebar-hover: #32234c;
+    --sidebar-border: #3d2c57;
+
+    /* The pairs swap: a deep fill, a bright ink. */
+    --block-lilac: #3a0f5c;
+    --block-lilac-ink: #e8c6ff;
+    --block-lilac-soft: #cfa3ee;
+    --block-lime: #063b36;
+    --block-lime-ink: #c3f25a;
+    --block-lime-soft: #9fcf55;
+    --block-sky: #1c1470;
+    --block-sky-ink: #cfe6ff;
+    --block-sky-soft: #a9c6f2;
+    --block-peach: #5a2208;
+    --block-peach-ink: #ffd9c7;
+    --block-peach-soft: #f0b89e;
+    --block-sun: #4a3800;
+    --block-sun-ink: #ffe68a;
+    --block-coral: #5c1a14;
+    --block-coral-ink: #ffcdc6;
+    --block-grey: #2a3142;
+    --block-grey-ink: #d5dcec;
+
+    --status-todo: #cfa3ee;
+    --status-progress: #8db6ff;
+    --status-review: #ffd95a;
+    --status-done: #9fcf55;
+
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-card: 0 12px 40px rgb(0 0 0 / 30%);
+    --shadow-dialog: 0 24px 80px rgb(0 0 0 / 55%);
+}
+
+/* The color a user gives to a workspace or a task: a marker, a tint and an ink. */
+[data-color] { --item-color: #8491a5; --item-tint: #e7eaf1; --item-ink: #475467; }
+[data-color="blue"] { --item-color: #3974dc; --item-tint: #eaf1ff; --item-ink: #2457a7; }
+[data-color="green"] { --item-color: #249566; --item-tint: #e6f5ec; --item-ink: #176b4a; }
+[data-color="yellow"] { --item-color: #c69a1b; --item-tint: #fff7d6; --item-ink: #795b09; }
+[data-color="orange"] { --item-color: #db8134; --item-tint: #fff0e1; --item-ink: #955119; }
+[data-color="red"] { --item-color: #d85959; --item-tint: #ffecec; --item-ink: #a93434; }
+[data-color="purple"] { --item-color: #9160ce; --item-tint: #f0e8fb; --item-ink: #7041a5; }
+html[data-theme="dark"] [data-color] { --item-color: #91a0b8; --item-tint: #29364a; --item-ink: #c4cede; }
+html[data-theme="dark"] [data-color="blue"] { --item-color: #79a8f8; --item-tint: #223a5c; --item-ink: #a9caff; }
+html[data-theme="dark"] [data-color="green"] { --item-color: #62c799; --item-tint: #1c3c32; --item-ink: #91e0b9; }
+html[data-theme="dark"] [data-color="yellow"] { --item-color: #dec05f; --item-tint: #3e371e; --item-ink: #f1d887; }
+html[data-theme="dark"] [data-color="orange"] { --item-color: #efa163; --item-tint: #432e22; --item-ink: #ffc28e; }
+html[data-theme="dark"] [data-color="red"] { --item-color: #ee888b; --item-tint: #432a35; --item-ink: #ffb4b6; }
+html[data-theme="dark"] [data-color="purple"] { --item-color: #b69aee; --item-tint: #352a4e; --item-ink: #d3bbff; }
