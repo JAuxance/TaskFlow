@@ -22,6 +22,7 @@ Ils complètent les suites existantes sans les remplacer : `pytest` (routes et s
 | `session.spec.ts` | Session expirée ou cookie absent : retour à la connexion ; message d'expiration dans le chat. |
 | `members.spec.ts` | Ajout d'un membre, changement de rôle, retrait et refus de la confirmation ; limites d'un admin ; le chat ouvert du membre retiré se ferme aussitôt et le serveur répond 404. |
 | `workspace.spec.ts` | Totaux et tâches prioritaires de l'aperçu, renommage, emoji et image du workspace, transfert de la propriété, suppression protégée par le nom exact. |
+| `legal.spec.ts` | Pages de confidentialité et de cookies ouvertes à tous, liens entre elles et retour à l'application, capture de la page de confidentialité. |
 | `messaging.spec.ts` | Chat du workspace et messages privés entre deux navigateurs, sans rechargement ; historique lu par pages de cinquante ; message vide impossible, brouillon conservé si le serveur refuse ; conversation privée fermée quand les deux membres ne partagent plus de workspace. |
 | `responsive.spec.ts` | Mise en page à 1440 px et à 390 px : barre latérale, colonnes du Kanban, formulaire de tâche, absence de défilement horizontal. |
 | `visual.spec.ts` | Onze écrans comparés à leurs captures de référence, en thèmes clair et sombre, aux deux largeurs. |
@@ -56,7 +57,7 @@ Depuis la racine du dépôt, pile de développement arrêtée :
 npm test --prefix e2e
 ```
 
-La commande construit et démarre la pile jetable, sert le frontend sur le port 5500, exécute les tests puis détruit la pile.
+La commande construit et démarre la pile jetable, sert le frontend Vue sur le port 5173, exécute les tests puis détruit la pile.
 
 | Besoin | Commande |
 | --- | --- |
@@ -104,11 +105,13 @@ Les tests sont écrits pour tourner sur les deux frontends :
 
 - ils naviguent uniquement par clics, puisque le frontend actuel n'a pas d'URL ;
 - ils ciblent d'abord les rôles et libellés accessibles (boutons, champs, onglets, dialogues) ;
-- la variable `E2E_FRONTEND` choisit la cible : `legacy` (par défaut) ou `vue`, servi par Vite sur le port 5173.
+- la variable `E2E_FRONTEND` choisit la cible : `vue` (par défaut), servi par Vite sur le port 5173, ou `legacy` pour l'ancien frontend.
 
 ```bash
-E2E_FRONTEND=vue npm test --prefix e2e
+E2E_FRONTEND=legacy npm test --prefix e2e
 ```
+
+Si un serveur Vite tourne déjà, `E2E_REUSE_VITE=1` fait passer les tests à travers lui au lieu d'en démarrer un second.
 
 Sur la cible `vue`, seuls les tests marqués sont exécutés :
 
@@ -138,6 +141,6 @@ Sur le tag `pre-vue-migration`, avant tout changement du frontend :
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
 | Playwright | 30 réussis, dont 2 échecs attendus (D2) ; stable sur trois passages consécutifs |
 
-Depuis, la suite compte 63 tests sur le frontend actuel et 72 sur le frontend Vue : les mêmes 63, plus 9 qui vérifient ce que seul le frontend Vue possède (proxy, adresses, attente de la file sur toutes les sorties).
+Depuis, la suite compte 66 tests sur l'ancien frontend et 75 sur le frontend Vue : les mêmes 66, plus 9 qui vérifient ce que seul le frontend Vue possède (proxy, adresses, attente de la file sur toutes les sorties).
 
 La capture `profile` a été régénérée une fois, volontairement : le dialogue était photographié par-dessus l'écran de tâche, il l'est maintenant par-dessus le tableau de bord, pour ne dépendre que des écrans migrés en premier. Les 40 autres captures n'ont pas changé.

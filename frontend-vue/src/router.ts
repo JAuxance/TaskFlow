@@ -6,9 +6,11 @@ import { resetLayoutState, type Crumb } from './layout/state';
 import { announcePage } from './page';
 import { useSessionStore } from './stores/session';
 import { useSidebarStore } from './stores/sidebar';
+import CookiesView from './views/CookiesView.vue';
 import DashboardView from './views/DashboardView.vue';
 import DirectMessagesView from './views/DirectMessagesView.vue';
 import LoginView from './views/LoginView.vue';
+import PrivacyView from './views/PrivacyView.vue';
 import ProjectView from './views/ProjectView.vue';
 import RegisterView from './views/RegisterView.vue';
 import TaskView from './views/TaskView.vue';
@@ -34,6 +36,9 @@ export const router = createRouter({
     routes: [
         { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
         { path: '/register', name: 'register', component: RegisterView, meta: { guestOnly: true } },
+        // Legal pages: open to everyone, signed in or not. Their addresses are public and stay as they are.
+        { path: '/confidentialite', name: 'privacy', component: PrivacyView },
+        { path: '/cookies', name: 'cookies', component: CookiesView },
         {
             path: '/',
             component: AppLayout,

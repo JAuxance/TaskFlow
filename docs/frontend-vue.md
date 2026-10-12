@@ -2,7 +2,7 @@
 
 ## Où en est la migration
 
-Le frontend a été reconstruit avec Vue 3, TypeScript strict et Vite, dans `frontend-vue/`. **Tous les écrans sont migrés.** Le frontend actuel (`frontend/`) n'a pas été modifié et reste celui qui est servi : la bascule vers le nouveau n'est pas encore faite.
+Le frontend a été reconstruit avec Vue 3, TypeScript strict et Vite, dans `frontend-vue/`. **Tous les écrans sont migrés, et c'est désormais ce frontend qu'il faut lancer et déployer.** L'ancien (`frontend/`) n'a pas été modifié ; il reste dans le dépôt jusqu'à son retrait, parce que le nouveau importe encore sa feuille de style et ses icônes.
 
 | Écran | État |
 | --- | --- |
@@ -12,6 +12,7 @@ Le frontend a été reconstruit avec Vue 3, TypeScript strict et Vite, dans `fro
 | Workspace (aperçu, membres, réglages, création de projet, ajout de membre) | migré, identique au pixel près aux captures de référence |
 | Kanban et réglages du projet, détail d'une tâche | migrés, identiques au pixel près aux captures de référence |
 | Messages du workspace, messages privés | migrés, identiques au pixel près aux captures de référence |
+| Pages de confidentialité et de cookies | migrées, identiques au pixel près à la page statique |
 
 Tous les tests écrits pour le frontend actuel passent tels quels sur le nouveau, et les 44 captures de référence sont identiques.
 
@@ -59,6 +60,7 @@ Tous les tests écrits pour le frontend actuel passent tels quels sur le nouveau
 | --- | --- | --- |
 | `/login` | Connexion | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/register` | Inscription | visiteur ; un utilisateur connecté est renvoyé vers `/` |
+| `/confidentialite/`, `/cookies/` | Pages légales, même texte et mêmes adresses que les pages statiques qu'elles remplacent | tout le monde |
 | `/` | Tableau de bord | utilisateur connecté ; sinon renvoi vers `/login` |
 | `/workspaces/:id` | Workspace ; `/members`, `/settings` ou `/messages` à la suite ouvre directement cet onglet | membre du workspace |
 | `/projects/:id` | Kanban du projet | membre du workspace |
@@ -78,10 +80,6 @@ Les écrans migrés reprennent le HTML de l'écran d'origine : mêmes classes, m
 - **Même session.** Le cookie est lié au nom d'hôte, pas au port : une session ouverte sur `localhost:5500` est reconnue sur `localhost:5173`. `localhost` et `127.0.0.1` restent deux hôtes distincts.
 - **Icônes sous leur nom.** La feuille de style reconnaît certaines icônes à leur nom de fichier (`[src$="folder.svg"]`), pour les éclaircir en thème sombre. Le build garde donc les fichiers SVG tels quels dans `assets/icons/`, sans les renommer ni les intégrer au code.
 - **Script du thème en double.** `public/theme-init.js` est une copie de `frontend/js/theme-init.js` : il doit être un fichier à part, chargé avant la feuille de style, car la CSP interdit les scripts en ligne. Un test unitaire échoue si les deux copies diffèrent.
-
-### Limite connue
-
-Les pages `/confidentialite/` et `/cookies/` sont des fichiers statiques de `frontend/`. Le serveur Vite ne les sert pas : en développement, leurs liens ramènent à l'application. En production, Nginx les servira à côté du build ; ce point est à traiter au moment de la bascule.
 
 ## Client HTTP
 
@@ -173,17 +171,21 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
 | Tests unitaires | 84 réussis |
-| Tests navigateur sur Vue | 72 réussis sur les quatre profils : les 63 tests partagés avec le frontend actuel, plus 9 propres à Vue |
+| Tests navigateur sur Vue | 75 réussis sur les quatre profils : les 66 tests partagés avec l'ancien frontend, plus 9 propres à Vue |
 | Captures de référence | les 44 identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
-| Tests navigateur sur le frontend actuel | 63 réussis, sans régression |
+| Tests navigateur sur l'ancien frontend | 66 réussis, sans régression |
+| Contrôle Nginx (`scripts/check_nginx_security.py`) sur le build | tous les contrôles réussis |
 | `pytest` | 104 réussis |
 | Build sous la CSP de `deploy/nginx/security-headers.conf` | parcours complet, images, téléchargement et chat compris : aucune violation, aucune erreur |
 
 Le build ne contient ni script ni style en ligne, et n'utilise pas `eval`. Il pèse 235 Ko de JavaScript (80 Ko compressé).
 
+## Mise en production
+
+Nginx sert le contenu de `frontend-vue/dist/` et renvoie vers `index.html` toute adresse qui n'est pas un fichier : c'est déjà ce que fait `deploy/nginx/taskflow.auxance.dev.conf`. La procédure complète est dans [la protection des requêtes](protection-requetes.md).
+
+`scripts/check_nginx_security.py` vérifie ce build derrière le vrai fichier Nginx, dans un conteneur jetable : en-têtes de sécurité et CSP, scripts et styles servis en fichiers, adresses des écrans rendues à l'application.
+
 ## Ce qui reste
 
-La migration des écrans est terminée ; le nouveau frontend n'est pas encore servi aux utilisateurs. Restent deux étapes, qui demandent des décisions sur la production :
-
-1. **La bascule** : faire servir `frontend-vue/dist` par Nginx à la place de `frontend/`, avec les pages statiques `/confidentialite/` et `/cookies/`, et garder l'ancien frontend accessible le temps de valider.
-2. **Le retrait** de l'ancien frontend, une fois la bascule validée : suppression de `frontend/js`, déplacement de la feuille de style et des icônes dans `frontend-vue/`, retrait des marques `@vue` et de l'échec attendu D2 dans les tests.
+Le retrait de l'ancien frontend : suppression de `frontend/js`, déplacement de la feuille de style et des icônes dans le frontend Vue, retrait des marques `@vue` et de l'échec attendu D2 dans les tests. Viendra ensuite la refonte graphique.

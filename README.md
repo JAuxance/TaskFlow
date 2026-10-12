@@ -14,13 +14,13 @@ A collaborative project and task management application. TaskFlow organizes work
 
 - **Backend**: Python 3.12, Flask, Flask-SocketIO, and Psycopg.
 - **Database**: PostgreSQL 17.
-- **Frontend**: HTML, CSS, and vanilla JavaScript, with no build step.
-- **Frontend rebuild**: Vue 3, TypeScript, and Vite in `frontend-vue/`. Every screen is migrated and passes the same browser tests; it is not served in place of `frontend/` yet. See [Vue frontend](docs/frontend-vue.md).
+- **Frontend**: Vue 3, TypeScript, and Vite, in `frontend-vue/`. See [Vue frontend](docs/frontend-vue.md).
+- **Previous frontend**: vanilla JavaScript in `frontend/`, replaced by the Vue one and kept until it is removed.
 - **Local environment**: Docker Compose.
 
 ## Local setup
 
-Prerequisites: Docker with Docker Compose, and Python 3 to serve the frontend. Run all commands from the repository root.
+Prerequisites: Docker with Docker Compose, and Node.js 20 or later for the frontend. Run all commands from the repository root.
 
 ### 1. Configure the environment
 
@@ -56,15 +56,16 @@ The API is available at `http://localhost:5000`. The SQL schema and application 
 
 ### 3. Start the frontend
 
-In another terminal:
+Prerequisite: Node.js 20 or later. In another terminal:
 
 ```bash
-python3 -m http.server 5500 --directory frontend
+npm ci --prefix frontend-vue
+npm run dev --prefix frontend-vue
 ```
 
-Open [http://localhost:5500](http://localhost:5500), then create an account from the registration screen.
+Open [http://localhost:5173](http://localhost:5173), then create an account from the registration screen.
 
-Use `localhost:5500` or `127.0.0.1:5500`; the frontend uses the same hostname for the API on port 5000. Fonts and the Socket.IO client are served locally with the frontend.
+The development server relays API and Socket.IO calls to port 5000, so the browser only talks to port 5173. Use `localhost:5173` or `127.0.0.1:5173` consistently: the session cookie belongs to one host name.
 
 ### 4. Check service health
 
@@ -94,8 +95,8 @@ PostgreSQL data is stored in the `postgres_data` volume. Initialization scripts 
 ```text
 app/          Flask application, data access, routes, and Socket.IO events
 app/sql/      Database schema and application account initialization
-frontend/     HTML, CSS, JavaScript, and visual assets
-frontend-vue/ Vue 3 rebuild of the frontend, not served yet
+frontend-vue/ Vue 3 frontend
+frontend/     Previous frontend; still holds the stylesheet and icons the Vue one imports
 e2e/          Browser tests and reference screenshots
 docs/         Documentation and design mockups
 compose.yaml  Docker Compose services
@@ -117,7 +118,14 @@ Tests are in `app/tests/`. They use Flask and Socket.IO test clients with databa
 
 Opt-in network tests use a disposable PostgreSQL database and real HTTP/WebSocket connections. Run them in a separate Python process: see [chat access tests](docs/correction-acces-chat.md) and [request security tests](docs/protection-requetes.md). The latter also describes the JavaScript and Nginx checks.
 
-Browser tests are in `e2e/`. They drive Chromium with Playwright against a disposable stack (`compose.e2e.yaml`), never the development database, and compare the main screens with reference screenshots. Stop the development stack first, since both use port 5000:
+Frontend unit tests and type checks:
+
+```bash
+npm test --prefix frontend-vue
+npm run typecheck --prefix frontend-vue
+```
+
+Browser tests are in `e2e/`. They drive Chromium with Playwright against a disposable stack (`compose.e2e.yaml`), never the development database, and compare the main screens with reference screenshots. Stop the development stack and the development server first, since they use ports 5000 and 5173:
 
 ```bash
 npm ci --prefix e2e
