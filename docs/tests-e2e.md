@@ -15,8 +15,8 @@ Ils complètent les autres suites sans les remplacer : `pytest` (routes et sécu
 | `smoke.spec.ts` | Le frontend se charge et parle au backend jetable. |
 | `auth.spec.ts` | Inscription et connexion qui ouvrent une session, mot de passe faux, email déjà utilisé, passage d'un écran à l'autre, déconnexion depuis le profil. |
 | `addresses.spec.ts` | Proxy Vite, protection des adresses selon la session, arrivée dans le premier workspace, renouvellement du jeton CSRF, historique du navigateur. |
-| `workspace-project.spec.ts` | Création d'un workspace depuis le tableau de bord, nom obligatoire, création d'un projet. |
-| `dashboard.spec.ts` | Tâches de chaque projet, filtre par statut, rôle affiché à chaque membre, bascule du thème. |
+| `workspace-project.spec.ts` | Création d'un premier workspace depuis l'écran d'accueil, d'un autre depuis la barre latérale, nom obligatoire, création d'un projet. |
+| `frame.spec.ts` | Rôle affiché à chaque membre, conversations dans la barre latérale, bascule du thème. |
 | `profile.spec.ts` | Prénom, photo de profil, téléchargement des données avec mot de passe, copie de l'email, oubli des mots de passe à la fermeture, fermeture par un clic à côté, suppression du compte et blocage tant qu'un workspace est partagé. |
 | `task.spec.ts` | Création d'une tâche, statut et priorité enregistrés automatiquement, titre et description enregistrés sur demande, couleur, responsable et échéance, persistance, suppression. Enregistrements envoyés un par un, attendus avant le retour au tableau, annulés à l'écran si le serveur refuse. |
 | `project.spec.ts` | Renommage, description et suppression d'un projet ; un membre ajoute des tâches sans pouvoir modifier le projet. |
@@ -87,7 +87,7 @@ La commande construit et démarre la pile jetable, sert le frontend Vue sur le p
 
 Les images sont dans `e2e/__screenshots__/<profil>/`, avec quatre profils : `desktop-light`, `desktop-dark`, `mobile-light` et `mobile-dark`.
 
-Écrans : connexion, inscription, tableau de bord, workspace (aperçu, membres, messages), messages privés, Kanban, tâche, tâche vue par un guest, profil.
+Écrans : connexion, inscription, accueil sans workspace, workspace (aperçu, membres, messages), messages privés, Kanban, tâche, tâche vue par un guest, profil.
 
 Elles sont reproductibles parce que les données sont fixes (`e2e/support/seed.ts`), que l'horloge du navigateur est figée au 12 octobre 2026 et que les dates des messages sont réécrites dans la base jetable. Elles ne valent que pour Chromium sous Linux : sur une autre machine, les polices et l'anticrénelage diffèrent.
 

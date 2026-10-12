@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect, kanbanColumn, openDashboard, openProject, openTask, openWorkspace, test } from '../support/test';
+import { expect, kanbanColumn, openProject, openTask, openWorkspace, test } from '../support/test';
 import { seedStudio } from '../support/seed';
 
 // Runs at 1440 px and at 390 px (see playwright.config.ts).
@@ -30,8 +30,8 @@ test('the main screens adapt their layout to the screen width', async ({ actor, 
     const sidebar = page.getByRole('complementary', { name: 'Workspace navigation' });
     const main = page.locator('#page-content');
 
-    // Dashboard: the sidebar sits beside the content on a computer, above it on a phone.
-    await openDashboard(page);
+    // Workspace, where one arrives: the sidebar sits beside the content on a computer, above it on a phone.
+    await expect(page.locator('#workspace-focus-list')).toHaveAttribute('aria-busy', 'false');
     await expectNoHorizontalScroll(page);
     const [side, content] = [await box(sidebar), await box(main)];
     if (isMobile) expect(side.y + side.height).toBeLessThanOrEqual(content.y);

@@ -28,6 +28,7 @@ Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, 
 | `src/theme.ts` | Bascule clair/sombre et mémorisation du choix. |
 | `src/domain.ts` | Couleurs, libellés des rôles, initiale d'un avatar : définis une seule fois. |
 | `src/layout/AppLayout.vue` | Cadre des écrans connectés : barre latérale, fil d'Ariane, thème. |
+| `src/layout/CreateWorkspaceDialog.vue` | Fenêtre de création d'un workspace, ouverte par le « + » de la barre latérale ou par l'écran d'accueil. |
 | `src/layout/ProfileDialog.vue` | Dialogue du profil : compte, copie de l'email, déconnexion. |
 | `src/layout/profile/` | Une section du profil par fichier : prénom, photo, export, suppression du compte. |
 | `src/api/profile.ts` | Appels du profil. |
@@ -45,7 +46,7 @@ Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, 
 | `src/api/tasks.ts` | Appels des tâches. |
 | `src/chat/ChatPanel.vue` | Une conversation : historique, messages en direct, saisie. Sert au chat du workspace et aux messages privés. |
 | `src/chat/subscribe.ts` | Abonnement Socket.IO d'une conversation. |
-| `src/views/` | Un écran par fichier : connexion, inscription, tableau de bord, workspace, projet, tâche, messages privés, pages légales. |
+| `src/views/` | Un écran par fichier : connexion, inscription, accueil sans workspace, workspace, projet, tâche, messages privés, pages légales. |
 | `src/styles/` | Feuilles de style : `tokens.css` (police, couleurs des deux thèmes), `base.css`, `components.css` (blocs partagés), `layout.css` (cadre), puis une feuille par écran. `main.ts` les charge dans cet ordre, qui est celui de la cascade. |
 | `src/assets/` | Police Inter et icônes. |
 
@@ -77,8 +78,7 @@ Toutes les couleurs sont dans `src/styles/tokens.css`, pour les deux thèmes ; l
 | `/login` | Connexion | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/register` | Inscription | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/confidentialite/`, `/cookies/` | Pages légales, même texte et mêmes adresses que les pages statiques qu'elles remplacent | tout le monde |
-| `/` | Arrivée : ouvre le premier workspace de la barre latérale (le plus ancien), ou la liste s'il n'y en a aucun | utilisateur connecté ; sinon renvoi vers `/login` |
-| `/workspaces` | Liste de tous les workspaces et de leurs tâches, ouverte par « All workspaces » dans la barre latérale | utilisateur connecté |
+| `/` | Arrivée : ouvre le premier workspace de la barre latérale (le plus ancien) ; sans aucun workspace, écran d'accueil qui invite à en créer un | utilisateur connecté ; sinon renvoi vers `/login` |
 | `/workspaces/:id` | Workspace ; `/members`, `/settings` ou `/messages` à la suite ouvre directement cet onglet | membre du workspace |
 | `/projects/:id` | Kanban du projet | membre du workspace |
 | `/tasks/:id` | Détail d'une tâche | membre du workspace |
@@ -87,7 +87,11 @@ Toutes les couleurs sont dans `src/styles/tokens.css`, pour les deux thèmes ; l
 
 Chaque écran a son adresse : un rechargement y reste, et le bouton « précédent » du navigateur fonctionne. L'ancien frontend n'en avait pas.
 
-On arrive directement dans un workspace, comme dans une messagerie d'équipe : la liste des workspaces est dans la barre latérale, et la page qui les présente en cartes n'est plus l'écran d'accueil. La règle est dans `src/guards.ts` (`arrivalFor`), appliquée par le routeur une fois la barre latérale chargée.
+On arrive directement dans un workspace, comme dans une messagerie d'équipe. La liste des workspaces est dans la barre latérale, avec un « + » pour en créer un depuis n'importe quel écran ; le workspace créé s'ouvre aussitôt. La règle d'arrivée est dans `src/guards.ts` (`arrivalFor`), appliquée par le routeur une fois la barre latérale chargée.
+
+Il n'y a plus de page listant tous les workspaces en cartes : elle faisait doublon avec la barre latérale. Ce qu'elle était seule à offrir, la liste des tâches de tous les workspaces réunis, a été abandonné avec elle ; chaque workspace garde son panneau « Tasks to focus on ».
+
+Le fil d'Ariane n'apparaît que s'il a au moins deux niveaux : sur un workspace, il ne ferait que répéter le titre.
 
 ## Développement et production
 

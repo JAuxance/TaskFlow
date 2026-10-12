@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, openDashboard, openWorkspace, reloadApp, test } from '../support/test';
+import { expect, openWorkspace, reloadApp, test } from '../support/test';
 import { addMember, createWorkspace } from '../support/api';
 import { seedStudio } from '../support/seed';
 
@@ -50,14 +50,15 @@ test('an owner renames the workspace', async ({ actor }) => {
     await createWorkspace(request, 'Design studio');
     await openSettings(page);
 
-    await page.getByLabel('Workspace name').fill('Brand studio');
+    // The dialog that creates a workspace has a field of the same name: read the one of the settings.
+    await page.getByRole('tabpanel', { name: 'Settings' }).getByLabel('Workspace name').fill('Brand studio');
     await page.getByRole('button', { name: 'Save name' }).click();
 
     await expect(page.getByRole('heading', { level: 1, name: 'Brand studio' })).toBeVisible();
     await expect(sidebar(page).getByRole('button', { name: 'Brand studio', exact: true })).toBeVisible();
     // The screen is shown again on the tab that was open.
     await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Brand studio');
+    await expect(page).toHaveTitle('Brand studio — TaskFlow');
 });
 
 test('an owner gives the workspace an emoji, then a picture', async ({ actor }) => {
@@ -125,7 +126,7 @@ test('deleting a workspace requires typing its exact name', async ({ actor }) =>
 
     page.once('dialog', prompt => prompt.accept('Design studio'));
     await page.getByRole('button', { name: 'Delete workspace' }).click();
-    await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
-    await openDashboard(page);
+    // It was the only one: the welcome screen takes over.
+    await expect(page.getByRole('heading', { name: 'Your next project starts here' })).toBeVisible();
     await expect(sidebar(page).getByText('No workspaces yet.')).toBeVisible();
 });

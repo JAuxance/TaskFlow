@@ -1,10 +1,9 @@
 <script setup lang="ts">
 // Frame of every signed-in screen: sidebar, breadcrumb, theme switch.
-import { computed, ref } from 'vue';
+import { computed, provide, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import folderIcon from '../assets/icons/folder.svg';
 import markIcon from '../assets/icons/mark.svg';
-import workspaceIcon from '../assets/icons/workspace.svg';
 import type { Conversation, Workspace } from '../api/types';
 import FormMessage from '../components/FormMessage.vue';
 import ProtectedImage from '../components/ProtectedImage.vue';
@@ -12,6 +11,8 @@ import { colorOf, initialOf } from '../domain';
 import { useSessionStore } from '../stores/session';
 import { useSidebarStore } from '../stores/sidebar';
 import { useTheme } from '../theme';
+import CreateWorkspaceDialog from './CreateWorkspaceDialog.vue';
+import { createWorkspaceKey } from './createWorkspace';
 import ProfileDialog from './ProfileDialog.vue';
 import { layoutState } from './state';
 
@@ -21,6 +22,10 @@ const session = useSessionStore();
 const sidebar = useSidebarStore();
 const { label: themeLabel, title: themeTitle, toggle: toggleTheme } = useTheme();
 const profile = ref<InstanceType<typeof ProfileDialog> | null>(null);
+const creation = ref<InstanceType<typeof CreateWorkspaceDialog> | null>(null);
+// The welcome screen opens the same dialog as the "+" of the sidebar.
+const createWorkspace = () => creation.value?.open();
+provide(createWorkspaceKey, createWorkspace);
 
 const user = computed(() => session.user);
 const displayName = computed(() => user.value?.first_name || user.value?.username || user.value?.email || '');
@@ -28,22 +33,8 @@ const activeConversationId = computed(() => route.name === 'messages' ? Number(r
 // A conversation takes over the highlight, even when opened from a workspace.
 const activeWorkspaceId = computed(() => activeConversationId.value !== null ? null
     : layoutState.workspaceId ?? (route.name === 'workspace' ? Number(route.params.id) : null));
-const breadcrumbs = computed(() => layoutState.trail ?? route.meta.breadcrumbs ?? []);
-const onAllWorkspaces = computed(() => route.name === 'workspaces');
-
-// Changing it rebuilds the current screen: "All workspaces" reloads the
-// list when it is clicked from the list itself.
-const reload = ref(0);
-
-async function showAllWorkspaces(): Promise<void> {
-    if (!onAllWorkspaces.value) {
-        await router.push({ name: 'workspaces' });
-        return;
-    }
-    await sidebar.refresh();
-    // The refresh may have revealed an expired session: the login screen takes over.
-    if (session.status === 'signed-in') reload.value += 1;
-}
+// A trail of one entry would only repeat the title of the screen.
+const breadcrumbs = computed(() => layoutState.trail && layoutState.trail.length > 1 ? layoutState.trail : []);
 
 const conversationName = (conversation: Conversation) => conversation.first_name || conversation.username || 'User';
 const openWorkspace = (workspace: Workspace) => router.push({ name: 'workspace', params: { id: workspace.id } });
@@ -55,11 +46,12 @@ const openConversation = (conversation: Conversation) => router.push({ name: 'me
         <aside class="sidebar" aria-label="Workspace navigation">
             <div class="sidebar-header"><img class="icon icon-mark" :src="markIcon" width="28" height="28" alt="" aria-hidden="true"><span>TaskFlow</span></div>
             <nav class="sidebar-navigation" aria-label="Workspaces">
-                <button
-                    id="all-workspaces-button" type="button" class="workspace-button" :class="{ 'is-active': onAllWorkspaces }"
-                    :aria-current="onAllWorkspaces ? 'page' : undefined" @click="showAllWorkspaces"
-                ><img class="icon icon-workspace" :src="workspaceIcon" width="18" height="18" alt="" aria-hidden="true"><span>All workspaces</span></button>
-                <p class="sidebar-label">Workspaces</p>
+                <div class="sidebar-heading">
+                    <p class="sidebar-label">Workspaces</p>
+                    <button id="new-workspace-button" type="button" class="sidebar-add" aria-label="New workspace" title="New workspace" @click="createWorkspace">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+                    </button>
+                </div>
                 <div id="workspace-list">
                     <button
                         v-for="item in sidebar.workspaces" :key="item.id" type="button" class="workspace-button"
@@ -109,10 +101,11 @@ const openConversation = (conversation: Conversation) => router.push({ name: 'me
                 </button>
             </header>
             <section id="page-content" class="page-content" :class="route.meta.pageClass" tabindex="-1">
-                <!-- A new address or a reload rebuilds the screen from fresh data. -->
-                <RouterView :key="`${route.path}#${reload}`" />
+                <!-- A new address rebuilds the screen from fresh data. -->
+                <RouterView :key="route.path" />
             </section>
         </main>
     </div>
     <ProfileDialog ref="profile" />
+    <CreateWorkspaceDialog ref="creation" />
 </template>

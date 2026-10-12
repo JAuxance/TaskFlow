@@ -4,7 +4,6 @@ import './styles/base.css';
 import './styles/components.css';
 import './styles/layout.css';
 import './styles/account.css';
-import './styles/dashboard.css';
 import './styles/workspace.css';
 import './styles/project.css';
 import './styles/chat.css';

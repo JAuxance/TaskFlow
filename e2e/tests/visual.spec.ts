@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import {
-    expect, kanbanColumn, openDashboard, openProject, openTask, openWorkspace, socketEvent, test,
+    expect, kanbanColumn, openProject, openTask, openWorkspace, reloadApp, socketEvent, test,
 } from '../support/test';
 import { seedStudio } from '../support/seed';
 
@@ -28,22 +28,27 @@ test('signed-out screens match their reference', async ({ page }) => {
 
 test('signed-in screens match their reference', async ({ actor }) => {
     const { alice, gina } = await seedStudio(actor);
+    // Someone who has not joined any workspace yet.
+    const nina = await actor('nina');
     const page = alice.page;
+    const overviewLoaded = () => expect(page.locator('#workspace-focus-list')).toHaveAttribute('aria-busy', 'false');
     const messages = page.getByRole('log').getByRole('article');
 
-    // Every screen is opened from the dashboard, so each one stands alone.
+    // Every screen is opened from a fresh arrival, so each one stands alone.
     const screens: [name: string, open: (page: Page) => Promise<void>, viewer?: Page][] = [
-        ['dashboard', async () => {
-            await expect(page.locator('#workspace-cards .role-badge')).toHaveText('Owner');
-        }],
+        ['welcome', async viewer => {
+            await expect(viewer.getByRole('heading', { name: 'Your next project starts here' })).toBeVisible();
+        }, nina.page],
         ['profile', async () => {
+            // The dialog is captured over the workspace: wait for it to be complete.
+            await overviewLoaded();
             await page.getByRole('button', { name: 'Edit your profile' }).click();
             const profile = page.getByRole('dialog', { name: 'Your profile' });
             await expect(profile.getByRole('link', { name: 'e2e-sentinel@example.com' })).toBeVisible();
         }],
         ['workspace-overview', async () => {
             await openWorkspace(page, 'Design studio');
-            await expect(page.locator('#workspace-focus-list')).toHaveAttribute('aria-busy', 'false');
+            await overviewLoaded();
         }],
         ['workspace-members', async () => {
             await openWorkspace(page, 'Design studio');
@@ -85,7 +90,7 @@ test('signed-in screens match their reference', async ({ actor }) => {
 
     for (const [name, open, viewer = page] of screens) {
         await test.step(name, async () => {
-            await openDashboard(viewer);
+            await reloadApp(viewer);
             await open(viewer);
             // A dialog is captured as seen, over the page; a page in full.
             await capture(viewer, name, name !== 'profile');

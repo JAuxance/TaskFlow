@@ -1,6 +1,6 @@
 import type { Page, Route } from '@playwright/test';
 import {
-    expect, kanbanColumn, openDashboard, openProject, openTask, openWorkspace, reloadApp, test, type ActorFactory,
+    expect, kanbanColumn, openProject, openTask, openWorkspace, reloadApp, test, type ActorFactory,
 } from '../support/test';
 import { addMember, api, createProject, createTask, createWorkspace, type Task } from '../support/api';
 
@@ -74,10 +74,9 @@ test('a member creates a task and edits it from the board', async ({ actor }) =>
 
     // Everything was stored by the server: a fresh page shows the same task.
     await reloadApp(page);
-    await openDashboard(page);
-    const row = page.locator('#overview-tasks').getByRole('button', { name: /Write the creative brief/ });
+    const row = page.locator('#workspace-focus-list').getByRole('button', { name: /Write the creative brief/ });
     await expect(row).toContainText('In progress');
-    await expect(row).toContainText('High priority');
+    await expect(row).toContainText('High');
     await row.click();
     await expect(page.getByLabel('Description', { exact: true })).toHaveValue('Audience, tone and deliverables.');
     await expect(status(page)).toHaveValue('in_progress');

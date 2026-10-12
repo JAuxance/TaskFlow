@@ -4,8 +4,8 @@
 @media (prefers-reduced-motion: no-preference) {
     /* Controls answer the pointer. */
     .btn-primary, .btn-secondary, .btn-danger, .btn-quiet, .workspace-button, .account-profile, .page-tab, .tab-count,
-    .theme-toggle, .dialog-close, .breadcrumb-link, .workspace-card, .project-card, .task-card, .workspace-focus-task,
-    .overview-task-row, input, textarea, select {
+    .theme-toggle, .dialog-close, .sidebar-add, .breadcrumb-link, .project-card, .task-card, .workspace-focus-task,
+    input, textarea, select {
         transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, color var(--motion-fast) ease,
             box-shadow var(--motion-fast) ease, transform var(--motion-fast) var(--motion-ease);
     }
@@ -22,10 +22,10 @@
     .login-form, .privacy-page { animation: rise var(--motion-slow) var(--motion-ease) backwards; }
 
     /* Figures, columns and cards follow, slightly staggered. */
-    .workspace-stat, .kanban-column, .workspace-binder { animation: rise var(--motion-slow) var(--motion-ease) backwards; }
-    :is(.workspace-stat, .kanban-column, .workspace-binder):nth-child(2) { animation-delay: 60ms; }
-    :is(.workspace-stat, .kanban-column, .workspace-binder):nth-child(3) { animation-delay: 120ms; }
-    :is(.workspace-stat, .kanban-column, .workspace-binder):nth-child(n + 4) { animation-delay: 180ms; }
+    .workspace-stat, .kanban-column { animation: rise var(--motion-slow) var(--motion-ease) backwards; }
+    :is(.workspace-stat, .kanban-column):nth-child(2) { animation-delay: 60ms; }
+    :is(.workspace-stat, .kanban-column):nth-child(3) { animation-delay: 120ms; }
+    :is(.workspace-stat, .kanban-column):nth-child(n + 4) { animation-delay: 180ms; }
     .task-card, .workspace-project-card, .workspace-focus-item { animation: rise var(--motion) var(--motion-ease) backwards; }
     /* A message grows in place: moving it would shift the end of the conversation. */
     .chat-message { animation: grow var(--motion) var(--motion-ease) backwards; transform-origin: bottom left; }

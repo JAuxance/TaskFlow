@@ -20,6 +20,6 @@ it('opens the first workspace of the sidebar on arrival', () => {
     expect(arrivalFor([{ id: 7 }, { id: 3 }])).toEqual({ name: 'workspace', params: { id: 7 } });
 });
 
-it('shows the list of workspaces on arrival when there is none to open', () => {
-    expect(arrivalFor([])).toEqual({ name: 'workspaces' });
+it('stays on the welcome screen on arrival when there is no workspace to open', () => {
+    expect(arrivalFor([])).toBeNull();
 });

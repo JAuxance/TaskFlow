@@ -78,7 +78,7 @@ test('the login and registration screens lead to each other', async ({ page }) =
 
 test('signing out from the profile closes the session on the server', async ({ actor }) => {
     const { page } = await actor('alice');
-    await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your next project starts here' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Edit your profile' }).click();
     await page.getByRole('dialog', { name: 'Your profile' }).getByRole('button', { name: 'Sign out' }).click();
@@ -90,5 +90,5 @@ test('signing out from the profile closes the session on the server', async ({ a
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
 
     await fillLogin(page, 'alice');
-    await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your next project starts here' })).toBeVisible();
 });

@@ -2,18 +2,18 @@ import { nextTick } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { arrivalFor, redirectFor } from './guards';
 import AppLayout from './layout/AppLayout.vue';
-import { resetLayoutState, type Crumb } from './layout/state';
+import { resetLayoutState } from './layout/state';
 import { announcePage } from './page';
 import { useSessionStore } from './stores/session';
 import { useSidebarStore } from './stores/sidebar';
 import CookiesView from './views/CookiesView.vue';
-import DashboardView from './views/DashboardView.vue';
 import DirectMessagesView from './views/DirectMessagesView.vue';
 import LoginView from './views/LoginView.vue';
 import PrivacyView from './views/PrivacyView.vue';
 import ProjectView from './views/ProjectView.vue';
 import RegisterView from './views/RegisterView.vue';
 import TaskView from './views/TaskView.vue';
+import WelcomeView from './views/WelcomeView.vue';
 import WorkspaceView from './views/WorkspaceView.vue';
 
 declare module 'vue-router' {
@@ -24,14 +24,8 @@ declare module 'vue-router' {
         guestOnly?: boolean;
         /** Extra class of the content area, used by the stylesheet. */
         pageClass?: string;
-        /** Trail shown above the content; an entry without `to` is the current page. */
-        breadcrumbs?: Crumb[];
     }
 }
-
-const toWorkspaces = { label: 'Workspaces', to: { name: 'workspaces' } };
-/** Never displayed: the guard below sends an arrival to a workspace, or to the list. */
-const Arrival = { render: () => null };
 
 export const router = createRouter({
     history: createWebHistory(),
@@ -46,26 +40,23 @@ export const router = createRouter({
             component: AppLayout,
             meta: { requiresAuth: true },
             children: [
-                { path: '', name: 'home', component: Arrival },
-                {
-                    path: 'workspaces', name: 'workspaces', component: DashboardView,
-                    meta: { pageClass: 'dashboard-page', breadcrumbs: [{ label: 'Workspaces' }] },
-                },
+                // Only displayed to someone without a workspace: the guard below opens the first one otherwise.
+                { path: '', name: 'home', component: WelcomeView, meta: { pageClass: 'welcome-page' } },
                 {
                     path: 'workspaces/:id(\\d+)/:tab(messages|members|settings)?', name: 'workspace', component: WorkspaceView,
-                    meta: { pageClass: 'workspace-page', breadcrumbs: [toWorkspaces] },
+                    meta: { pageClass: 'workspace-page' },
                 },
                 {
                     path: 'projects/:id(\\d+)', name: 'project', component: ProjectView,
-                    meta: { pageClass: 'project-page', breadcrumbs: [toWorkspaces] },
+                    meta: { pageClass: 'project-page' },
                 },
                 {
                     path: 'tasks/:id(\\d+)', name: 'task', component: TaskView,
-                    meta: { pageClass: 'task-page', breadcrumbs: [toWorkspaces] },
+                    meta: { pageClass: 'task-page' },
                 },
                 {
                     path: 'messages/:userId(\\d+)', name: 'messages', component: DirectMessagesView,
-                    meta: { pageClass: 'direct-messages-page', breadcrumbs: [toWorkspaces] },
+                    meta: { pageClass: 'direct-messages-page' },
                 },
             ],
         },
@@ -84,13 +75,15 @@ router.beforeEach(async to => {
         await sidebar.refresh();
         // The refresh may have revealed that the session expired.
         if (session.status !== 'signed-in') return { name: 'login' };
-        // Arriving opens the first workspace straight away; the list is one click away in the sidebar.
-        if (to.name === 'home') return arrivalFor(sidebar.workspaces);
+        // Arriving opens the first workspace straight away; the welcome screen is for who has none.
+        if (to.name === 'home') return arrivalFor(sidebar.workspaces) ?? true;
     }
     return true;
 });
 
-router.afterEach(async () => {
+router.afterEach(async (_to, _from, failure) => {
+    // Nothing changed, for instance when the screen already displayed is asked again: keep what it described.
+    if (failure) return;
     // The new screen describes itself once its data is loaded.
     resetLayoutState();
     await nextTick();

@@ -53,7 +53,6 @@ input:disabled, textarea:disabled, select:disabled {
 input[readonly] { background: var(--color-background); }
 .icon { display: block; flex: 0 0 auto; object-fit: contain; }
 .icon-mark { width: 28px; height: 28px; }
-.icon-workspace { width: 18px; height: 18px; }
 .icon-folder { width: 20px; height: 20px; }
 .icon-chevron { width: 16px; height: 16px; }
 .secondary-text, .section-description { color: var(--color-secondary); }
@@ -62,7 +61,6 @@ input[readonly] { background: var(--color-background); }
 
 /* The icons are grey drawings: lighten them on dark surfaces. */
 html[data-theme="dark"] .icon-folder,
-html[data-theme="dark"] .icon-workspace,
 html[data-theme="dark"] .icon-chevron,
 html[data-theme="dark"] .workspace-icon img[src$="/folder.svg"],
 html[data-theme="dark"] img.workspace-icon[src$="/folder.svg"] { filter: brightness(1.65); }
