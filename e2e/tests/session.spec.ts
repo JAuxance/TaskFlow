@@ -7,7 +7,7 @@ import { isLegacyFrontend, sql } from '../support/stack';
 /** Same effect as waiting for the 24-hour lifetime of a session. */
 const expireSessions = () => sql("UPDATE sessions SET expires_at = now() - interval '1 minute'");
 
-test('an expired session returns to the login screen on the next navigation', async ({ actor }) => {
+test('an expired session returns to the login screen on the next navigation', { tag: '@vue' }, async ({ actor }) => {
     const { page } = await actor('alice');
     expireSessions();
 
@@ -17,7 +17,7 @@ test('an expired session returns to the login screen on the next navigation', as
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
 });
 
-test('a page without its session cookie shows the login screen', async ({ actor }) => {
+test('a page without its session cookie shows the login screen', { tag: '@vue' }, async ({ actor }) => {
     const { page } = await actor('alice');
     await page.context().clearCookies();
 
