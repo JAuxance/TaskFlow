@@ -13,3 +13,7 @@ owner.txt
 admin.txt
 member.txt
 outsider.txt
+
+.claude/
+e2e/
+reports/
