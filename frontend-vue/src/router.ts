@@ -7,8 +7,8 @@ import { announcePage } from './page';
 import { useSessionStore } from './stores/session';
 import { useSidebarStore } from './stores/sidebar';
 import DashboardView from './views/DashboardView.vue';
+import DirectMessagesView from './views/DirectMessagesView.vue';
 import LoginView from './views/LoginView.vue';
-import PendingView from './views/PendingView.vue';
 import ProjectView from './views/ProjectView.vue';
 import RegisterView from './views/RegisterView.vue';
 import TaskView from './views/TaskView.vue';
@@ -28,8 +28,6 @@ declare module 'vue-router' {
 }
 
 const toWorkspaces = { label: 'Workspaces', to: { name: 'home' } };
-// Screens of the current frontend that still have to be migrated.
-const pending = { component: PendingView, meta: { breadcrumbs: [toWorkspaces, { label: 'Not migrated yet' }] } };
 
 export const router = createRouter({
     history: createWebHistory(),
@@ -57,7 +55,10 @@ export const router = createRouter({
                     path: 'tasks/:id(\\d+)', name: 'task', component: TaskView,
                     meta: { pageClass: 'task-page', breadcrumbs: [toWorkspaces] },
                 },
-                { path: 'messages/:userId(\\d+)', name: 'messages', ...pending },
+                {
+                    path: 'messages/:userId(\\d+)', name: 'messages', component: DirectMessagesView,
+                    meta: { pageClass: 'direct-messages-page', breadcrumbs: [toWorkspaces] },
+                },
             ],
         },
         { path: '/:unknown(.*)*', redirect: '/' },

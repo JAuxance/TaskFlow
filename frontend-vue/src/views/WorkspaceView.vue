@@ -1,12 +1,15 @@
 <script setup lang="ts">
 // A workspace: overview, messages, members and settings in tabs.
 // Same structure as frontend/js/views/workspaceView.js.
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import folderIcon from '../../../frontend/assets/icons/folder.svg';
+import { getWorkspaceMessages, sendWorkspaceMessage } from '../api/messages';
 import { createProject } from '../api/projects';
 import type { WorkspaceRole } from '../api/types';
 import { addWorkspaceMember } from '../api/workspaces';
+import ChatPanel, { type ChatConfig } from '../chat/ChatPanel.vue';
+import { subscribeWorkspaceChat } from '../chat/subscribe';
 import AppDialog from '../components/AppDialog.vue';
 import FormMessage from '../components/FormMessage.vue';
 import ProtectedImage from '../components/ProtectedImage.vue';
@@ -58,6 +61,30 @@ async function refresh(): Promise<void> {
     await Promise.all([show(), sidebar.refresh()]);
     version.value += 1;
 }
+
+// --- Messages ----------------------------------------------------------------------
+
+const chat = ref<InstanceType<typeof ChatPanel> | null>(null);
+const chatOpened = ref(false);
+const chatConfig: ChatConfig = {
+    title: 'Workspace messages',
+    description: 'A shared conversation for everyone in this workspace.',
+    emptyDescription: 'Share the first update with your workspace.',
+    placeholder: 'Share an update or ask your team a question…',
+    accessError: 'You no longer have access to this workspace. Return to your workspaces to continue.',
+    getMessages: page => getWorkspaceMessages(workspaceId, page),
+    sendMessage: message => sendWorkspaceMessage(workspaceId, message),
+    subscribe: callbacks => subscribeWorkspaceChat(workspaceId, callbacks),
+    acceptsMessage: message => 'workspace_id' in message && Number(message.workspace_id) === workspaceId,
+};
+
+watch(tab, async opened => {
+    if (opened !== 'messages') return;
+    chatOpened.value = true;
+    // Back on the tab: show the latest messages again if the user was following them.
+    await nextTick();
+    chat.value?.activate();
+});
 
 function onTabKey(event: KeyboardEvent, index: number): void {
     const count = tabs.value.length;
@@ -161,7 +188,8 @@ async function submitMember(): Promise<void> {
         <WorkspaceOverview :key="`overview-${version}`" :workspace="workspace" :can-manage="canManage" :hidden="tab !== 'projects'" @create-project="projectDialog?.open()" />
 
         <section id="panel-messages" class="tab-panel" role="tabpanel" aria-labelledby="tab-messages" tabindex="0" :hidden="tab !== 'messages'">
-            <p class="empty-state">Workspace messages are not migrated yet. They are available in the current frontend, on port 5500.</p>
+            <!-- The chat connects the first time its tab is opened, then stays connected. -->
+            <ChatPanel v-if="chatOpened" ref="chat" :config="chatConfig" :visible="tab === 'messages'" />
         </section>
 
         <WorkspaceMembers
