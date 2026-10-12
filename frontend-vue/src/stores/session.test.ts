@@ -53,3 +53,14 @@ it('forgets the user when the session expires', async () => {
     expect(session.status).toBe('signed-out');
     expect(session.user).toBeNull();
 });
+
+it('asks the server only once however many screens wait for the session', async () => {
+    const fetched = vi.fn(async () => new Response(JSON.stringify({ error: 'token is missing' }), { status: 401 }));
+    vi.stubGlobal('fetch', fetched);
+    const session = useSessionStore();
+    await Promise.all([session.ensureLoaded(), session.ensureLoaded()]);
+    await session.ensureLoaded();
+
+    expect(fetched).toHaveBeenCalledTimes(1);
+    expect(session.status).toBe('signed-out');
+});
