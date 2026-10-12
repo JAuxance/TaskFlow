@@ -1,4 +1,5 @@
 import { addMember, api, createProject, createTask, createWorkspace } from './api';
+import { sql } from './stack';
 import { reloadApp, type Actor, type ActorFactory } from './test';
 
 /** "Today" for every page of the reference data, so due dates never drift. */
@@ -35,6 +36,10 @@ export async function seedStudio(actor: ActorFactory): Promise<Studio> {
     await post(bob, `/api/workspaces/${workspace.id}/messages`, 'Noted, I will bring the first mock-ups.');
     await post(alice, `/api/users/${bob.user.id}/direct_messages`, 'Can you review the brief before Friday?');
     await post(bob, `/api/users/${alice.user.id}/direct_messages`, 'On it.');
+    // Messages are stamped by the server clock: pin them to the morning of TODAY (UTC).
+    for (const table of ['workspace_messages', 'direct_messages']) {
+        sql(`UPDATE ${table} SET created_at = TIMESTAMP '2026-10-12 06:30:00' + id * interval '4 minutes'`);
+    }
 
     for (const { page } of [alice, bob, gina]) {
         await page.clock.setFixedTime(TODAY);
