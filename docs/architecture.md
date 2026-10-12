@@ -35,7 +35,7 @@ frontend/
   src/layout/            Sidebar, breadcrumb, theme switch, profile dialog
   src/views/             One screen per file
   src/workspace/, task/, chat/   Parts of the larger screens
-  src/styles/style.css   Layout, components, and themes
+  src/styles/            Design tokens, shared blocks, then one style sheet per screen
   src/assets/            Fonts and icons
 ```
 

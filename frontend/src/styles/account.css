@@ -1,0 +1,35 @@
+/* Profile dialog and account deletion. */
+
+.email-copy { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.email-copy > span { overflow-wrap: anywhere; }
+.email-copy .btn-quiet { min-height: 32px; }
+.profile-identity { display: flex; align-items: center; gap: 16px; }
+.profile-section { padding-top: 20px; border-top: 1px solid var(--color-border); }
+#profile-dialog { border-top: 3px solid var(--color-accent); }
+#profile-dialog .dialog-header { border-bottom-color: #c6d7fb; background: var(--color-active); color: var(--color-accent-hover); }
+#profile-dialog .dialog-close { color: var(--color-accent-hover); }
+#profile-dialog .profile-identity { padding: 16px; border: 1px solid #d8e4fc; border-radius: 12px; background: #f5f8ff; }
+#profile-dialog .avatar-large { background: var(--color-primary); color: white; box-shadow: 0 0 0 4px white; }
+#profile-dialog .profile-section { border-top-color: #d8e4fc; }
+#profile-dialog #copy-email-button { color: var(--color-accent-hover); }
+#profile-avatar-form .btn-secondary { border-color: #c6d7fb; background: var(--color-active); color: var(--color-accent-hover); }
+#profile-avatar-form .btn-secondary:hover:not(:disabled) { background: #d7e5ff; }
+html[data-theme="dark"] #profile-dialog .dialog-header { border-bottom-color: #3c557d; }
+html[data-theme="dark"] #profile-dialog .profile-identity { border-color: #344d73; background: #1c2e49; }
+html[data-theme="dark"] #profile-dialog .avatar-large { background: var(--color-primary); color: white; box-shadow: 0 0 0 4px #1c2e49; }
+html[data-theme="dark"] #profile-dialog .profile-section { border-top-color: #344d73; }
+html[data-theme="dark"] #profile-avatar-form .btn-secondary { border-color: #44618b; }
+html[data-theme="dark"] #profile-avatar-form .btn-secondary:hover:not(:disabled) { background: #2c4369; }
+
+.profile-section .privacy-links { justify-content: flex-start; }
+
+.deletion-summary { padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; overflow-wrap: anywhere; }
+.deletion-summary ul { padding-left: 20px; margin: 12px 0 0; }
+.deletion-summary li + li { margin-top: 8px; }
+.deletion-confirm { display: flex; gap: 10px; align-items: flex-start; line-height: 1.5; }
+.deletion-confirm input { width: auto; min-height: auto; margin-top: 5px; }
+
+@media (max-width: 700px) {
+    .profile-identity { align-items: flex-start; }
+    .email-copy .btn-quiet { min-height: 44px; }
+}

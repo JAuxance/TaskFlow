@@ -1,5 +1,15 @@
-import './styles/style.css';
-import './styles/privacy.css';
+// The order is the cascade: tokens, shared blocks, the frame, then each screen.
+import './styles/tokens.css';
+import './styles/base.css';
+import './styles/components.css';
+import './styles/layout.css';
+import './styles/account.css';
+import './styles/dashboard.css';
+import './styles/workspace.css';
+import './styles/project.css';
+import './styles/chat.css';
+import './styles/auth.css';
+import './styles/legal.css';
 
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';

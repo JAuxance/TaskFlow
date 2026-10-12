@@ -6,14 +6,14 @@ Le frontend est une application Vue 3, écrite en TypeScript strict et construit
 
 Il remplace un frontend en JavaScript sans framework, qui a été reconstruit écran par écran en octobre 2026. Chaque écran n'a été considéré comme migré qu'une fois passés, sans modification, les tests navigateur et les captures d'écran de l'ancien frontend. L'ancien code est consultable au tag Git `vanilla-frontend-final` ; l'état d'avant la migration est au tag `pre-vue-migration`.
 
-Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, mêmes libellés, mêmes messages. La feuille de style est celle de l'ancien frontend, déplacée telle quelle.
+Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, mêmes libellés, mêmes messages. La feuille de style de l'ancien frontend a d'abord été déplacée telle quelle, puis découpée en un fichier par zone, règle pour règle : les captures de référence n'ont pas changé d'un pixel.
 
 ## Contenu
 
 | Fichier (`frontend/`) | Rôle |
 | --- | --- |
 | `vite.config.ts` | Serveur de développement sur le port 5173 et proxy vers le backend. |
-| `src/main.ts` | Démarre Vue, Pinia et le routeur ; charge la feuille de style actuelle. |
+| `src/main.ts` | Démarre Vue, Pinia et le routeur ; charge les feuilles de style. |
 | `public/theme-init.js` | Applique le thème clair ou sombre avant la feuille de style. |
 | `src/router.ts` | Routes, protection selon la session, titre et focus de chaque page. |
 | `src/guards.ts` | Règle de redirection, isolée pour être testée seule. |
@@ -45,7 +45,7 @@ Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, 
 | `src/chat/ChatPanel.vue` | Une conversation : historique, messages en direct, saisie. Sert au chat du workspace et aux messages privés. |
 | `src/chat/subscribe.ts` | Abonnement Socket.IO d'une conversation. |
 | `src/views/` | Un écran par fichier : connexion, inscription, tableau de bord, workspace, projet, tâche, messages privés, pages légales. |
-| `src/styles/` | Feuille de style de l'application et des pages légales. |
+| `src/styles/` | Feuilles de style : `tokens.css` (police, couleurs des deux thèmes), `base.css`, `components.css` (blocs partagés), `layout.css` (cadre), puis une feuille par écran. `main.ts` les charge dans cet ordre, qui est celui de la cascade. |
 | `src/assets/` | Police Inter et icônes. |
 
 ## Routes
