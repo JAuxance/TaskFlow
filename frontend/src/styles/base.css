@@ -57,6 +57,8 @@ input[readonly] { background: var(--color-background); }
 .icon-folder { width: 20px; height: 20px; }
 .icon-chevron { width: 16px; height: 16px; }
 .secondary-text, .section-description { color: var(--color-secondary); }
+/* Read by screen readers, not displayed. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* The icons are grey drawings: lighten them on dark surfaces. */
 html[data-theme="dark"] .icon-folder,

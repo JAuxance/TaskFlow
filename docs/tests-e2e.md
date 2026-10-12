@@ -24,6 +24,7 @@ Ils complètent les autres suites sans les remplacer : `pytest` (routes et sécu
 | `session.spec.ts` | Session expirée ou cookie absent : retour à la connexion ; message d'expiration dans le chat. |
 | `members.spec.ts` | Ajout d'un membre, changement de rôle, retrait et refus de la confirmation ; limites d'un admin ; le chat ouvert du membre retiré se ferme aussitôt et le serveur répond 404. |
 | `workspace.spec.ts` | Totaux et tâches prioritaires de l'aperçu, renommage, emoji et image du workspace, transfert de la propriété, suppression protégée par le nom exact. |
+| `board.spec.ts` | Ordre d'une colonne par priorité, déplacement d'une carte à la souris et au clavier, annulation d'un déplacement refusé, interdiction pour un guest. |
 | `motion.spec.ts` | Les écrans s'animent, sauf quand le système demande moins d'animations. |
 | `legal.spec.ts` | Pages de confidentialité et de cookies ouvertes à tous, liens entre elles et retour à l'application, capture de la page de confidentialité. |
 | `messaging.spec.ts` | Chat du workspace et messages privés entre deux navigateurs, sans rechargement ; historique lu par pages de cinquante ; message vide impossible, brouillon conservé si le serveur refuse ; conversation privée fermée quand les deux membres ne partagent plus de workspace. |
@@ -121,4 +122,4 @@ Quelques repères techniques sont utilisés quand aucun rôle ni libellé ne con
 | `pytest` intégration (`TASKFLOW_CHAT_INTEGRATION=1`) | 41 réussis |
 | Tests unitaires du frontend | 84 réussis |
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
-| Playwright | 78 réussis sur les quatre profils |
+| Playwright | 84 réussis sur les quatre profils |

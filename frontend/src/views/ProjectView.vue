@@ -1,17 +1,20 @@
 <script setup lang="ts">
-// A project as a Kanban board: one column per status.
+// A project as a Kanban board: one column per status, ordered by priority.
+// Moving a card changes its status (across) and its priority (up or down).
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { deleteProject, getProject, updateProject } from '../api/projects';
-import { createTask, getTasks } from '../api/tasks';
+import { createTask, getTasks, updateTask } from '../api/tasks';
 import type { Project, Task, TaskStatus } from '../api/types';
 import AppDialog from '../components/AppDialog.vue';
 import FormMessage from '../components/FormMessage.vue';
 import { useBusy } from '../composables/useBusy';
+import { useSerialQueue } from '../composables/useSerialQueue';
 import { formatShortDay } from '../dates';
 import { COLORS, COLOR_LABELS, colorOf, type Color } from '../domain';
 import { describeScreen } from '../layout/state';
 import { announcePage } from '../page';
+import { dropChanges, sortForBoard, stepChanges, type Move } from '../task/board';
 import { useWorkspace } from '../workspace/useWorkspace';
 
 const STATUSES: [TaskStatus, string][] = [
@@ -79,7 +82,7 @@ async function loadTasks(): Promise<void> {
 }
 
 const columns = computed(() => STATUSES.map(([status, label]) => ({
-    status, label, tasks: (tasks.value ?? []).filter(task => task.status === status),
+    status, label, tasks: sortForBoard((tasks.value ?? []).filter(task => task.status === status)),
 })));
 
 function assigneeName(task: Task): string {
@@ -95,6 +98,93 @@ function dueLabel(task: Task): string {
 }
 
 const openTask = (task: Task) => router.push({ name: 'task', params: { id: task.id } });
+
+// --- Moving a card ---------------------------------------------------------------
+
+// The server rewrites the whole task at each save: moves are sent one at a time.
+const queue = useSerialQueue();
+onBeforeRouteLeave(() => queue.idle());
+/** Read by screen readers after each move. */
+const moveAnnouncement = ref('');
+
+/** Show the move at once, then save it; on a refusal, show what the server has. */
+async function move(task: Task, changes: Move): Promise<void> {
+    Object.assign(task, changes);
+    const column = STATUSES.find(([status]) => status === task.status)?.[1];
+    moveAnnouncement.value = `${task.title}: ${column}, ${PRIORITIES[task.priority]} priority.`;
+    const result = await queue.enqueue(() => updateTask(task.id, changes));
+    if (!mounted || result.ok) return;
+    await loadTasks();
+    if (mounted) tasksMessage.value = result.data.error || 'Unable to move the task.';
+}
+
+/** The card being dragged, and where it would land: before the card `beforeId`, or at the end. */
+const draggedId = ref<number | null>(null);
+const landing = ref<{ status: TaskStatus; beforeId: number | null } | null>(null);
+
+function startDrag(event: DragEvent, task: Task): void {
+    draggedId.value = task.id;
+    if (!event.dataTransfer) return;
+    event.dataTransfer.effectAllowed = 'move';
+    // Firefox only starts a drag that carries data.
+    event.dataTransfer.setData('text/plain', task.title);
+}
+
+function endDrag(): void {
+    draggedId.value = null;
+    landing.value = null;
+}
+
+/** The other cards of the column, and the one the pointer is above the middle of. */
+function landingIn(event: DragEvent, column: { status: TaskStatus; tasks: Task[] }) {
+    const others = column.tasks.filter(task => task.id !== draggedId.value);
+    const cards = (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('.task-card:not(.is-dragged)');
+    const index = [...cards].findIndex(card => {
+        const box = card.getBoundingClientRect();
+        return event.clientY < box.top + box.height / 2;
+    });
+    return { others, index: index === -1 ? others.length : index };
+}
+
+function dragOver(event: DragEvent, column: { status: TaskStatus; tasks: Task[] }): void {
+    if (draggedId.value === null) return;
+    // Without this the browser refuses the drop.
+    event.preventDefault();
+    const { others, index } = landingIn(event, column);
+    const beforeId = others[index]?.id ?? null;
+    if (landing.value?.status !== column.status || landing.value.beforeId !== beforeId) landing.value = { status: column.status, beforeId };
+}
+
+function dragLeave(event: DragEvent, status: TaskStatus): void {
+    // Moving over a card of the same column is not leaving the column.
+    if ((event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) return;
+    if (landing.value?.status === status) landing.value = null;
+}
+
+function drop(event: DragEvent, column: { status: TaskStatus; tasks: Task[] }): void {
+    const task = tasks.value?.find(candidate => candidate.id === draggedId.value);
+    if (!task) return;
+    event.preventDefault();
+    const { others, index } = landingIn(event, column);
+    const changes = dropChanges(task, column.status, others, index);
+    endDrag();
+    if (changes) void move(task, changes);
+}
+
+/** Without a pointer: Shift and an arrow move the focused card by one column or one level. */
+async function cardKey(event: KeyboardEvent, task: Task): Promise<void> {
+    if (!canEditTasks.value || !event.shiftKey) return;
+    const columnStep = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    const levelStep = event.key === 'ArrowUp' ? 1 : event.key === 'ArrowDown' ? -1 : 0;
+    if (!columnStep && !levelStep) return;
+    event.preventDefault();
+    const changes = stepChanges(task, columnStep, levelStep);
+    if (!changes) return;
+    void move(task, changes);
+    // The card is drawn again in its new place: give it the focus back.
+    await nextTick();
+    document.querySelector<HTMLElement>(`.task-card[data-task-id="${task.id}"]`)?.focus();
+}
 
 // --- New task ------------------------------------------------------------------
 
@@ -195,21 +285,35 @@ function removeProject() {
             </div>
         </div>
         <FormMessage id="tasks-message" :text="tasksMessage" />
+        <p v-if="canEditTasks" id="board-help" class="board-help">Drag a task to another column to change its status, or up and down to give it the priority of the task above. With the keyboard: Shift and an arrow key.</p>
+        <p class="visually-hidden" role="status">{{ moveAnnouncement }}</p>
         <div class="kanban-board" aria-label="Project task board">
-            <section v-for="column in columns" :key="column.status" class="kanban-column" :data-status="column.status" :aria-labelledby="`heading-${column.status}`">
+            <section
+                v-for="column in columns" :key="column.status" class="kanban-column" :class="{ 'is-landing': landing?.status === column.status }"
+                :data-status="column.status" :aria-labelledby="`heading-${column.status}`"
+                @dragover="dragOver($event, column)" @dragleave="dragLeave($event, column.status)" @drop="drop($event, column)"
+            >
                 <h2 :id="`heading-${column.status}`" class="kanban-heading">{{ column.label }}<span v-if="tasks === null" class="kanban-count" aria-label="Loading tasks">—</span><span v-else class="kanban-count" :aria-label="`${column.tasks.length} ${column.tasks.length === 1 ? 'task' : 'tasks'}`">{{ column.tasks.length }}</span></h2>
                 <div class="task-cards">
                     <p v-if="tasksFailed && !column.tasks.length" class="empty-state">Tasks unavailable</p>
                     <p v-else-if="tasks === null" class="empty-state">Loading tasks…</p>
                     <p v-else-if="!column.tasks.length" class="empty-state">No tasks yet.</p>
-                    <button v-for="task in column.tasks" :key="task.id" type="button" class="task-card" :data-color="colorOf(task.color)" @click="openTask(task)">
-                        <span class="task-card-title">{{ task.title }}</span>
-                        <span class="task-priority" :data-priority="task.priority">{{ PRIORITIES[task.priority] ?? task.priority }} priority</span>
-                        <span class="task-meta">
-                            <span class="task-assignee">{{ assigneeName(task) }}</span>
-                            <time v-if="dueLabel(task)" :datetime="task.due_date ?? undefined" :title="task.due_date ?? undefined">{{ dueLabel(task) }}</time>
-                        </span>
-                    </button>
+                    <template v-for="task in column.tasks" :key="task.id">
+                        <span v-if="landing?.status === column.status && landing.beforeId === task.id" class="landing-mark" aria-hidden="true" />
+                        <button
+                            type="button" class="task-card" :class="{ 'is-dragged': task.id === draggedId }" :data-task-id="task.id" :data-color="colorOf(task.color)"
+                            :draggable="canEditTasks" :aria-describedby="canEditTasks ? 'board-help' : undefined"
+                            @click="openTask(task)" @dragstart="startDrag($event, task)" @dragend="endDrag" @keydown="cardKey($event, task)"
+                        >
+                            <span class="task-card-title">{{ task.title }}</span>
+                            <span class="task-priority" :data-priority="task.priority">{{ PRIORITIES[task.priority] ?? task.priority }} priority</span>
+                            <span class="task-meta">
+                                <span class="task-assignee">{{ assigneeName(task) }}</span>
+                                <time v-if="dueLabel(task)" :datetime="task.due_date ?? undefined" :title="task.due_date ?? undefined">{{ dueLabel(task) }}</time>
+                            </span>
+                        </button>
+                    </template>
+                    <span v-if="landing?.status === column.status && landing.beforeId === null && column.tasks.length" class="landing-mark" aria-hidden="true" />
                 </div>
             </section>
         </div>
