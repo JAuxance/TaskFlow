@@ -9,3 +9,15 @@ export interface User {
     first_name: string | null;
     avatar_url: string | null;
 }
+
+/** POST /api/auth/login. The full profile is read afterwards from /api/auth/me. */
+export interface Account {
+    id: number;
+    username: string;
+    email: string;
+}
+
+/** POST /api/users. */
+export interface RegisteredAccount extends Account {
+    created_at: string;
+}

@@ -6,10 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
     <title>TaskFlow</title>
+    <!-- Not a module: it must run before the stylesheet, and the CSP forbids inline scripts. -->
+    <script src="/theme-init.js"></script>
 </head>
 
 <body>
-    <div id="app"></div>
+    <a class="skip-link" href="#page-content">Skip to content</a>
+    <div id="app">
+        <p class="app-loading" role="status">Loading TaskFlow…</p>
+    </div>
+    <footer class="site-footer"><nav class="privacy-links" aria-label="Privacy information"><a href="/confidentialite/">Privacy</a><a href="/cookies/">Cookies &amp; storage</a></nav></footer>
+    <noscript>Enable JavaScript to use TaskFlow.</noscript>
+
     <script type="module" src="/src/main.ts"></script>
 </body>
 

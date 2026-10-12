@@ -9,6 +9,7 @@ export const useSessionStore = defineStore('session', () => {
     const user = ref<User | null>(null);
     const status = ref<SessionStatus>('unknown');
     const error = ref('');
+    let firstLoad: Promise<void> | null = null;
 
     /** Ask the server who is signed in; a 401 simply means nobody is. */
     async function load(): Promise<void> {
@@ -20,9 +21,17 @@ export const useSessionStore = defineStore('session', () => {
         } else if (result.status === 401) {
             expire();
         } else {
+            user.value = null;
             status.value = 'unavailable';
             error.value = result.data.error;
         }
+    }
+
+    /** Resolve once the session is known, asking the server only the first time. */
+    function ensureLoaded(): Promise<void> {
+        if (status.value !== 'unknown') return Promise.resolve();
+        firstLoad ??= load();
+        return firstLoad;
     }
 
     /** The server no longer recognizes the session: forget it locally as well. */
@@ -33,5 +42,5 @@ export const useSessionStore = defineStore('session', () => {
         resetCsrfToken();
     }
 
-    return { user, status, error, load, expire };
+    return { user, status, error, load, ensureLoaded, expire };
 });

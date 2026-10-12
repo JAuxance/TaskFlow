@@ -11,7 +11,8 @@ Ils complètent les suites existantes sans les remplacer : `pytest` (routes et s
 | Fichier (`e2e/tests/`) | Parcours |
 | --- | --- |
 | `smoke.spec.ts` | Le frontend se charge et parle au backend jetable. |
-| `auth.spec.ts` | Inscription, déconnexion, connexion, mot de passe faux, email déjà utilisé. |
+| `auth.spec.ts` | Inscription et connexion qui ouvrent une session, mot de passe faux, email déjà utilisé, passage d'un écran à l'autre, déconnexion depuis le profil. |
+| `vue-proxy.spec.ts` | Frontend Vue seulement : proxy Vite, protection des adresses, renouvellement du jeton CSRF. |
 | `workspace-project.spec.ts` | Création d'un workspace puis d'un projet ; nom obligatoire. |
 | `task.spec.ts` | Création d'une tâche, statut et priorité enregistrés automatiquement, titre et description enregistrés sur demande, persistance après rechargement, suppression. |
 | `guest.spec.ts` | Un guest lit le tableau et la tâche ; les champs sont désactivés **et** le serveur refuse les mêmes actions (403). |
@@ -103,7 +104,15 @@ Les tests sont écrits pour tourner sur les deux frontends :
 E2E_FRONTEND=vue npm test --prefix e2e
 ```
 
-Sur la cible `vue`, seuls les fichiers listés dans `VUE_SPECS` (`e2e/playwright.config.ts`) sont exécutés. Pour l'instant c'est `vue-foundation.spec.ts`, qui vérifie le socle à travers le proxy ; chaque écran migré y ajoutera son fichier, jusqu'à couvrir toute la suite. Voir [le frontend Vue](frontend-vue.md).
+Sur la cible `vue`, seuls les tests marqués sont exécutés :
+
+| Marque | Sens |
+| --- | --- |
+| `@vue` | Le test passe aussi sur le frontend Vue. On l'ajoute quand les écrans qu'il traverse sont migrés. |
+| `@vue-only` | Le test vérifie ce que seul le frontend Vue possède : le proxy Vite, les adresses, la page provisoire. Il est exclu sur le frontend actuel. |
+| aucune | Le test traverse des écrans pas encore migrés. |
+
+Quand tous les tests porteront `@vue`, le frontend actuel pourra être retiré. Voir [le frontend Vue](frontend-vue.md).
 
 Le portage doit donc conserver les libellés visibles et ces quelques repères techniques, utilisés quand aucun rôle ne convient :
 
@@ -120,3 +129,5 @@ Sur le tag `pre-vue-migration`, avant tout changement du frontend :
 | `node --test` | 9 réussis |
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
 | Playwright | 30 réussis, dont 2 échecs attendus (D2) ; stable sur trois passages consécutifs |
+
+Depuis, la suite compte 33 tests sur le frontend actuel et 17 sur le frontend Vue.

@@ -16,7 +16,7 @@ async function expectNoHorizontalScroll(page: Page) {
     expect(overflow).toBeLessThanOrEqual(0);
 }
 
-test('the login form fits the screen', async ({ page }) => {
+test('the login form fits the screen', { tag: '@vue' }, async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await expectNoHorizontalScroll(page);

@@ -1,5 +1,5 @@
 import { test as base, expect, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test';
-import { signUp, type User } from './api';
+import { emailOf, signUp, type User } from './api';
 import { resetDatabase } from './stack';
 
 export { expect };
@@ -84,3 +84,9 @@ export function socketEvent(page: Page, name: string): Promise<void> {
 
 /** The message field of the chat currently displayed. */
 export const composer = (page: Page) => page.getByLabel('Message', { exact: true });
+
+/** A signed-in screen is displayed, whichever frontend renders it. */
+export async function expectSignedIn(page: Page, name: string): Promise<void> {
+    await expect(page.getByText(emailOf(name)).filter({ visible: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Login' })).toHaveCount(0);
+}

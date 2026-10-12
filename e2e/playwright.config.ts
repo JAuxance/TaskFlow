@@ -4,9 +4,11 @@ import { FRONTEND_ORIGIN, isLegacyFrontend } from './support/stack';
 const desktop = { viewport: { width: 1440, height: 900 } };
 const mobile = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
 
-// Specs the Vue frontend already passes. The list grows with each migrated
-// screen, until it is the whole suite and the current frontend can be retired.
-const VUE_SPECS = /vue-foundation\.spec\.ts/;
+// Tests tagged @vue also pass on the Vue frontend: tag a test when its screens
+// are migrated, until every test is tagged and the current frontend can be
+// retired. Tests tagged @vue-only check the Vite setup and make no sense on
+// the current frontend.
+const selection = isLegacyFrontend ? { grepInvert: /@vue-only/ } : { grep: /@vue/ };
 
 export default defineConfig({
     testDir: './tests',
@@ -17,6 +19,7 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     timeout: 30_000,
     expect: { timeout: 7_000 },
+    ...selection,
     globalSetup: './global-setup.ts',
     globalTeardown: './global-teardown.ts',
     // No platform suffix: reference screenshots are produced on Linux with Chromium only.
@@ -45,16 +48,15 @@ export default defineConfig({
         // Vite serves the Vue frontend and proxies the API, as Nginx does in production.
         command: 'npm run dev --prefix ../frontend-vue',
         url: 'http://127.0.0.1:5173/',
-        reuseExistingServer: false,
+        // E2E_REUSE_VITE=1 tests through a Vite server you already have running.
+        reuseExistingServer: process.env.E2E_REUSE_VITE === '1',
         stdout: 'ignore',
         stderr: 'pipe',
     },
-    projects: isLegacyFrontend ? [
-        { name: 'desktop-light', use: { ...desktop, colorScheme: 'light' }, testIgnore: VUE_SPECS },
+    projects: [
+        { name: 'desktop-light', use: { ...desktop, colorScheme: 'light' } },
         { name: 'mobile-light', use: { ...mobile, colorScheme: 'light' }, testMatch: /(responsive|visual)\.spec\.ts/ },
         { name: 'desktop-dark', use: { ...desktop, colorScheme: 'dark' }, testMatch: /visual\.spec\.ts/ },
         { name: 'mobile-dark', use: { ...mobile, colorScheme: 'dark' }, testMatch: /visual\.spec\.ts/ },
-    ] : [
-        { name: 'desktop-light', use: { ...desktop, colorScheme: 'light' }, testMatch: VUE_SPECS },
     ],
 });

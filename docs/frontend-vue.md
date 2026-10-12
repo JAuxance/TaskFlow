@@ -1,10 +1,15 @@
-# Frontend Vue — socle
+# Frontend Vue
 
 ## Où en est la migration
 
 Le frontend est en cours de reconstruction avec Vue 3, TypeScript strict et Vite, dans `frontend-vue/`. Le frontend actuel (`frontend/`) reste celui qu'on utilise : il n'est pas modifié et continue de fonctionner sur le port 5500.
 
-Cette étape pose uniquement le socle. **Aucun écran n'est encore migré** : la page affichée par Vite indique seulement si une session est ouverte, pour prouver que l'application atteint le backend.
+| Écran | État |
+| --- | --- |
+| Connexion, inscription | migrés, identiques au pixel près aux captures de référence |
+| Tableau de bord, workspace, Kanban, tâche, messages, profil | à migrer |
+
+Une fois connecté, on arrive pour l'instant sur une page provisoire qui affiche le compte et un bouton de déconnexion. Elle sera remplacée par le tableau de bord.
 
 ## Contenu
 
@@ -12,11 +17,31 @@ Cette étape pose uniquement le socle. **Aucun écran n'est encore migré** : la
 | --- | --- |
 | `vite.config.ts` | Serveur de développement sur le port 5173 et proxy vers le backend. |
 | `src/main.ts` | Démarre Vue, Pinia et le routeur ; charge la feuille de style actuelle. |
-| `src/router.ts` | Routeur en mode historique. Les écrans y seront ajoutés un par un. |
+| `public/theme-init.js` | Applique le thème clair ou sombre avant la feuille de style. |
+| `src/router.ts` | Routes, protection selon la session, titre et focus de chaque page. |
+| `src/guards.ts` | Règle de redirection, isolée pour être testée seule. |
+| `src/page.ts` | Titre de l'onglet et focus sur le titre après chaque navigation. |
 | `src/api/client.ts` | Client HTTP : même contrat que `frontend/js/api.js`. |
+| `src/api/auth.ts` | Connexion, inscription, déconnexion. |
 | `src/api/types.ts` | Types des réponses de l'API, ajoutés avec l'écran qui en a besoin. |
 | `src/stores/session.ts` | Utilisateur connecté et état de la session. |
-| `src/views/FoundationView.vue` | Page provisoire, remplacée par l'écran de connexion à l'étape suivante. |
+| `src/components/FormMessage.vue` | Message d'erreur ou de confirmation d'un formulaire. |
+| `src/composables/useBusy.ts` | Empêche un double envoi pendant qu'une requête est en cours. |
+| `src/views/LoginView.vue`, `RegisterView.vue` | Écrans migrés. |
+| `src/views/HomeView.vue` | Page provisoire d'un utilisateur connecté. |
+
+## Routes
+
+| Adresse | Écran | Accès |
+| --- | --- | --- |
+| `/login` | Connexion | visiteur ; un utilisateur connecté est renvoyé vers `/` |
+| `/register` | Inscription | visiteur ; un utilisateur connecté est renvoyé vers `/` |
+| `/` | Page provisoire, futur tableau de bord | utilisateur connecté ; sinon renvoi vers `/login` |
+| toute autre adresse | renvoi vers `/` | — |
+
+Le frontend actuel n'a pas d'adresses : un rechargement y ramène toujours au tableau de bord. Ici, chaque écran a la sienne, et le bouton « précédent » du navigateur fonctionne.
+
+Les écrans migrés reprennent le HTML de l'écran d'origine : mêmes classes, mêmes identifiants, mêmes libellés et mêmes messages. C'est ce qui permet de leur appliquer les tests et les captures écrits pour le frontend actuel.
 
 ## Cohabitation avec le frontend actuel
 
@@ -24,6 +49,11 @@ Cette étape pose uniquement le socle. **Aucun écran n'est encore migré** : la
 - **Une seule origine pour le navigateur.** Vite relaie `/api`, `/static`, `/health` et `/socket.io` (WebSocket compris) vers le port 5000, comme Nginx en production. Le code Vue appelle toujours des chemins relatifs.
 - **Origine autorisée côté serveur.** Les requêtes relayées gardent l'origine `http://localhost:5173`. Elle est ajoutée aux origines de développement dans `app/app.py`, pour le contrôle CSRF, CORS et Socket.IO. La production n'accepte toujours que `PUBLIC_ORIGIN`.
 - **Même session.** Le cookie est lié au nom d'hôte, pas au port : une session ouverte sur `localhost:5500` est reconnue sur `localhost:5173`. `localhost` et `127.0.0.1` restent deux hôtes distincts.
+- **Script du thème en double.** `public/theme-init.js` est une copie de `frontend/js/theme-init.js` : il doit être un fichier à part, chargé avant la feuille de style, car la CSP interdit les scripts en ligne. Un test unitaire échoue si les deux copies diffèrent.
+
+### Limite connue
+
+Les pages `/confidentialite/` et `/cookies/` sont des fichiers statiques de `frontend/`. Le serveur Vite ne les sert pas : en développement, leurs liens ramènent à l'application. En production, Nginx les servira à côté du build ; ce point est à traiter au moment de la bascule.
 
 ## Client HTTP
 
@@ -50,6 +80,7 @@ Le backend doit tourner sur le port 5000 (`docker compose up -d`).
 | Tests unitaires | `npm test --prefix frontend-vue` |
 | Build de production, dans `frontend-vue/dist/` | `npm run build --prefix frontend-vue` |
 | Tests navigateur sur le frontend Vue | `E2E_FRONTEND=vue npm test --prefix e2e` |
+| Les mêmes, à travers un serveur Vite déjà lancé | `E2E_FRONTEND=vue E2E_REUSE_VITE=1 npm test --prefix e2e` |
 
 ## Dépendances
 
@@ -68,15 +99,16 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 
 | Vérification | Résultat |
 | --- | --- |
-| Types stricts (`vue-tsc`) | aucune erreur ; une erreur volontaire est bien détectée dans un `.ts` et dans un `.vue` |
-| Tests unitaires | 25 réussis (client HTTP et session) |
-| Tests navigateur sur Vue, à travers le proxy | 5 réussis : lecture de la session, session reconnue, modification acceptée avec jeton et refusée sans, repli des chemins inconnus, WebSocket Socket.IO |
-| Tests navigateur sur le frontend actuel | 30 réussis, sans régression |
-| `pytest` | 104 réussis, dont le nouveau test des origines de développement |
-| Build sous la CSP de `deploy/nginx/security-headers.conf` | la page s'affiche, la police se charge, aucune violation |
+| Types stricts (`vue-tsc`) | aucune erreur |
+| Tests unitaires | 37 réussis (client HTTP, authentification, session, redirections, script du thème) |
+| Tests navigateur sur Vue | 17 réussis, stables sur trois passages |
+| dont captures de référence | connexion et inscription identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
+| Tests navigateur sur le frontend actuel | 33 réussis, sans régression |
+| `pytest` | 104 réussis |
+| Build sous la CSP de `deploy/nginx/security-headers.conf` | les deux écrans s'affichent, le thème s'applique, la police et l'icône se chargent, aucune violation |
 
 Le build ne contient ni script ni style en ligne, et n'utilise pas `eval`.
 
 ## Étape suivante
 
-Migrer l'écran de connexion et d'inscription, puis ajouter `auth.spec.ts` à la liste `VUE_SPECS` de `e2e/playwright.config.ts` : les tests écrits pour le frontend actuel devront passer tels quels sur le nouveau.
+Migrer la mise en page (barre latérale, bascule du thème, images protégées) et le tableau de bord, puis marquer `@vue` les tests correspondants dans `e2e/tests/`.

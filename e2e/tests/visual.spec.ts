@@ -13,7 +13,7 @@ async function capture(page: Page, name: string, fullPage = true) {
     await expect.soft(page).toHaveScreenshot(`${name}.png`, { fullPage });
 }
 
-test('signed-out screens match their reference', async ({ page }) => {
+test('signed-out screens match their reference', { tag: '@vue' }, async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await capture(page, 'login');
