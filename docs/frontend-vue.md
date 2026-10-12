@@ -8,7 +8,7 @@ Le frontend est en cours de reconstruction avec Vue 3, TypeScript strict et Vite
 | --- | --- |
 | Connexion, inscription | migrés, identiques au pixel près aux captures de référence |
 | Mise en page (barre latérale, fil d'Ariane, thème), tableau de bord | migrés, identiques au pixel près aux captures de référence |
-| Profil | en partie : le compte et la déconnexion ; reste le prénom, la photo, l'export et la suppression du compte |
+| Profil (prénom, photo, export des données, déconnexion, suppression du compte) | migré, identique au pixel près aux captures de référence |
 | Workspace, Kanban, tâche, messages | à migrer |
 
 Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page « Not migrated yet » dans la mise en page.
@@ -33,7 +33,9 @@ Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page 
 | `src/theme.ts` | Bascule clair/sombre et mémorisation du choix. |
 | `src/domain.ts` | Couleurs, libellés des rôles, initiale d'un avatar : définis une seule fois. |
 | `src/layout/AppLayout.vue` | Cadre des écrans connectés : barre latérale, fil d'Ariane, thème. |
-| `src/layout/ProfileDialog.vue` | Dialogue du profil. |
+| `src/layout/ProfileDialog.vue` | Dialogue du profil : compte, copie de l'email, déconnexion. |
+| `src/layout/profile/` | Une section du profil par fichier : prénom, photo, export, suppression du compte. |
+| `src/api/profile.ts` | Appels du profil. |
 | `src/components/FormMessage.vue` | Message d'erreur ou de confirmation d'un formulaire. |
 | `src/components/AppDialog.vue` | Dialogue modal ; ne se ferme pas pendant un enregistrement. |
 | `src/components/ProtectedImage.vue` | Photo ou icône protégée, avec image de repli. |
@@ -76,6 +78,8 @@ Avant chaque écran connecté, les listes de la barre latérale sont relues, com
 
 Les photos et icônes protégées ne sont demandées qu'une fois par visite. Une nouvelle photo a toujours une nouvelle adresse, donc ce cache ne peut pas afficher une ancienne image.
 
+Le profil est découpé en sections, mais elles partagent un seul verrou (`src/layout/profile/lock.ts`) : pendant qu'une section enregistre, les autres attendent et le dialogue ne peut pas être fermé. À la fermeture, les mots de passe saisis et le récapitulatif de suppression sont oubliés.
+
 Quatre comportements du client sont nouveaux :
 
 | Comportement | Raison |
@@ -117,15 +121,15 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | Vérification | Résultat |
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
-| Tests unitaires | 55 réussis |
-| Tests navigateur sur Vue | 32 réussis sur les quatre profils |
-| dont captures de référence | connexion, inscription et tableau de bord identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
-| Tests navigateur sur le frontend actuel | 37 réussis, sans régression |
+| Tests unitaires | 60 réussis |
+| Tests navigateur sur Vue | 39 réussis sur les quatre profils, stables sur deux passages |
+| dont captures de référence | connexion, inscription, tableau de bord et profil identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
+| Tests navigateur sur le frontend actuel | 44 réussis, sans régression |
 | `pytest` | 104 réussis |
-| Build sous la CSP de `deploy/nginx/security-headers.conf` | inscription, tableau de bord, création d'un workspace, bascule du thème et déconnexion : aucune violation, aucune erreur |
+| Build sous la CSP de `deploy/nginx/security-headers.conf` | inscription, tableau de bord, création d'un workspace, thème, photo de profil, téléchargement des données et déconnexion : aucune violation, aucune erreur |
 
 Le build ne contient ni script ni style en ligne, et n'utilise pas `eval`.
 
 ## Étape suivante
 
-Terminer le profil (prénom, photo, export des données, suppression du compte), puis marquer comme migré l'écran `profile` dans `e2e/support/stack.ts`.
+Migrer l'écran du workspace (aperçu, membres, réglages), puis marquer `@vue` les tests correspondants et ajouter ses écrans à `VUE_SCREENS` dans `e2e/support/stack.ts`.

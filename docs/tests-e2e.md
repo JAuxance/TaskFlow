@@ -15,6 +15,7 @@ Ils complètent les suites existantes sans les remplacer : `pytest` (routes et s
 | `vue-proxy.spec.ts` | Frontend Vue seulement : proxy Vite, protection des adresses, renouvellement du jeton CSRF. |
 | `workspace-project.spec.ts` | Création d'un workspace depuis le tableau de bord, nom obligatoire, création d'un projet. |
 | `dashboard.spec.ts` | Tâches de chaque projet, filtre par statut, rôle affiché à chaque membre, bascule du thème. |
+| `profile.spec.ts` | Prénom, photo de profil, téléchargement des données avec mot de passe, copie de l'email, oubli des mots de passe à la fermeture, suppression du compte et blocage tant qu'un workspace est partagé. |
 | `task.spec.ts` | Création d'une tâche, statut et priorité enregistrés automatiquement, titre et description enregistrés sur demande, persistance après rechargement, suppression. |
 | `guest.spec.ts` | Un guest lit le tableau et la tâche ; les champs sont désactivés **et** le serveur refuse les mêmes actions (403). |
 | `session.spec.ts` | Session expirée ou cookie absent : retour à la connexion ; message d'expiration dans le chat. |
@@ -133,6 +134,6 @@ Sur le tag `pre-vue-migration`, avant tout changement du frontend :
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
 | Playwright | 30 réussis, dont 2 échecs attendus (D2) ; stable sur trois passages consécutifs |
 
-Depuis, la suite compte 37 tests sur le frontend actuel et 32 sur le frontend Vue.
+Depuis, la suite compte 44 tests sur le frontend actuel et 39 sur le frontend Vue.
 
 La capture `profile` a été régénérée une fois, volontairement : le dialogue était photographié par-dessus l'écran de tâche, il l'est maintenant par-dessus le tableau de bord, pour ne dépendre que des écrans migrés en premier. Les 40 autres captures n'ont pas changé.
