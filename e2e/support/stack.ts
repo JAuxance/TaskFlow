@@ -13,7 +13,7 @@ export const isLegacyFrontend = FRONTEND === 'legacy';
 // stops where the migration stops; on the current frontend it goes all the way.
 const VUE_SCREENS = [
     'login', 'register', 'dashboard', 'profile', 'workspace-overview', 'workspace-members',
-    'kanban', 'task-details', 'task-details-guest',
+    'kanban', 'task-details', 'task-details-guest', 'workspace-messages', 'direct-messages',
 ];
 export const isMigrated = (screen: string) => isLegacyFrontend || VUE_SCREENS.includes(screen);
 
