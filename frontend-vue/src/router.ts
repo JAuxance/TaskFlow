@@ -9,7 +9,9 @@ import { useSidebarStore } from './stores/sidebar';
 import DashboardView from './views/DashboardView.vue';
 import LoginView from './views/LoginView.vue';
 import PendingView from './views/PendingView.vue';
+import ProjectView from './views/ProjectView.vue';
 import RegisterView from './views/RegisterView.vue';
+import TaskView from './views/TaskView.vue';
 import WorkspaceView from './views/WorkspaceView.vue';
 
 declare module 'vue-router' {
@@ -47,8 +49,14 @@ export const router = createRouter({
                     path: 'workspaces/:id(\\d+)/:tab(messages|members|settings)?', name: 'workspace', component: WorkspaceView,
                     meta: { pageClass: 'workspace-page', breadcrumbs: [toWorkspaces] },
                 },
-                { path: 'projects/:id(\\d+)', name: 'project', ...pending },
-                { path: 'tasks/:id(\\d+)', name: 'task', ...pending },
+                {
+                    path: 'projects/:id(\\d+)', name: 'project', component: ProjectView,
+                    meta: { pageClass: 'project-page', breadcrumbs: [toWorkspaces] },
+                },
+                {
+                    path: 'tasks/:id(\\d+)', name: 'task', component: TaskView,
+                    meta: { pageClass: 'task-page', breadcrumbs: [toWorkspaces] },
+                },
                 { path: 'messages/:userId(\\d+)', name: 'messages', ...pending },
             ],
         },

@@ -1,13 +1,19 @@
 import { apiCollection, apiRequest } from './client';
-import type { Project, Task } from './types';
+import type { Project } from './types';
+
+const json = (body: unknown) => ({
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+});
 
 export const getProjects = (workspaceId: number) =>
     apiCollection<Project>(`/api/workspaces/${workspaceId}/projects`);
 
-export function createProject(workspaceId: number, name: string, description: string) {
-    return apiRequest<Project>(`/api/workspaces/${workspaceId}/projects`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description }),
-    });
-}
+export const getProject = (projectId: number) => apiRequest<Project>(`/api/projects/${projectId}`);
 
-export const getTasks = (projectId: number) => apiCollection<Task>(`/api/projects/${projectId}/tasks`);
+export const createProject = (workspaceId: number, name: string, description: string) =>
+    apiRequest<Project>(`/api/workspaces/${workspaceId}/projects`, { method: 'POST', ...json({ name, description }) });
+
+export const updateProject = (projectId: number, changes: { name: string; description: string }) =>
+    apiRequest<Project>(`/api/projects/${projectId}`, { method: 'PATCH', ...json(changes) });
+
+export const deleteProject = (projectId: number) => apiRequest(`/api/projects/${projectId}`, { method: 'DELETE' });

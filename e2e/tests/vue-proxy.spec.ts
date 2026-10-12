@@ -1,5 +1,5 @@
 import { expect, expectSignedIn, test } from '../support/test';
-import { PASSWORD, createProject, createWorkspace, emailOf, signUp } from '../support/api';
+import { PASSWORD, addMember, createProject, createTask, createWorkspace, emailOf, signUp } from '../support/api';
 
 // Vue frontend only (E2E_FRONTEND=vue). These tests check what the current
 // frontend does not have: the Vite proxy, URLs, and the notice shown in place
@@ -79,17 +79,15 @@ test.describe('Vite setup', { tag: '@vue-only' }, () => {
     });
 
     test('a screen that is not migrated yet says so, and the browser history works', async ({ actor }) => {
-        const { page, request } = await actor('alice');
-        const workspace = await createWorkspace(request, 'Design studio');
-        await createProject(request, workspace.id, 'Website redesign');
-        await page.reload();
+        const alice = await actor('alice');
+        await actor('bob');
+        const workspace = await createWorkspace(alice.request, 'Design studio');
+        await addMember(alice.request, workspace.id, 'bob', 'member');
+        const page = alice.page;
+        await page.goto(`/workspaces/${workspace.id}/members`);
 
-        await page.getByRole('navigation', { name: 'Workspaces' }).getByRole('button', { name: 'Design studio', exact: true }).click();
-        await expect(page).toHaveURL(`/workspaces/${workspace.id}`);
-        await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
-
-        await page.getByRole('region', { name: 'Projects', exact: true }).getByRole('button', { name: /Website redesign/ }).click();
-        await expect(page).toHaveURL(/\/projects\/\d+$/);
+        await page.getByRole('button', { name: 'Send a private message to bob' }).click();
+        await expect(page).toHaveURL(/\/messages\/\d+/);
         await expect(page.getByRole('heading', { name: 'Not migrated yet' })).toBeVisible();
 
         await page.goBack();
@@ -97,6 +95,28 @@ test.describe('Vite setup', { tag: '@vue-only' }, () => {
         await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Workspaces' }).click();
         await expect(page).toHaveURL('/');
         await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
+    });
+
+    test('a project and a task keep their address: a reload stays on them', async ({ actor }) => {
+        const { page, request } = await actor('alice');
+        const workspace = await createWorkspace(request, 'Design studio');
+        const project = await createProject(request, workspace.id, 'Website redesign');
+        const task = await createTask(request, project.id, { title: 'Write the brief' });
+
+        await page.goto(`/tasks/${task.id}`);
+        await expect(page.getByRole('heading', { level: 1, name: 'Write the brief' })).toBeVisible();
+        await expect(page).toHaveTitle('Write the brief — TaskFlow');
+        await page.reload();
+        await expect(page.getByRole('heading', { level: 1, name: 'Write the brief' })).toBeVisible();
+
+        // The breadcrumb leads back up, one level at a time.
+        await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Website redesign' }).click();
+        await expect(page).toHaveURL(`/projects/${project.id}`);
+        await page.reload();
+        await expect(page.getByRole('heading', { level: 1, name: 'Website redesign' })).toBeVisible();
+        // The workspace stays highlighted in the sidebar on its projects and tasks.
+        await expect(page.getByRole('navigation', { name: 'Workspaces' }).getByRole('button', { name: 'Design studio', exact: true }))
+            .toHaveAttribute('aria-current', 'page');
     });
 
     test('a workspace opens directly on the tab named in the address', async ({ actor }) => {

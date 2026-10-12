@@ -42,10 +42,11 @@ test('the chat explains that the session expired', async ({ actor }) => {
     await expect(page.getByRole('alert')).toHaveText('Your session expired. Sign in again to continue.');
 });
 
-test.describe('screens that should also return to the login screen', () => {
-    // Audit finding D2: the board and the task details show an error and stay
-    // in place. These tests describe the expected behavior; the Vue frontend
-    // must make them pass, at which point this marker goes away.
+test.describe('screens that should also return to the login screen', { tag: '@vue' }, () => {
+    // Audit finding D2: on the current frontend the board and the task details
+    // show an error and stay in place. These tests describe the expected
+    // behavior, which the Vue frontend has: the marker only applies to the
+    // current frontend and disappears with it.
     test.fail(isLegacyFrontend, 'D2: no return to login from the board or the task details');
 
     test('opening a task from the board after expiry', async ({ actor }) => {

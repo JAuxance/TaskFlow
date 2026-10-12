@@ -16,3 +16,8 @@ export const ROLE_LABELS: Record<WorkspaceRole, string> = {
 export function initialOf(name: string | null | undefined): string {
     return Array.from(name ?? '')[0]?.toUpperCase() || '?';
 }
+
+/** Names offered when choosing the color of a task. */
+export const COLOR_LABELS: Record<Color, string> = {
+    gray: 'Gray', blue: 'Blue', green: 'Green', yellow: 'Yellow', orange: 'Orange', red: 'Red', purple: 'Purple',
+};

@@ -10,7 +10,8 @@ Le frontend est en cours de reconstruction avec Vue 3, TypeScript strict et Vite
 | Mise en page (barre latérale, fil d'Ariane, thème), tableau de bord | migrés, identiques au pixel près aux captures de référence |
 | Profil (prénom, photo, export des données, déconnexion, suppression du compte) | migré, identique au pixel près aux captures de référence |
 | Workspace (aperçu, membres, réglages, création de projet, ajout de membre) | migré, identique au pixel près aux captures de référence |
-| Kanban, tâche, messages du workspace, messages privés | à migrer |
+| Kanban et réglages du projet, détail d'une tâche | migrés, identiques au pixel près aux captures de référence |
+| Messages du workspace, messages privés | à migrer |
 
 Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page « Not migrated yet » dans la mise en page.
 
@@ -45,7 +46,10 @@ Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page 
 | `src/workspace/useWorkspace.ts` | Un workspace, ses membres et les droits de l'utilisateur ; servira aussi au Kanban et à la tâche. |
 | `src/workspace/` | Un onglet du workspace par fichier : aperçu, membres, réglages. |
 | `src/dates.ts` | Lecture d'une échéance et format court d'un jour, définis une seule fois. |
-| `src/views/LoginView.vue`, `RegisterView.vue`, `DashboardView.vue`, `WorkspaceView.vue` | Écrans migrés. |
+| `src/composables/useSerialQueue.ts` | File qui envoie les enregistrements d'une tâche un par un. |
+| `src/task/dueDate.ts` | Conversions de l'échéance entre le serveur et le champ de saisie. |
+| `src/api/tasks.ts` | Appels des tâches. |
+| `src/views/LoginView.vue`, `RegisterView.vue`, `DashboardView.vue`, `WorkspaceView.vue`, `ProjectView.vue`, `TaskView.vue` | Écrans migrés. |
 | `src/views/PendingView.vue` | Page affichée à la place d'un écran pas encore migré. |
 
 ## Routes
@@ -56,7 +60,9 @@ Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page 
 | `/register` | Inscription | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/` | Tableau de bord | utilisateur connecté ; sinon renvoi vers `/login` |
 | `/workspaces/:id` | Workspace ; `/members`, `/settings` ou `/messages` à la suite ouvre directement cet onglet | membre du workspace |
-| `/projects/:id`, `/tasks/:id`, `/messages/:userId` | pas encore migrés | utilisateur connecté |
+| `/projects/:id` | Kanban du projet | membre du workspace |
+| `/tasks/:id` | Détail d'une tâche | membre du workspace |
+| `/messages/:userId` | pas encore migré | utilisateur connecté |
 | toute autre adresse | renvoi vers `/` | — |
 
 Le frontend actuel n'a pas d'adresses : un rechargement y ramène toujours au tableau de bord. Ici, chaque écran a la sienne, et le bouton « précédent » du navigateur fonctionne.
@@ -85,6 +91,29 @@ Avant chaque écran connecté, les listes de la barre latérale sont relues, com
 Les photos et icônes protégées ne sont demandées qu'une fois par visite. Une nouvelle photo a toujours une nouvelle adresse, donc ce cache ne peut pas afficher une ancienne image.
 
 Après une modification du workspace (nom, icône, membre, projet), l'écran relit le workspace au lieu de se fier à la réponse de la modification. Cela évite un contournement du frontend actuel, nécessaire parce que certaines réponses nomment l'identifiant `workspace_id` et d'autres `id` (constat D5 de l'audit).
+
+## Enregistrement d'une tâche
+
+Le serveur enregistre une tâche en réécrivant toute sa ligne. Deux enregistrements envoyés en même temps peuvent donc s'écraser : un changement de statut et une sauvegarde du formulaire, par exemple. Comme le frontend actuel, l'écran de tâche les envoie **un par un**, dans l'ordre, grâce à `useSerialQueue`.
+
+Ce qui est repris à l'identique :
+
+- le statut, la priorité et la couleur partent dès qu'on les change ; le titre, la description, l'échéance et le responsable attendent « Save changes » ;
+- si le serveur refuse, le champ reprend la dernière valeur confirmée, et les enregistrements suivants partent quand même ;
+- « Back to project » attend la fin des enregistrements, pour que le tableau les affiche ;
+- une saisie faite pendant un enregistrement est signalée (« Your latest edits are still unsaved »).
+
+Ce qui change :
+
+| Comportement | Raison |
+| --- | --- |
+| Toutes les sorties de l'écran attendent la file : fil d'Ariane, barre latérale, bouton « précédent ». | Sur le frontend actuel, seul « Back to project » attend ; le tableau peut alors afficher une valeur périmée. |
+| Une requête bloquée est abandonnée après 15 secondes. | Sans délai, elle figeait la file et l'écran. |
+| Une session expirée ramène à la connexion. | Constat D2 de l'audit : le Kanban et la tâche l'ignoraient. |
+
+La file ne protège toujours que l'onglet courant. Deux personnes, ou deux onglets, peuvent encore s'écraser : corriger cela demande un contrôle de version côté serveur, hors du périmètre de la migration.
+
+## Messages
 
 Dans l'onglet des messages, le workspace affiche pour l'instant un avis : le chat sera migré avec les messages privés.
 
@@ -131,15 +160,15 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | Vérification | Résultat |
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
-| Tests unitaires | 70 réussis |
-| Tests navigateur sur Vue | 51 réussis sur les quatre profils |
-| dont captures de référence | connexion, inscription, tableau de bord, profil, aperçu et membres du workspace identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
-| Tests navigateur sur le frontend actuel | 53 réussis, sans régression |
+| Tests unitaires | 82 réussis, dont la file d'enregistrements et les conversions de date |
+| Tests navigateur sur Vue | 65 réussis sur les quatre profils |
+| dont captures de référence | tous les écrans sauf les messages : identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
+| Tests navigateur sur le frontend actuel | 60 réussis, sans régression |
 | `pytest` | 104 réussis |
-| Build sous la CSP de `deploy/nginx/security-headers.conf` | parcours complet jusqu'au workspace, images comprises : aucune violation, aucune erreur |
+| Build sous la CSP de `deploy/nginx/security-headers.conf` | parcours complet jusqu'à la tâche : aucune violation, aucune erreur |
 
 Le build ne contient ni script ni style en ligne, et n'utilise pas `eval`.
 
 ## Étape suivante
 
-Migrer le Kanban et le détail d'une tâche, avec la file d'enregistrements en série, puis marquer `@vue` les tests correspondants et ajouter `kanban`, `task-details` et `task-details-guest` à `VUE_SCREENS` dans `e2e/support/stack.ts`.
+Migrer les messages du workspace et les messages privés, avec le client Socket.IO, puis marquer `@vue` les derniers tests. Viendront ensuite la bascule et le retrait du frontend actuel, qui demandent des décisions sur la production.
