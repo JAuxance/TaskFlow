@@ -32,7 +32,7 @@ export default defineConfig({
     },
     webServer: {
         // Vite serves the frontend and relays the API, as Nginx does in production.
-        command: 'npm run dev --prefix ../frontend-vue',
+        command: 'npm run dev --prefix ../frontend',
         url: 'http://127.0.0.1:5173/',
         // E2E_REUSE_VITE=1 tests through a Vite server you already have running.
         reuseExistingServer: process.env.E2E_REUSE_VITE === '1',

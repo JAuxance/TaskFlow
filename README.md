@@ -14,7 +14,7 @@ A collaborative project and task management application. TaskFlow organizes work
 
 - **Backend**: Python 3.12, Flask, Flask-SocketIO, and Psycopg.
 - **Database**: PostgreSQL 17.
-- **Frontend**: Vue 3, TypeScript, and Vite, in `frontend-vue/`. See [Vue frontend](docs/frontend-vue.md).
+- **Frontend**: Vue 3, TypeScript, and Vite, in `frontend/`. See [frontend](docs/frontend.md).
 - **Local environment**: Docker Compose.
 
 ## Local setup
@@ -58,8 +58,8 @@ The API is available at `http://localhost:5000`. The SQL schema and application 
 Prerequisite: Node.js 20 or later. In another terminal:
 
 ```bash
-npm ci --prefix frontend-vue
-npm run dev --prefix frontend-vue
+npm ci --prefix frontend
+npm run dev --prefix frontend
 ```
 
 Open [http://localhost:5173](http://localhost:5173), then create an account from the registration screen.
@@ -94,7 +94,7 @@ PostgreSQL data is stored in the `postgres_data` volume. Initialization scripts 
 ```text
 app/          Flask application, data access, routes, and Socket.IO events
 app/sql/      Database schema and application account initialization
-frontend-vue/ Vue 3 frontend: screens, styles, and visual assets
+frontend/ Vue 3 frontend: screens, styles, and visual assets
 e2e/          Browser tests and reference screenshots
 docs/         Documentation and design mockups
 compose.yaml  Docker Compose services
@@ -119,8 +119,8 @@ Opt-in network tests use a disposable PostgreSQL database and real HTTP/WebSocke
 Frontend unit tests and type checks:
 
 ```bash
-npm test --prefix frontend-vue
-npm run typecheck --prefix frontend-vue
+npm test --prefix frontend
+npm run typecheck --prefix frontend
 ```
 
 Browser tests are in `e2e/`. They drive Chromium with Playwright against a disposable stack (`compose.e2e.yaml`), never the development database, and compare the main screens with reference screenshots. Stop the development stack and the development server first, since they use ports 5000 and 5173:
@@ -135,7 +135,7 @@ See [browser tests](docs/tests-e2e.md) for the covered journeys, reports and ref
 
 ## Production request security
 
-Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by your deployment. Mutations now require the session's CSRF token and an allowed request origin; the frontend HTTP client (`frontend-vue/src/api/client.ts`) sends the token automatically, including for login and uploads. Deploy frontend and backend together. Follow the [Nginx, proxy and cache installation procedure](docs/protection-requetes.md) before enabling `TRUST_PROXY_HEADERS=1`.
+Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by your deployment. Mutations now require the session's CSRF token and an allowed request origin; the frontend HTTP client (`frontend/src/api/client.ts`) sends the token automatically, including for login and uploads. Deploy frontend and backend together. Follow the [Nginx, proxy and cache installation procedure](docs/protection-requetes.md) before enabling `TRUST_PROXY_HEADERS=1`.
 
 ## Documentation
 
@@ -149,7 +149,7 @@ Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by yo
 - [Request security and deployment](docs/protection-requetes.md)
 - [Real-time chat access](docs/correction-acces-chat.md)
 - [Browser tests](docs/tests-e2e.md)
-- [Vue frontend](docs/frontend-vue.md)
+- [Frontend](docs/frontend.md)
 - [Database schema](docs/db.md)
 - [API security audit](docs/audit-securite-api.md)
 - [Audit closure report](docs/cloture-audit-securite-api.md)

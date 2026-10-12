@@ -1,7 +1,7 @@
 """Check the proposed Nginx files in a disposable local Docker container.
 
 The site root is the production build of the frontend: run
-`npm run build --prefix frontend-vue` first.
+`npm run build --prefix frontend` first.
 """
 import json
 from pathlib import Path
@@ -13,11 +13,11 @@ import time
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
-SITE = ROOT / "frontend-vue/dist"
+SITE = ROOT / "frontend/dist"
 NAME = "taskflow-nginx-security-test"
 
 if not (SITE / "index.html").is_file():
-    raise SystemExit("Build the frontend first: npm run build --prefix frontend-vue")
+    raise SystemExit("Build the frontend first: npm run build --prefix frontend")
 
 
 def run(*args, quiet=False):

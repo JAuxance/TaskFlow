@@ -1,5 +1,5 @@
 {
-  "name": "taskflow-frontend-vue",
+  "name": "taskflow-frontend",
   "private": true,
   "type": "module",
   "scripts": {

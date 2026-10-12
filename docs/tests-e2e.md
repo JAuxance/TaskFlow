@@ -47,7 +47,7 @@ Les tests créent, expirent et suppriment des données. Ils ne doivent jamais at
 Prérequis : Docker et Node.js 20 ou plus récent.
 
 ```bash
-npm ci --prefix frontend-vue
+npm ci --prefix frontend
 npm ci --prefix e2e
 npx --prefix e2e playwright install chromium
 ```
@@ -77,7 +77,7 @@ La commande construit et démarre la pile jetable, sert le frontend Vue sur le p
 | --- | --- | --- |
 | Navigateur | `npm test --prefix e2e` | `e2e/playwright-report/index.html` et `reports/e2e-junit.xml` |
 | Python | `python -m pytest -q --junitxml=reports/pytest.xml` | `reports/pytest.xml` |
-| Frontend, tests unitaires | `npm test --prefix frontend-vue -- --reporter=junit --outputFile=../reports/frontend-unit.xml` | `reports/frontend-unit.xml` |
+| Frontend, tests unitaires | `npm test --prefix frontend -- --reporter=junit --outputFile=../reports/frontend-unit.xml` | `reports/frontend-unit.xml` |
 
 `npm run report --prefix e2e` ouvre le rapport HTML. En cas d'échec, il contient une capture, la trace complète du navigateur et, pour un écart visuel, les images attendue, obtenue et leur différence. Les rapports ne sont pas versionnés.
 

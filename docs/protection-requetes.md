@@ -7,7 +7,7 @@ Une attaque CSRF cherche à faire envoyer une action par le navigateur d'une per
 `app/security.py` contrôle toutes les requêtes qui modifient `/api/` : inscription, connexion, déconnexion, créations, modifications, suppressions et images. Le contrôle précède le traitement métier.
 
 1. Le frontend demande un jeton aléatoire à `GET /api/auth/csrf`. Flask l'associe à sa session signée.
-2. Le client HTTP du frontend (`frontend-vue/src/api/client.ts`) transmet ce jeton dans `X-CSRF-Token` avec le cookie.
+2. Le client HTTP du frontend (`frontend/src/api/client.ts`) transmet ce jeton dans `X-CSRF-Token` avec le cookie.
 3. Le serveur vérifie l'origine exacte et compare le jeton à celui de la session. Une origine étrangère, une origine absente sans Referer valable ou un jeton incorrect donne `403`.
 4. Après une connexion ou une inscription réussie, la session change et un nouveau jeton sera demandé. Les mutations suivantes récupèrent le jeton courant ; plusieurs sauvegardes simultanées partagent la requête de récupération en cours.
 
@@ -39,7 +39,7 @@ Ces étapes concernent la configuration Nginx active ; le fichier Compose Caddy 
 
 La branche inclut désormais les pages de préparation RG-02 et les outils de données : finaliser les informations signalées dans [la procédure de publication](donnees-personnelles.md) avant de publier cette version complète.
 
-Le site servi par Nginx est le build du frontend Vue. Le produire avec `npm ci --prefix frontend-vue` puis `npm run build --prefix frontend-vue`, et copier **tout le contenu** de `frontend-vue/dist/` à la racine du site (`/var/www/taskflow`), en remplaçant l'ancien contenu. Les pages `/confidentialite/` et `/cookies/` font partie de l'application : il n'y a plus de dossier à copier à part. Recharger les anciens onglets avec actualisation du cache si nécessaire.
+Le site servi par Nginx est le build du frontend Vue. Le produire avec `npm ci --prefix frontend` puis `npm run build --prefix frontend`, et copier **tout le contenu** de `frontend/dist/` à la racine du site (`/var/www/taskflow`), en remplaçant l'ancien contenu. Les pages `/confidentialite/` et `/cookies/` font partie de l'application : il n'y a plus de dossier à copier à part. Recharger les anciens onglets avec actualisation du cache si nécessaire.
 
 1. Sauvegarder les versions actives du site Nginx, du frontend et l'identifiant de l'image backend pour un retour arrière. Comparer le site proposé à la configuration réelle, notamment les chemins du frontend et des certificats et les réglages Certbot.
 2. Installer les trois fichiers inclus de `deploy/nginx/` dans `/etc/nginx/taskflow/` : `cloudflare-real-ip.conf`, `proxy-headers.conf`, `security-headers.conf`. Actualiser les plages Cloudflare depuis ses listes officielles si nécessaire. Préparer le site `taskflow.auxance.dev.conf` dans le site activé pour ce seul domaine.
@@ -56,8 +56,8 @@ Depuis le dépôt, après installation de `requirements.txt` et `requirements-de
 
 ```bash
 python -m pytest -q
-npm test --prefix frontend-vue
-npm run build --prefix frontend-vue
+npm test --prefix frontend
+npm run build --prefix frontend
 docker compose -f compose.chat-tests.yaml up -d --wait
 TASKFLOW_CHAT_INTEGRATION=1 python -m pytest -q app/tests/integration
 python scripts/check_nginx_security.py

@@ -9,7 +9,7 @@ Version locale préparée le 8 octobre 2026. Aucun déploiement ni effacement de
 - Le bouton de retrait de l'avatar supprime le fichier courant puis sa référence dans une transaction qui verrouille le profil. Si le fichier résiste à la suppression, la réponse `503` conserve la référence pour permettre un nouvel essai. Cette route ne modifie pas le traitement des autres fichiers orphelins, prévu au lot RG-08/RG-09.
 - La liste des membres omet les e-mails pour tous les rôles. Les pseudonymes, avatars, identifiants et rôles suffisent à afficher et administrer cette liste. L'ajout d'un membre conserve la saisie de son adresse connue.
 - « Download my data » demande le mot de passe actuel et fournit un fichier JSON. La route utilise exclusivement le compte de la session. Session, CSRF et limitation à 3 demandes par heure par IP s'appliquent.
-- Le client Socket.IO 4.8.1 fait partie du build du frontend : il vient du paquet npm officiel `socket.io-client`, à la version du site initial, dont l'empreinte est fixée dans `frontend-vue/package-lock.json`. Licence MIT. Il est servi par le site lui-même, sans appel à un serveur tiers.
+- Le client Socket.IO 4.8.1 fait partie du build du frontend : il vient du paquet npm officiel `socket.io-client`, à la version du site initial, dont l'empreinte est fixée dans `frontend/package-lock.json`. Licence MIT. Il est servi par le site lui-même, sans appel à un serveur tiers.
 
 ## Contenu et bornes de l'export
 
@@ -56,8 +56,8 @@ Aucun outil publicitaire ou de mesure d'audience n'a été trouvé dans le front
 
 ```bash
 python -m pytest -q
-npm test --prefix frontend-vue
-npm run build --prefix frontend-vue
+npm test --prefix frontend
+npm run build --prefix frontend
 docker compose -f compose.chat-tests.yaml up -d --wait
 TASKFLOW_CHAT_INTEGRATION=1 python -m pytest -q app/tests/integration
 python scripts/check_nginx_security.py
