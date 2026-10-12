@@ -1,12 +1,17 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
-export const FRONTEND_ORIGIN = 'http://localhost:5500';
+// E2E_FRONTEND selects the frontend under test: the current one (default) or
+// the Vue rebuild served by Vite. Both talk to the same disposable backend.
+export const FRONTEND = process.env.E2E_FRONTEND ?? 'legacy';
+if (FRONTEND !== 'legacy' && FRONTEND !== 'vue') {
+    throw new Error(`E2E_FRONTEND must be "legacy" or "vue", not "${FRONTEND}"`);
+}
+export const isLegacyFrontend = FRONTEND === 'legacy';
+
+export const FRONTEND_ORIGIN = isLegacyFrontend ? 'http://localhost:5500' : 'http://localhost:5173';
 export const API_URL = 'http://localhost:5000';
 export const SENTINEL_EMAIL = 'e2e-sentinel@example.com';
-
-// The same specs will later run against the Vue frontend (E2E_FRONTEND=vue).
-export const isLegacyFrontend = (process.env.E2E_FRONTEND ?? 'legacy') === 'legacy';
 
 const REPO = path.resolve(__dirname, '..', '..');
 const COMPOSE_FILE = path.join(REPO, 'compose.e2e.yaml');

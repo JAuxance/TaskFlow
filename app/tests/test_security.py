@@ -153,3 +153,15 @@ def test_proxy_configuration_and_rate_limit(trust_proxy):
     second = client.get("/api/ip", headers={"X-Forwarded-For": "192.0.2.2"})
     assert second.status_code == (200 if trust_proxy else 429)
     assert client.get("/api/ip", headers={"X-Forwarded-For": "192.0.2.1"}).status_code == 429
+
+
+def test_development_accepts_both_local_frontends_only(client):
+    from app.extensions import socketio
+
+    local = ["http://localhost:5500", "http://127.0.0.1:5500",
+             "http://localhost:5173", "http://127.0.0.1:5173"]
+    for origin in local:
+        assert client.get("/api/auth/csrf", headers={"Origin": origin}).status_code == 200
+    assert socketio.server.eio.cors_allowed_origins == local
+    for origin in ("http://localhost:3000", "http://localhost:51730", "https://localhost:5173"):
+        assert client.get("/api/auth/csrf", headers={"Origin": origin}).status_code == 403

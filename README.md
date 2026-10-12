@@ -15,6 +15,7 @@ A collaborative project and task management application. TaskFlow organizes work
 - **Backend**: Python 3.12, Flask, Flask-SocketIO, and Psycopg.
 - **Database**: PostgreSQL 17.
 - **Frontend**: HTML, CSS, and vanilla JavaScript, with no build step.
+- **Frontend rebuild, in progress**: Vue 3, TypeScript, and Vite in `frontend-vue/`. No screen is migrated yet; see [Vue frontend](docs/frontend-vue.md).
 - **Local environment**: Docker Compose.
 
 ## Local setup
@@ -94,6 +95,8 @@ PostgreSQL data is stored in the `postgres_data` volume. Initialization scripts 
 app/          Flask application, data access, routes, and Socket.IO events
 app/sql/      Database schema and application account initialization
 frontend/     HTML, CSS, JavaScript, and visual assets
+frontend-vue/ Vue 3 rebuild of the frontend, in progress
+e2e/          Browser tests and reference screenshots
 docs/         Documentation and design mockups
 compose.yaml  Docker Compose services
 Dockerfile    Backend image
@@ -140,6 +143,7 @@ Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by yo
 - [Request security and deployment](docs/protection-requetes.md)
 - [Real-time chat access](docs/correction-acces-chat.md)
 - [Browser tests](docs/tests-e2e.md)
+- [Vue frontend](docs/frontend-vue.md)
 - [Database schema](docs/db.md)
 - [API security audit](docs/audit-securite-api.md)
 - [Audit closure report](docs/cloture-audit-securite-api.md)
