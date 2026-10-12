@@ -52,8 +52,12 @@ test('two members exchange private messages', async ({ actor }) => {
     await alice.page.getByRole('button', { name: 'Send message' }).click();
     await expect(alice.page.getByRole('log')).toContainText('Can you review the brief?');
 
-    // The conversation appears in the recipient's sidebar on their next navigation.
-    await bob.page.getByRole('button', { name: 'All workspaces' }).click();
+    // Asking again for the conversation already displayed leaves the screen as it is.
+    await navigation(alice.page).getByRole('button', { name: /bob/ }).click();
+    await expect(alice.page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Direct messages');
+
+    // The conversation appears in the recipient's sidebar the next time they arrive.
+    await reloadApp(bob.page);
     const conversation = navigation(bob.page).getByRole('button', { name: /alice/ });
     await expect(conversation).toContainText('Can you review the brief?');
     const bobJoined = socketEvent(bob.page, 'direct_message_joined');

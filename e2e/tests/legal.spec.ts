@@ -29,7 +29,7 @@ test('a signed-in user reads the privacy page and comes back to the application'
     await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
 
     await page.getByRole('navigation', { name: 'Privacy information' }).getByRole('link', { name: 'TaskFlow' }).click();
-    await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your next project starts here' })).toBeVisible();
 });
 
 test('the privacy page matches its reference', async ({ page }) => {

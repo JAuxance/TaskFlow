@@ -51,16 +51,16 @@ test.describe('Vite setup', () => {
         // A signed-in user no longer sees the login or registration screens.
         await signUp(context.request, 'alice');
         await page.goto('/login');
-        await expect(page).toHaveURL('/workspaces');
+        await expect(page).toHaveURL('/');
         await expectSignedIn(page, 'alice');
         await page.goto('/register');
-        await expect(page).toHaveURL('/workspaces');
+        await expect(page).toHaveURL('/');
     });
 
-    test('arriving opens the first workspace, or the list when there is none', async ({ actor }) => {
+    test('arriving opens the first workspace, or the welcome screen when there is none', async ({ actor }) => {
         const { page, request } = await actor('alice');
-        // Nothing to open yet: the list, with its invitation to create a workspace.
-        await expect(page).toHaveURL('/workspaces');
+        // Nothing to open yet: an invitation to create a workspace.
+        await expect(page).toHaveURL('/');
         await expect(page.getByRole('heading', { name: 'Your next project starts here' })).toBeVisible();
 
         const first = await createWorkspace(request, 'Design studio');
@@ -69,10 +69,9 @@ test.describe('Vite setup', () => {
         await expect(page).toHaveURL(`/workspaces/${first.id}`);
         await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
 
-        // The list stays one click away in the sidebar.
-        await page.getByRole('button', { name: 'All workspaces' }).click();
-        await expect(page).toHaveURL('/workspaces');
-        await expect(page.locator('#workspace-cards').getByRole('button', { name: /Marketing/ })).toBeVisible();
+        // The address of the former list of workspaces leads to the same place.
+        await page.goto('/workspaces');
+        await expect(page).toHaveURL(`/workspaces/${first.id}`);
     });
 
     test('signing out and in again renews the CSRF token without a reload', async ({ page, context }) => {
@@ -110,9 +109,9 @@ test.describe('Vite setup', () => {
         await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
         await page.goForward();
         await expect(page.getByText('Conversation with bob')).toBeVisible();
-        await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Workspaces' }).click();
-        await expect(page).toHaveURL('/workspaces');
-        await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
+        // The breadcrumb leads back to the members of the workspace the conversation was opened from.
+        await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Design studio' }).click();
+        await expect(page).toHaveURL(`/workspaces/${workspace.id}/members`);
     });
 
     test('a project and a task keep their address: a reload stays on them', async ({ actor }) => {
@@ -148,6 +147,6 @@ test.describe('Vite setup', () => {
         // A workspace the user cannot see is reported, without leaving the application.
         await page.goto('/workspaces/999999');
         await expect(page.getByRole('alert')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'All workspaces' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'New workspace', exact: true })).toBeVisible();
     });
 });

@@ -1,29 +1,46 @@
 import { expect, openWorkspace, reloadApp, test } from '../support/test';
 import { createWorkspace } from '../support/api';
 
-test('a user creates a workspace from the dashboard and becomes its owner', async ({ actor }) => {
+test('a user creates a first workspace from the welcome screen and becomes its owner', async ({ actor }) => {
     const { page } = await actor('alice');
     const sidebar = page.getByRole('navigation', { name: 'Workspaces' });
     await expect(sidebar.getByText('No workspaces yet.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Your next project starts here' })).toBeVisible();
 
-    await page.getByRole('button', { name: '+ New workspace' }).click();
+    await page.getByRole('button', { name: 'Create a workspace' }).click();
     const dialog = page.getByRole('dialog', { name: 'New workspace' });
     await dialog.getByLabel('Workspace name').fill('Design studio');
     await dialog.getByRole('button', { name: 'Create workspace' }).click();
 
-    // The new workspace is listed on the dashboard and in the sidebar.
+    // The new workspace opens, and the sidebar lists it.
     await expect(dialog).toBeHidden();
-    const card = page.locator('#workspace-cards').getByRole('button', { name: /Design studio/ });
-    await expect(card).toContainText('Owner');
-    await expect(page.locator('#workspace-cards')).toContainText('No projects in this workspace yet.');
-    await expect(sidebar.getByRole('button', { name: 'Design studio', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
+    await expect(page.locator('.page-heading .role-badge')).toHaveText('Owner');
+    await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'Design studio', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(sidebar.getByText('No workspaces yet.')).toHaveCount(0);
+});
+
+test('another workspace is created from the sidebar, from any screen', async ({ actor }) => {
+    const { page, request } = await actor('alice');
+    await createWorkspace(request, 'Design studio');
+    await reloadApp(page);
+    await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
+
+    const sidebar = page.getByRole('navigation', { name: 'Workspaces' });
+    await sidebar.getByRole('button', { name: 'New workspace', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'New workspace' });
+    await dialog.getByLabel('Workspace name').fill('Marketing');
+    await dialog.getByRole('button', { name: 'Create workspace' }).click();
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Marketing' })).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'Marketing', exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(sidebar.getByRole('button', { name: 'Design studio', exact: true })).toBeVisible();
 });
 
 test('a workspace needs a name', async ({ actor }) => {
     const { page } = await actor('alice');
-    await page.getByRole('button', { name: '+ New workspace' }).click();
+    await page.getByRole('button', { name: 'New workspace', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'New workspace' });
     await dialog.getByLabel('Workspace name').fill('   ');
     await dialog.getByRole('button', { name: 'Create workspace' }).click();
@@ -53,5 +70,5 @@ test('an owner creates a project inside a workspace', async ({ actor }) => {
     await expect(project).toContainText('No tasks yet');
     await expect(page.locator('#workspace-project-count')).toHaveText('1');
     await expect(projectDialog).toBeHidden();
-    await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Design studio');
+    await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
 });

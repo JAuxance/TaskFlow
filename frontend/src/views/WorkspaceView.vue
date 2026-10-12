@@ -15,7 +15,7 @@ import ProtectedImage from '../components/ProtectedImage.vue';
 import { useBusy } from '../composables/useBusy';
 import { ROLE_LABELS, colorOf } from '../domain';
 import { describeScreen } from '../layout/state';
-import { announcePage } from '../page';
+import { announcePage, nameTab } from '../page';
 import { useSidebarStore } from '../stores/sidebar';
 import WorkspaceMembers from '../workspace/WorkspaceMembers.vue';
 import WorkspaceOverview from '../workspace/WorkspaceOverview.vue';
@@ -44,7 +44,7 @@ const color = computed(() => colorOf(workspace.value?.color));
 
 async function show(): Promise<void> {
     if (!await load(workspaceId) || !workspace.value) return;
-    describeScreen([{ label: 'Workspaces', to: { name: 'workspaces' } }, { label: workspace.value.name }], workspaceId);
+    describeScreen([{ label: workspace.value.name }], workspaceId);
 }
 
 onMounted(async () => {
@@ -59,6 +59,9 @@ onMounted(async () => {
 async function refresh(): Promise<void> {
     await Promise.all([show(), sidebar.refresh()]);
     version.value += 1;
+    // The workspace may have been renamed: the tab follows, without moving the focus.
+    await nextTick();
+    nameTab();
 }
 
 // --- Messages ----------------------------------------------------------------------

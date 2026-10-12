@@ -1,4 +1,4 @@
-import { composer, expect, openDashboard, openWorkspace, reloadApp, socketEvent, test } from '../support/test';
+import { composer, expect, openWorkspace, reloadApp, socketEvent, test } from '../support/test';
 import { addMember, api, createWorkspace, emailOf } from '../support/api';
 
 test('an owner adds a member, changes their role, then removes them', async ({ actor }) => {
@@ -34,9 +34,10 @@ test('an owner adds a member, changes their role, then removes them', async ({ a
     await expect(owner.page.getByRole('button', { name: 'Remove bob from workspace' })).toHaveCount(0);
     await expect(owner.page.getByRole('tab', { name: /Members/ })).toContainText('1');
 
-    // On their next navigation, the workspace is gone for the removed member.
-    await openDashboard(bob.page);
+    // The next time they arrive, the workspace is gone for the removed member.
+    await reloadApp(bob.page);
     await expect(bob.page.getByText('No workspaces yet.')).toBeVisible();
+    await expect(bob.page.getByRole('heading', { name: 'Your next project starts here' })).toBeVisible();
 
     // The server no longer discloses that the workspace exists.
     await api(bob.request, 'GET', `/api/workspaces/${workspace.id}`, undefined, 404);

@@ -8,10 +8,13 @@ import { sql } from '../support/stack';
 const expireSessions = () => sql("UPDATE sessions SET expires_at = now() - interval '1 minute'");
 
 test('an expired session returns to the login screen on the next navigation', async ({ actor }) => {
-    const { page } = await actor('alice');
+    const { page, request } = await actor('alice');
+    await createWorkspace(request, 'Design studio');
+    await createWorkspace(request, 'Marketing');
+    await reloadApp(page);
     expireSessions();
 
-    await page.getByRole('button', { name: 'All workspaces' }).click();
+    await page.getByRole('navigation', { name: 'Workspaces' }).getByRole('button', { name: 'Marketing', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
