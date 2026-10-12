@@ -114,6 +114,16 @@ Tests are in `app/tests/`. They use Flask and Socket.IO test clients with databa
 
 Opt-in network tests use a disposable PostgreSQL database and real HTTP/WebSocket connections. Run them in a separate Python process: see [chat access tests](docs/correction-acces-chat.md) and [request security tests](docs/protection-requetes.md). The latter also describes the JavaScript and Nginx checks.
 
+Browser tests are in `e2e/`. They drive Chromium with Playwright against a disposable stack (`compose.e2e.yaml`), never the development database, and compare the main screens with reference screenshots. Stop the development stack first, since both use port 5000:
+
+```bash
+npm ci --prefix e2e
+npx --prefix e2e playwright install chromium
+npm test --prefix e2e
+```
+
+See [browser tests](docs/tests-e2e.md) for the covered journeys, reports and reference screenshots.
+
 ## Production request security
 
 Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by your deployment. Mutations now require the session's CSRF token and an allowed request origin; `frontend/js/api.js` sends the token automatically, including for login and uploads. Deploy frontend and backend together. Follow the [Nginx, proxy and cache installation procedure](docs/protection-requetes.md) before enabling `TRUST_PROXY_HEADERS=1`.
@@ -129,6 +139,7 @@ Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by yo
 - [API reference](docs/api.md)
 - [Request security and deployment](docs/protection-requetes.md)
 - [Real-time chat access](docs/correction-acces-chat.md)
+- [Browser tests](docs/tests-e2e.md)
 - [Database schema](docs/db.md)
 - [API security audit](docs/audit-securite-api.md)
 - [Audit closure report](docs/cloture-audit-securite-api.md)

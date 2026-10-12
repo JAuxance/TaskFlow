@@ -1,4 +1,6 @@
-import { composer, expect, openProject, openTask, openWorkspace, reloadApp, socketEvent, test } from '../support/test';
+import {
+    composer, expect, kanbanColumn, openProject, openTask, openWorkspace, reloadApp, socketEvent, test,
+} from '../support/test';
 import { createProject, createTask, createWorkspace } from '../support/api';
 import { isLegacyFrontend, sql } from '../support/stack';
 
@@ -56,7 +58,7 @@ test.describe('screens that should also return to the login screen', () => {
         await openProject(page, 'Website redesign');
         expireSessions();
 
-        await page.locator('.kanban-column[data-status="todo"]').getByRole('button', { name: /Write the brief/ }).click();
+        await kanbanColumn(page, 'todo').getByRole('button', { name: /Write the brief/ }).click();
         await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible({ timeout: 3000 });
     });
 
