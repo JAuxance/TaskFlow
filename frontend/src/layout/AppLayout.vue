@@ -29,15 +29,15 @@ const activeConversationId = computed(() => route.name === 'messages' ? Number(r
 const activeWorkspaceId = computed(() => activeConversationId.value !== null ? null
     : layoutState.workspaceId ?? (route.name === 'workspace' ? Number(route.params.id) : null));
 const breadcrumbs = computed(() => layoutState.trail ?? route.meta.breadcrumbs ?? []);
-const onAllWorkspaces = computed(() => route.name === 'home');
+const onAllWorkspaces = computed(() => route.name === 'workspaces');
 
 // Changing it rebuilds the current screen: "All workspaces" reloads the
-// dashboard when it is clicked from the dashboard itself.
+// list when it is clicked from the list itself.
 const reload = ref(0);
 
 async function showAllWorkspaces(): Promise<void> {
     if (!onAllWorkspaces.value) {
-        await router.push({ name: 'home' });
+        await router.push({ name: 'workspaces' });
         return;
     }
     await sidebar.refresh();

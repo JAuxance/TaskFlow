@@ -57,7 +57,7 @@ export async function openTask(page: Page, status: string, title: string): Promi
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 }
 
-/** Reload the sidebar and current data after a change made through the API. */
+/** Arrive again after a change made through the API: fresh sidebar, and the first workspace if there is one. */
 export async function reloadApp(page: Page): Promise<void> {
     await page.goto('/');
     await expect(page.getByRole('button', { name: 'Edit your profile' })).toBeVisible();
@@ -92,8 +92,8 @@ export async function expectSignedIn(page: Page, name: string): Promise<void> {
 }
 
 /**
- * Return to the dashboard and wait until it is rebuilt with fresh data. The
- * mark tells the new dashboard from the one that may already be displayed.
+ * Open the list of all workspaces and wait until it is rebuilt with fresh data.
+ * The mark tells the new list from the one that may already be displayed.
  */
 export async function openDashboard(page: Page): Promise<void> {
     await page.evaluate(() => document.querySelector('#overview-tasks')?.setAttribute('data-stale', ''));

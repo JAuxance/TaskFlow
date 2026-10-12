@@ -14,7 +14,7 @@ Ils complètent les autres suites sans les remplacer : `pytest` (routes et sécu
 | --- | --- |
 | `smoke.spec.ts` | Le frontend se charge et parle au backend jetable. |
 | `auth.spec.ts` | Inscription et connexion qui ouvrent une session, mot de passe faux, email déjà utilisé, passage d'un écran à l'autre, déconnexion depuis le profil. |
-| `addresses.spec.ts` | Proxy Vite, protection des adresses selon la session, renouvellement du jeton CSRF, historique du navigateur. |
+| `addresses.spec.ts` | Proxy Vite, protection des adresses selon la session, arrivée dans le premier workspace, renouvellement du jeton CSRF, historique du navigateur. |
 | `workspace-project.spec.ts` | Création d'un workspace depuis le tableau de bord, nom obligatoire, création d'un projet. |
 | `dashboard.spec.ts` | Tâches de chaque projet, filtre par statut, rôle affiché à chaque membre, bascule du thème. |
 | `profile.spec.ts` | Prénom, photo de profil, téléchargement des données avec mot de passe, copie de l'email, oubli des mots de passe à la fermeture, suppression du compte et blocage tant qu'un workspace est partagé. |
@@ -115,4 +115,4 @@ Quelques repères techniques sont utilisés quand aucun rôle ni libellé ne con
 | `pytest` intégration (`TASKFLOW_CHAT_INTEGRATION=1`) | 41 réussis |
 | Tests unitaires du frontend | 84 réussis |
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
-| Playwright | 75 réussis sur les quatre profils |
+| Playwright | 76 réussis sur les quatre profils |

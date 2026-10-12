@@ -44,7 +44,7 @@ const color = computed(() => colorOf(workspace.value?.color));
 
 async function show(): Promise<void> {
     if (!await load(workspaceId) || !workspace.value) return;
-    describeScreen([{ label: 'Workspaces', to: { name: 'home' } }, { label: workspace.value.name }], workspaceId);
+    describeScreen([{ label: 'Workspaces', to: { name: 'workspaces' } }, { label: workspace.value.name }], workspaceId);
 }
 
 onMounted(async () => {

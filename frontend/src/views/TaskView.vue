@@ -67,7 +67,7 @@ onMounted(async () => {
     heading.value = task.title;
     savedAssignee = fields.assignee;
     describeScreen([
-        { label: 'Workspaces', to: { name: 'home' } },
+        { label: 'Workspaces', to: { name: 'workspaces' } },
         { label: workspace.value.name, to: { name: 'workspace', params: { id: workspace.value.id } } },
         { label: project.value.name, to: { name: 'project', params: { id: project.value.id } } },
         { label: 'Task details' },

@@ -51,10 +51,28 @@ test.describe('Vite setup', () => {
         // A signed-in user no longer sees the login or registration screens.
         await signUp(context.request, 'alice');
         await page.goto('/login');
-        await expect(page).toHaveURL('/');
+        await expect(page).toHaveURL('/workspaces');
         await expectSignedIn(page, 'alice');
         await page.goto('/register');
-        await expect(page).toHaveURL('/');
+        await expect(page).toHaveURL('/workspaces');
+    });
+
+    test('arriving opens the first workspace, or the list when there is none', async ({ actor }) => {
+        const { page, request } = await actor('alice');
+        // Nothing to open yet: the list, with its invitation to create a workspace.
+        await expect(page).toHaveURL('/workspaces');
+        await expect(page.getByRole('heading', { name: 'Your next project starts here' })).toBeVisible();
+
+        const first = await createWorkspace(request, 'Design studio');
+        await createWorkspace(request, 'Marketing');
+        await page.goto('/');
+        await expect(page).toHaveURL(`/workspaces/${first.id}`);
+        await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
+
+        // The list stays one click away in the sidebar.
+        await page.getByRole('button', { name: 'All workspaces' }).click();
+        await expect(page).toHaveURL('/workspaces');
+        await expect(page.locator('#workspace-cards').getByRole('button', { name: /Marketing/ })).toBeVisible();
     });
 
     test('signing out and in again renews the CSRF token without a reload', async ({ page, context }) => {
@@ -93,7 +111,7 @@ test.describe('Vite setup', () => {
         await page.goForward();
         await expect(page.getByText('Conversation with bob')).toBeVisible();
         await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Workspaces' }).click();
-        await expect(page).toHaveURL('/');
+        await expect(page).toHaveURL('/workspaces');
         await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
     });
 

@@ -35,7 +35,7 @@ onBeforeUnmount(() => { mounted = false; });
 function describe(): void {
     if (!project.value || !workspace.value) return;
     describeScreen([
-        { label: 'Workspaces', to: { name: 'home' } },
+        { label: 'Workspaces', to: { name: 'workspaces' } },
         { label: workspace.value.name, to: { name: 'workspace', params: { id: workspace.value.id } } },
         { label: project.value.name },
     ], workspace.value.id);

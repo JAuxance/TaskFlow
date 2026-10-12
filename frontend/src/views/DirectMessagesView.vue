@@ -29,7 +29,7 @@ onMounted(async () => {
     name.value = conversation?.first_name || conversation?.username
         || members.value?.find(member => member.user_id === otherUserId)?.user_name || 'Member';
     describeScreen([
-        { label: 'Workspaces', to: { name: 'home' } },
+        { label: 'Workspaces', to: { name: 'workspaces' } },
         ...(workspace.value ? [{ label: workspace.value.name, to: membersOf(workspace.value.id) }] : []),
         { label: 'Direct messages' },
     ]);

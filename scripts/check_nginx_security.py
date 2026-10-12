@@ -91,7 +91,7 @@ with TemporaryDirectory(prefix="taskflow-nginx-", dir=cache) as folder:
         for path in ("/theme-init.js", "/assets/icons/folder.svg"):
             assert session.get("https://127.0.0.1:54443" + path, headers=headers, timeout=3).status_code == 200
         # Every screen has an address: Nginx hands them all to the application.
-        for path in ("/login", "/workspaces/12/members", "/tasks/3", "/confidentialite/", "/cookies/"):
+        for path in ("/login", "/workspaces", "/workspaces/12/members", "/tasks/3", "/confidentialite/", "/cookies/"):
             page = session.get("https://127.0.0.1:54443" + path, headers=headers, timeout=3)
             assert page.status_code == 200 and page.text == html.text
             assert page.headers["Content-Security-Policy"] == policy

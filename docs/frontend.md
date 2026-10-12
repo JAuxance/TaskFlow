@@ -74,7 +74,8 @@ Toutes les couleurs sont dans `src/styles/tokens.css`, pour les deux thèmes ; l
 | `/login` | Connexion | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/register` | Inscription | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/confidentialite/`, `/cookies/` | Pages légales, même texte et mêmes adresses que les pages statiques qu'elles remplacent | tout le monde |
-| `/` | Tableau de bord | utilisateur connecté ; sinon renvoi vers `/login` |
+| `/` | Arrivée : ouvre le premier workspace de la barre latérale (le plus ancien), ou la liste s'il n'y en a aucun | utilisateur connecté ; sinon renvoi vers `/login` |
+| `/workspaces` | Liste de tous les workspaces et de leurs tâches, ouverte par « All workspaces » dans la barre latérale | utilisateur connecté |
 | `/workspaces/:id` | Workspace ; `/members`, `/settings` ou `/messages` à la suite ouvre directement cet onglet | membre du workspace |
 | `/projects/:id` | Kanban du projet | membre du workspace |
 | `/tasks/:id` | Détail d'une tâche | membre du workspace |
@@ -82,6 +83,8 @@ Toutes les couleurs sont dans `src/styles/tokens.css`, pour les deux thèmes ; l
 | toute autre adresse | renvoi vers `/` | — |
 
 Chaque écran a son adresse : un rechargement y reste, et le bouton « précédent » du navigateur fonctionne. L'ancien frontend n'en avait pas.
+
+On arrive directement dans un workspace, comme dans une messagerie d'équipe : la liste des workspaces est dans la barre latérale, et la page qui les présente en cartes n'est plus l'écran d'accueil. La règle est dans `src/guards.ts` (`arrivalFor`), appliquée par le routeur une fois la barre latérale chargée.
 
 ## Développement et production
 
@@ -178,8 +181,8 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | Vérification | Résultat |
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
-| Tests unitaires | 84 réussis |
-| Tests navigateur | 75 réussis sur les quatre profils |
+| Tests unitaires | 86 réussis |
+| Tests navigateur | 76 réussis sur les quatre profils |
 | Captures de référence | les 45 identiques au pixel près à celles de l'ancien frontend à la fin de la migration, puis régénérées volontairement pour la refonte graphique |
 | `pytest` | 104 réussis, et 41 tests d'intégration |
 | Contrôle Nginx (`scripts/check_nginx_security.py`) sur le build | tous les contrôles réussis |
