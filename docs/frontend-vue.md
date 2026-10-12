@@ -2,7 +2,7 @@
 
 ## Où en est la migration
 
-Le frontend est en cours de reconstruction avec Vue 3, TypeScript strict et Vite, dans `frontend-vue/`. Le frontend actuel (`frontend/`) reste celui qu'on utilise : il n'est pas modifié et continue de fonctionner sur le port 5500.
+Le frontend a été reconstruit avec Vue 3, TypeScript strict et Vite, dans `frontend-vue/`. **Tous les écrans sont migrés.** Le frontend actuel (`frontend/`) n'a pas été modifié et reste celui qui est servi : la bascule vers le nouveau n'est pas encore faite.
 
 | Écran | État |
 | --- | --- |
@@ -11,9 +11,9 @@ Le frontend est en cours de reconstruction avec Vue 3, TypeScript strict et Vite
 | Profil (prénom, photo, export des données, déconnexion, suppression du compte) | migré, identique au pixel près aux captures de référence |
 | Workspace (aperçu, membres, réglages, création de projet, ajout de membre) | migré, identique au pixel près aux captures de référence |
 | Kanban et réglages du projet, détail d'une tâche | migrés, identiques au pixel près aux captures de référence |
-| Messages du workspace, messages privés | à migrer |
+| Messages du workspace, messages privés | migrés, identiques au pixel près aux captures de référence |
 
-Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page « Not migrated yet » dans la mise en page.
+Tous les tests écrits pour le frontend actuel passent tels quels sur le nouveau, et les 44 captures de référence sont identiques.
 
 ## Contenu
 
@@ -49,8 +49,9 @@ Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page 
 | `src/composables/useSerialQueue.ts` | File qui envoie les enregistrements d'une tâche un par un. |
 | `src/task/dueDate.ts` | Conversions de l'échéance entre le serveur et le champ de saisie. |
 | `src/api/tasks.ts` | Appels des tâches. |
-| `src/views/LoginView.vue`, `RegisterView.vue`, `DashboardView.vue`, `WorkspaceView.vue`, `ProjectView.vue`, `TaskView.vue` | Écrans migrés. |
-| `src/views/PendingView.vue` | Page affichée à la place d'un écran pas encore migré. |
+| `src/chat/ChatPanel.vue` | Une conversation : historique, messages en direct, saisie. Sert au chat du workspace et aux messages privés. |
+| `src/chat/subscribe.ts` | Abonnement Socket.IO d'une conversation. |
+| `src/views/` | Un écran par fichier : connexion, inscription, tableau de bord, workspace, projet, tâche, messages privés. |
 
 ## Routes
 
@@ -62,7 +63,7 @@ Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page 
 | `/workspaces/:id` | Workspace ; `/members`, `/settings` ou `/messages` à la suite ouvre directement cet onglet | membre du workspace |
 | `/projects/:id` | Kanban du projet | membre du workspace |
 | `/tasks/:id` | Détail d'une tâche | membre du workspace |
-| `/messages/:userId` | pas encore migré | utilisateur connecté |
+| `/messages/:userId` | Messages privés ; `?workspace=` indique d'où l'on vient, pour le retour | membre partageant un workspace |
 | toute autre adresse | renvoi vers `/` | — |
 
 Le frontend actuel n'a pas d'adresses : un rechargement y ramène toujours au tableau de bord. Ici, chaque écran a la sienne, et le bouton « précédent » du navigateur fonctionne.
@@ -115,7 +116,17 @@ La file ne protège toujours que l'onglet courant. Deux personnes, ou deux ongle
 
 ## Messages
 
-Dans l'onglet des messages, le workspace affiche pour l'instant un avis : le chat sera migré avec les messages privés.
+Le chat du workspace et les messages privés partagent un seul composant, `ChatPanel`, comme ils partagent une seule fonction dans le frontend actuel.
+
+Ce qui est repris à l'identique :
+
+- une connexion Socket.IO par conversation ouverte, qui rejoint son salon à chaque (re)connexion ;
+- après une coupure, relecture de l'historique jusqu'au dernier message connu, même si plus d'une page a été manquée ;
+- un message reçu à la fois par la réponse HTTP et par l'événement en direct n'est affiché qu'une fois ;
+- si le serveur retire l'accès, la conversation se ferme aussitôt ; si la session a expiré, retour à la connexion avec un message ;
+- un brouillon refusé par le serveur reste dans le champ.
+
+Le client Socket.IO vient maintenant de npm (`socket.io-client` 4.8.1, la version embarquée par le frontend actuel) au lieu d'un fichier copié dans `vendor/`. Il se connecte à la même origine que la page : Vite en développement, Nginx en production relaient `/socket.io`.
 
 Le profil est découpé en sections, mais elles partagent un seul verrou (`src/layout/profile/lock.ts`) : pendant qu'une section enregistre, les autres attendent et le dialogue ne peut pas être fermé. À la fermeture, les mots de passe saisis et le récapitulatif de suppression sont oubliés.
 
@@ -152,6 +163,7 @@ Le backend doit tourner sur le port 5000 (`docker compose up -d`).
 | `vite`, `@vitejs/plugin-vue` | 8.3.4, 6.0.10 | Serveur de développement et build. |
 | `typescript`, `vue-tsc` | 6.0.3, 3.3.13 | Vérification des types, y compris dans les fichiers `.vue`. |
 | `vitest` | 5.0.4 | Tests unitaires. |
+| `socket.io-client` | 4.8.1 | Messages en direct ; même version que celle du frontend actuel. |
 
 TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pas encore avec TypeScript 7.
 
@@ -160,15 +172,18 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | Vérification | Résultat |
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
-| Tests unitaires | 82 réussis, dont la file d'enregistrements et les conversions de date |
-| Tests navigateur sur Vue | 65 réussis sur les quatre profils |
-| dont captures de référence | tous les écrans sauf les messages : identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
-| Tests navigateur sur le frontend actuel | 60 réussis, sans régression |
+| Tests unitaires | 84 réussis |
+| Tests navigateur sur Vue | 72 réussis sur les quatre profils : les 63 tests partagés avec le frontend actuel, plus 9 propres à Vue |
+| Captures de référence | les 44 identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
+| Tests navigateur sur le frontend actuel | 63 réussis, sans régression |
 | `pytest` | 104 réussis |
-| Build sous la CSP de `deploy/nginx/security-headers.conf` | parcours complet jusqu'à la tâche : aucune violation, aucune erreur |
+| Build sous la CSP de `deploy/nginx/security-headers.conf` | parcours complet, images, téléchargement et chat compris : aucune violation, aucune erreur |
 
-Le build ne contient ni script ni style en ligne, et n'utilise pas `eval`.
+Le build ne contient ni script ni style en ligne, et n'utilise pas `eval`. Il pèse 235 Ko de JavaScript (80 Ko compressé).
 
-## Étape suivante
+## Ce qui reste
 
-Migrer les messages du workspace et les messages privés, avec le client Socket.IO, puis marquer `@vue` les derniers tests. Viendront ensuite la bascule et le retrait du frontend actuel, qui demandent des décisions sur la production.
+La migration des écrans est terminée ; le nouveau frontend n'est pas encore servi aux utilisateurs. Restent deux étapes, qui demandent des décisions sur la production :
+
+1. **La bascule** : faire servir `frontend-vue/dist` par Nginx à la place de `frontend/`, avec les pages statiques `/confidentialite/` et `/cookies/`, et garder l'ancien frontend accessible le temps de valider.
+2. **Le retrait** de l'ancien frontend, une fois la bascule validée : suppression de `frontend/js`, déplacement de la feuille de style et des icônes dans `frontend-vue/`, retrait des marques `@vue` et de l'échec attendu D2 dans les tests.
