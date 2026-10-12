@@ -13,7 +13,8 @@ Ils complètent les suites existantes sans les remplacer : `pytest` (routes et s
 | `smoke.spec.ts` | Le frontend se charge et parle au backend jetable. |
 | `auth.spec.ts` | Inscription et connexion qui ouvrent une session, mot de passe faux, email déjà utilisé, passage d'un écran à l'autre, déconnexion depuis le profil. |
 | `vue-proxy.spec.ts` | Frontend Vue seulement : proxy Vite, protection des adresses, renouvellement du jeton CSRF. |
-| `workspace-project.spec.ts` | Création d'un workspace puis d'un projet ; nom obligatoire. |
+| `workspace-project.spec.ts` | Création d'un workspace depuis le tableau de bord, nom obligatoire, création d'un projet. |
+| `dashboard.spec.ts` | Tâches de chaque projet, filtre par statut, rôle affiché à chaque membre, bascule du thème. |
 | `task.spec.ts` | Création d'une tâche, statut et priorité enregistrés automatiquement, titre et description enregistrés sur demande, persistance après rechargement, suppression. |
 | `guest.spec.ts` | Un guest lit le tableau et la tâche ; les champs sont désactivés **et** le serveur refuse les mêmes actions (403). |
 | `session.spec.ts` | Session expirée ou cookie absent : retour à la connexion ; message d'expiration dans le chat. |
@@ -112,7 +113,9 @@ Sur la cible `vue`, seuls les tests marqués sont exécutés :
 | `@vue-only` | Le test vérifie ce que seul le frontend Vue possède : le proxy Vite, les adresses, la page provisoire. Il est exclu sur le frontend actuel. |
 | aucune | Le test traverse des écrans pas encore migrés. |
 
-Quand tous les tests porteront `@vue`, le frontend actuel pourra être retiré. Voir [le frontend Vue](frontend-vue.md).
+Deux tests traversent presque tous les écrans : les captures de référence et la mise en page responsive. Ils portent déjà `@vue`, et s'arrêtent sur le frontend Vue aux écrans listés dans `VUE_SCREENS` (`e2e/support/stack.ts`). Chaque écran y est ouvert depuis le tableau de bord, pour être comparé indépendamment des autres.
+
+Quand tous les tests porteront `@vue` et que `VUE_SCREENS` contiendra tous les écrans, le frontend actuel pourra être retiré. Voir [le frontend Vue](frontend-vue.md).
 
 Le portage doit donc conserver les libellés visibles et ces quelques repères techniques, utilisés quand aucun rôle ne convient :
 
@@ -130,4 +133,6 @@ Sur le tag `pre-vue-migration`, avant tout changement du frontend :
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
 | Playwright | 30 réussis, dont 2 échecs attendus (D2) ; stable sur trois passages consécutifs |
 
-Depuis, la suite compte 33 tests sur le frontend actuel et 17 sur le frontend Vue.
+Depuis, la suite compte 37 tests sur le frontend actuel et 32 sur le frontend Vue.
+
+La capture `profile` a été régénérée une fois, volontairement : le dialogue était photographié par-dessus l'écran de tâche, il l'est maintenant par-dessus le tableau de bord, pour ne dépendre que des écrans migrés en premier. Les 40 autres captures n'ont pas changé.

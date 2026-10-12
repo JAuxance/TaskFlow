@@ -7,9 +7,11 @@ Le frontend est en cours de reconstruction avec Vue 3, TypeScript strict et Vite
 | Écran | État |
 | --- | --- |
 | Connexion, inscription | migrés, identiques au pixel près aux captures de référence |
-| Tableau de bord, workspace, Kanban, tâche, messages, profil | à migrer |
+| Mise en page (barre latérale, fil d'Ariane, thème), tableau de bord | migrés, identiques au pixel près aux captures de référence |
+| Profil | en partie : le compte et la déconnexion ; reste le prénom, la photo, l'export et la suppression du compte |
+| Workspace, Kanban, tâche, messages | à migrer |
 
-Une fois connecté, on arrive pour l'instant sur une page provisoire qui affiche le compte et un bouton de déconnexion. Elle sera remplacée par le tableau de bord.
+Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page « Not migrated yet » dans la mise en page.
 
 ## Contenu
 
@@ -25,10 +27,19 @@ Une fois connecté, on arrive pour l'instant sur une page provisoire qui affiche
 | `src/api/auth.ts` | Connexion, inscription, déconnexion. |
 | `src/api/types.ts` | Types des réponses de l'API, ajoutés avec l'écran qui en a besoin. |
 | `src/stores/session.ts` | Utilisateur connecté et état de la session. |
+| `src/api/workspaces.ts`, `projects.ts`, `messages.ts` | Lectures et créations utilisées par les écrans migrés. |
+| `src/api/images.ts` | Charge les photos et icônes protégées, une seule fois chacune. |
+| `src/stores/sidebar.ts` | Workspaces et conversations affichés dans la barre latérale. |
+| `src/theme.ts` | Bascule clair/sombre et mémorisation du choix. |
+| `src/domain.ts` | Couleurs, libellés des rôles, initiale d'un avatar : définis une seule fois. |
+| `src/layout/AppLayout.vue` | Cadre des écrans connectés : barre latérale, fil d'Ariane, thème. |
+| `src/layout/ProfileDialog.vue` | Dialogue du profil. |
 | `src/components/FormMessage.vue` | Message d'erreur ou de confirmation d'un formulaire. |
+| `src/components/AppDialog.vue` | Dialogue modal ; ne se ferme pas pendant un enregistrement. |
+| `src/components/ProtectedImage.vue` | Photo ou icône protégée, avec image de repli. |
 | `src/composables/useBusy.ts` | Empêche un double envoi pendant qu'une requête est en cours. |
-| `src/views/LoginView.vue`, `RegisterView.vue` | Écrans migrés. |
-| `src/views/HomeView.vue` | Page provisoire d'un utilisateur connecté. |
+| `src/views/LoginView.vue`, `RegisterView.vue`, `DashboardView.vue` | Écrans migrés. |
+| `src/views/PendingView.vue` | Page affichée à la place d'un écran pas encore migré. |
 
 ## Routes
 
@@ -36,7 +47,8 @@ Une fois connecté, on arrive pour l'instant sur une page provisoire qui affiche
 | --- | --- | --- |
 | `/login` | Connexion | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/register` | Inscription | visiteur ; un utilisateur connecté est renvoyé vers `/` |
-| `/` | Page provisoire, futur tableau de bord | utilisateur connecté ; sinon renvoi vers `/login` |
+| `/` | Tableau de bord | utilisateur connecté ; sinon renvoi vers `/login` |
+| `/workspaces/:id/:tab?`, `/projects/:id`, `/tasks/:id`, `/messages/:userId` | pas encore migrés | utilisateur connecté |
 | toute autre adresse | renvoi vers `/` | — |
 
 Le frontend actuel n'a pas d'adresses : un rechargement y ramène toujours au tableau de bord. Ici, chaque écran a la sienne, et le bouton « précédent » du navigateur fonctionne.
@@ -49,6 +61,7 @@ Les écrans migrés reprennent le HTML de l'écran d'origine : mêmes classes, m
 - **Une seule origine pour le navigateur.** Vite relaie `/api`, `/static`, `/health` et `/socket.io` (WebSocket compris) vers le port 5000, comme Nginx en production. Le code Vue appelle toujours des chemins relatifs.
 - **Origine autorisée côté serveur.** Les requêtes relayées gardent l'origine `http://localhost:5173`. Elle est ajoutée aux origines de développement dans `app/app.py`, pour le contrôle CSRF, CORS et Socket.IO. La production n'accepte toujours que `PUBLIC_ORIGIN`.
 - **Même session.** Le cookie est lié au nom d'hôte, pas au port : une session ouverte sur `localhost:5500` est reconnue sur `localhost:5173`. `localhost` et `127.0.0.1` restent deux hôtes distincts.
+- **Icônes sous leur nom.** La feuille de style reconnaît certaines icônes à leur nom de fichier (`[src$="folder.svg"]`), pour les éclaircir en thème sombre. Le build garde donc les fichiers SVG tels quels dans `assets/icons/`, sans les renommer ni les intégrer au code.
 - **Script du thème en double.** `public/theme-init.js` est une copie de `frontend/js/theme-init.js` : il doit être un fichier à part, chargé avant la feuille de style, car la CSP interdit les scripts en ligne. Un test unitaire échoue si les deux copies diffèrent.
 
 ### Limite connue
@@ -59,7 +72,11 @@ Les pages `/confidentialite/` et `/cookies/` sont des fichiers statiques de `fro
 
 `apiRequest` garde le contrat du frontend actuel : il ne lève jamais d'exception et renvoie toujours `{ ok, status, data }`, avec un message lisible dans `data.error` en cas d'échec. Les messages sont repris à l'identique.
 
-Quatre comportements sont nouveaux :
+Avant chaque écran connecté, les listes de la barre latérale sont relues, comme le fait le frontend actuel : un workspace dont on vient d'être retiré disparaît à la navigation suivante. Deux requêtes suffisent, contre quatre aujourd'hui.
+
+Les photos et icônes protégées ne sont demandées qu'une fois par visite. Une nouvelle photo a toujours une nouvelle adresse, donc ce cache ne peut pas afficher une ancienne image.
+
+Quatre comportements du client sont nouveaux :
 
 | Comportement | Raison |
 | --- | --- |
@@ -100,15 +117,15 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | Vérification | Résultat |
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
-| Tests unitaires | 37 réussis (client HTTP, authentification, session, redirections, script du thème) |
-| Tests navigateur sur Vue | 17 réussis, stables sur trois passages |
-| dont captures de référence | connexion et inscription identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
-| Tests navigateur sur le frontend actuel | 33 réussis, sans régression |
+| Tests unitaires | 55 réussis |
+| Tests navigateur sur Vue | 32 réussis sur les quatre profils |
+| dont captures de référence | connexion, inscription et tableau de bord identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
+| Tests navigateur sur le frontend actuel | 37 réussis, sans régression |
 | `pytest` | 104 réussis |
-| Build sous la CSP de `deploy/nginx/security-headers.conf` | les deux écrans s'affichent, le thème s'applique, la police et l'icône se chargent, aucune violation |
+| Build sous la CSP de `deploy/nginx/security-headers.conf` | inscription, tableau de bord, création d'un workspace, bascule du thème et déconnexion : aucune violation, aucune erreur |
 
 Le build ne contient ni script ni style en ligne, et n'utilise pas `eval`.
 
 ## Étape suivante
 
-Migrer la mise en page (barre latérale, bascule du thème, images protégées) et le tableau de bord, puis marquer `@vue` les tests correspondants dans `e2e/tests/`.
+Terminer le profil (prénom, photo, export des données, suppression du compte), puis marquer comme migré l'écran `profile` dans `e2e/support/stack.ts`.
