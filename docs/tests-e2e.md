@@ -97,7 +97,13 @@ Les tests sont écrits pour tourner sur les deux frontends :
 
 - ils naviguent uniquement par clics, puisque le frontend actuel n'a pas d'URL ;
 - ils ciblent d'abord les rôles et libellés accessibles (boutons, champs, onglets, dialogues) ;
-- la variable `E2E_FRONTEND` distingue les deux cibles (`legacy` par défaut). L'adresse de Vite sera ajoutée dans `e2e/support/stack.ts` et `e2e/playwright.config.ts` à l'étape suivante.
+- la variable `E2E_FRONTEND` choisit la cible : `legacy` (par défaut) ou `vue`, servi par Vite sur le port 5173.
+
+```bash
+E2E_FRONTEND=vue npm test --prefix e2e
+```
+
+Sur la cible `vue`, seuls les fichiers listés dans `VUE_SPECS` (`e2e/playwright.config.ts`) sont exécutés. Pour l'instant c'est `vue-foundation.spec.ts`, qui vérifie le socle à travers le proxy ; chaque écran migré y ajoutera son fichier, jusqu'à couvrir toute la suite. Voir [le frontend Vue](frontend-vue.md).
 
 Le portage doit donc conserver les libellés visibles et ces quelques repères techniques, utilisés quand aucun rôle ne convient :
 
