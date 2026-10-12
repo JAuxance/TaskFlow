@@ -9,7 +9,8 @@ Le frontend est en cours de reconstruction avec Vue 3, TypeScript strict et Vite
 | Connexion, inscription | migrés, identiques au pixel près aux captures de référence |
 | Mise en page (barre latérale, fil d'Ariane, thème), tableau de bord | migrés, identiques au pixel près aux captures de référence |
 | Profil (prénom, photo, export des données, déconnexion, suppression du compte) | migré, identique au pixel près aux captures de référence |
-| Workspace, Kanban, tâche, messages | à migrer |
+| Workspace (aperçu, membres, réglages, création de projet, ajout de membre) | migré, identique au pixel près aux captures de référence |
+| Kanban, tâche, messages du workspace, messages privés | à migrer |
 
 Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page « Not migrated yet » dans la mise en page.
 
@@ -40,7 +41,11 @@ Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page 
 | `src/components/AppDialog.vue` | Dialogue modal ; ne se ferme pas pendant un enregistrement. |
 | `src/components/ProtectedImage.vue` | Photo ou icône protégée, avec image de repli. |
 | `src/composables/useBusy.ts` | Empêche un double envoi pendant qu'une requête est en cours. |
-| `src/views/LoginView.vue`, `RegisterView.vue`, `DashboardView.vue` | Écrans migrés. |
+| `src/layout/state.ts` | Fil d'Ariane et workspace actif, annoncés par chaque écran une fois ses données lues. |
+| `src/workspace/useWorkspace.ts` | Un workspace, ses membres et les droits de l'utilisateur ; servira aussi au Kanban et à la tâche. |
+| `src/workspace/` | Un onglet du workspace par fichier : aperçu, membres, réglages. |
+| `src/dates.ts` | Lecture d'une échéance et format court d'un jour, définis une seule fois. |
+| `src/views/LoginView.vue`, `RegisterView.vue`, `DashboardView.vue`, `WorkspaceView.vue` | Écrans migrés. |
 | `src/views/PendingView.vue` | Page affichée à la place d'un écran pas encore migré. |
 
 ## Routes
@@ -50,7 +55,8 @@ Les écrans pas encore migrés ont déjà leur adresse : ils affichent une page 
 | `/login` | Connexion | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/register` | Inscription | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/` | Tableau de bord | utilisateur connecté ; sinon renvoi vers `/login` |
-| `/workspaces/:id/:tab?`, `/projects/:id`, `/tasks/:id`, `/messages/:userId` | pas encore migrés | utilisateur connecté |
+| `/workspaces/:id` | Workspace ; `/members`, `/settings` ou `/messages` à la suite ouvre directement cet onglet | membre du workspace |
+| `/projects/:id`, `/tasks/:id`, `/messages/:userId` | pas encore migrés | utilisateur connecté |
 | toute autre adresse | renvoi vers `/` | — |
 
 Le frontend actuel n'a pas d'adresses : un rechargement y ramène toujours au tableau de bord. Ici, chaque écran a la sienne, et le bouton « précédent » du navigateur fonctionne.
@@ -77,6 +83,10 @@ Les pages `/confidentialite/` et `/cookies/` sont des fichiers statiques de `fro
 Avant chaque écran connecté, les listes de la barre latérale sont relues, comme le fait le frontend actuel : un workspace dont on vient d'être retiré disparaît à la navigation suivante. Deux requêtes suffisent, contre quatre aujourd'hui.
 
 Les photos et icônes protégées ne sont demandées qu'une fois par visite. Une nouvelle photo a toujours une nouvelle adresse, donc ce cache ne peut pas afficher une ancienne image.
+
+Après une modification du workspace (nom, icône, membre, projet), l'écran relit le workspace au lieu de se fier à la réponse de la modification. Cela évite un contournement du frontend actuel, nécessaire parce que certaines réponses nomment l'identifiant `workspace_id` et d'autres `id` (constat D5 de l'audit).
+
+Dans l'onglet des messages, le workspace affiche pour l'instant un avis : le chat sera migré avec les messages privés.
 
 Le profil est découpé en sections, mais elles partagent un seul verrou (`src/layout/profile/lock.ts`) : pendant qu'une section enregistre, les autres attendent et le dialogue ne peut pas être fermé. À la fermeture, les mots de passe saisis et le récapitulatif de suppression sont oubliés.
 
@@ -121,15 +131,15 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | Vérification | Résultat |
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
-| Tests unitaires | 60 réussis |
-| Tests navigateur sur Vue | 39 réussis sur les quatre profils, stables sur deux passages |
-| dont captures de référence | connexion, inscription, tableau de bord et profil identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
-| Tests navigateur sur le frontend actuel | 44 réussis, sans régression |
+| Tests unitaires | 70 réussis |
+| Tests navigateur sur Vue | 51 réussis sur les quatre profils |
+| dont captures de référence | connexion, inscription, tableau de bord, profil, aperçu et membres du workspace identiques au pixel près, en clair et en sombre, à 1440 et 390 px |
+| Tests navigateur sur le frontend actuel | 53 réussis, sans régression |
 | `pytest` | 104 réussis |
-| Build sous la CSP de `deploy/nginx/security-headers.conf` | inscription, tableau de bord, création d'un workspace, thème, photo de profil, téléchargement des données et déconnexion : aucune violation, aucune erreur |
+| Build sous la CSP de `deploy/nginx/security-headers.conf` | parcours complet jusqu'au workspace, images comprises : aucune violation, aucune erreur |
 
 Le build ne contient ni script ni style en ligne, et n'utilise pas `eval`.
 
 ## Étape suivante
 
-Migrer l'écran du workspace (aperçu, membres, réglages), puis marquer `@vue` les tests correspondants et ajouter ses écrans à `VUE_SCREENS` dans `e2e/support/stack.ts`.
+Migrer le Kanban et le détail d'une tâche, avec la file d'enregistrements en série, puis marquer `@vue` les tests correspondants et ajouter `kanban`, `task-details` et `task-details-guest` à `VUE_SCREENS` dans `e2e/support/stack.ts`.
