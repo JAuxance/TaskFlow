@@ -34,7 +34,7 @@ test('a workspace needs a name', { tag: '@vue' }, async ({ actor }) => {
     await expect(page.getByText('No workspaces yet.')).toBeVisible();
 });
 
-test('an owner creates a project inside a workspace', async ({ actor }) => {
+test('an owner creates a project inside a workspace', { tag: '@vue' }, async ({ actor }) => {
     const { page, request } = await actor('alice');
     await createWorkspace(request, 'Design studio');
     await reloadApp(page);
@@ -52,8 +52,6 @@ test('an owner creates a project inside a workspace', async ({ actor }) => {
     await expect(project).toContainText('New marketing site');
     await expect(project).toContainText('No tasks yet');
     await expect(page.locator('#workspace-project-count')).toHaveText('1');
-
-    await project.click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Website redesign' })).toBeVisible();
+    await expect(projectDialog).toBeHidden();
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Design studio');
 });

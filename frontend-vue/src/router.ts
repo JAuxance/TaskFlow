@@ -1,7 +1,8 @@
 import { nextTick } from 'vue';
-import { createRouter, createWebHistory, type RouteLocationRaw } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 import { redirectFor } from './guards';
 import AppLayout from './layout/AppLayout.vue';
+import { resetLayoutState, type Crumb } from './layout/state';
 import { announcePage } from './page';
 import { useSessionStore } from './stores/session';
 import { useSidebarStore } from './stores/sidebar';
@@ -9,6 +10,7 @@ import DashboardView from './views/DashboardView.vue';
 import LoginView from './views/LoginView.vue';
 import PendingView from './views/PendingView.vue';
 import RegisterView from './views/RegisterView.vue';
+import WorkspaceView from './views/WorkspaceView.vue';
 
 declare module 'vue-router' {
     interface RouteMeta {
@@ -19,7 +21,7 @@ declare module 'vue-router' {
         /** Extra class of the content area, used by the stylesheet. */
         pageClass?: string;
         /** Trail shown above the content; an entry without `to` is the current page. */
-        breadcrumbs?: { label: string; to?: RouteLocationRaw }[];
+        breadcrumbs?: Crumb[];
     }
 }
 
@@ -41,7 +43,10 @@ export const router = createRouter({
                     path: '', name: 'home', component: DashboardView,
                     meta: { pageClass: 'dashboard-page', breadcrumbs: [{ label: 'Workspaces' }] },
                 },
-                { path: 'workspaces/:id(\\d+)/:tab?', name: 'workspace', ...pending },
+                {
+                    path: 'workspaces/:id(\\d+)/:tab(messages|members|settings)?', name: 'workspace', component: WorkspaceView,
+                    meta: { pageClass: 'workspace-page', breadcrumbs: [toWorkspaces] },
+                },
                 { path: 'projects/:id(\\d+)', name: 'project', ...pending },
                 { path: 'tasks/:id(\\d+)', name: 'task', ...pending },
                 { path: 'messages/:userId(\\d+)', name: 'messages', ...pending },
@@ -66,6 +71,8 @@ router.beforeEach(async to => {
 });
 
 router.afterEach(async () => {
+    // The new screen describes itself once its data is loaded.
+    resetLayoutState();
     await nextTick();
     announcePage();
 });

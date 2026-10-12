@@ -14,6 +14,7 @@ import { useSessionStore } from '../stores/session';
 import { useSidebarStore } from '../stores/sidebar';
 import { useTheme } from '../theme';
 import ProfileDialog from './ProfileDialog.vue';
+import { layoutState } from './state';
 
 const route = useRoute();
 const router = useRouter();
@@ -24,8 +25,11 @@ const profile = ref<InstanceType<typeof ProfileDialog> | null>(null);
 
 const user = computed(() => session.user);
 const displayName = computed(() => user.value?.first_name || user.value?.username || user.value?.email || '');
-const activeWorkspaceId = computed(() => route.name === 'workspace' ? Number(route.params.id) : null);
 const activeConversationId = computed(() => route.name === 'messages' ? Number(route.params.userId) : null);
+// A conversation takes over the highlight, even when opened from a workspace.
+const activeWorkspaceId = computed(() => activeConversationId.value !== null ? null
+    : layoutState.workspaceId ?? (route.name === 'workspace' ? Number(route.params.id) : null));
+const breadcrumbs = computed(() => layoutState.trail ?? route.meta.breadcrumbs ?? []);
 const onAllWorkspaces = computed(() => route.name === 'home');
 
 // Changing it rebuilds the current screen, as "All workspaces" does today when
@@ -94,7 +98,7 @@ const openConversation = (conversation: Conversation) => router.push({ name: 'me
         <main class="main-content">
             <header class="main-header">
                 <nav class="breadcrumbs" aria-label="Breadcrumb">
-                    <template v-for="(crumb, index) in route.meta.breadcrumbs ?? []" :key="crumb.label">
+                    <template v-for="(crumb, index) in breadcrumbs" :key="crumb.label">
                         <span v-if="index" class="breadcrumb-separator" aria-hidden="true">/</span>
                         <button v-if="crumb.to" type="button" class="breadcrumb-link" :title="crumb.label" @click="router.push(crumb.to)">{{ crumb.label }}</button>
                         <span v-else :title="crumb.label" aria-current="page">{{ crumb.label }}</span>
@@ -106,7 +110,8 @@ const openConversation = (conversation: Conversation) => router.push({ name: 'me
                 </button>
             </header>
             <section id="page-content" class="page-content" :class="route.meta.pageClass" tabindex="-1">
-                <RouterView :key="reload" />
+                <!-- A new address or a reload rebuilds the screen from fresh data, as today. -->
+                <RouterView :key="`${route.path}#${reload}`" />
             </section>
         </main>
     </div>

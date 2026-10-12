@@ -1,5 +1,5 @@
 import { expect, expectSignedIn, test } from '../support/test';
-import { PASSWORD, createWorkspace, emailOf, signUp } from '../support/api';
+import { PASSWORD, createProject, createWorkspace, emailOf, signUp } from '../support/api';
 
 // Vue frontend only (E2E_FRONTEND=vue). These tests check what the current
 // frontend does not have: the Vite proxy, URLs, and the notice shown in place
@@ -80,18 +80,36 @@ test.describe('Vite setup', { tag: '@vue-only' }, () => {
 
     test('a screen that is not migrated yet says so, and the browser history works', async ({ actor }) => {
         const { page, request } = await actor('alice');
-        await createWorkspace(request, 'Design studio');
+        const workspace = await createWorkspace(request, 'Design studio');
+        await createProject(request, workspace.id, 'Website redesign');
         await page.reload();
 
         await page.getByRole('navigation', { name: 'Workspaces' }).getByRole('button', { name: 'Design studio', exact: true }).click();
-        await expect(page).toHaveURL(/\/workspaces\/\d+$/);
+        await expect(page).toHaveURL(`/workspaces/${workspace.id}`);
+        await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
+
+        await page.getByRole('region', { name: 'Projects', exact: true }).getByRole('button', { name: /Website redesign/ }).click();
+        await expect(page).toHaveURL(/\/projects\/\d+$/);
         await expect(page.getByRole('heading', { name: 'Not migrated yet' })).toBeVisible();
 
         await page.goBack();
-        await expect(page).toHaveURL('/');
-        await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
-        await page.goForward();
+        await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
         await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Workspaces' }).click();
         await expect(page).toHaveURL('/');
+        await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
+    });
+
+    test('a workspace opens directly on the tab named in the address', async ({ actor }) => {
+        const { page, request } = await actor('alice');
+        const workspace = await createWorkspace(request, 'Design studio');
+
+        await page.goto(`/workspaces/${workspace.id}/members`);
+        await expect(page.getByRole('tab', { name: /Members/ })).toHaveAttribute('aria-selected', 'true');
+        await expect(page).toHaveTitle('Design studio — TaskFlow');
+
+        // A workspace the user cannot see is reported, without leaving the application.
+        await page.goto('/workspaces/999999');
+        await expect(page.getByRole('alert')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'All workspaces' })).toBeVisible();
     });
 });

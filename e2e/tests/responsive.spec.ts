@@ -38,11 +38,12 @@ test('the main screens adapt their layout to the screen width', { tag: '@vue' },
     if (isMobile) expect(side.y + side.height).toBeLessThanOrEqual(content.y);
     else expect(side.x + side.width).toBeLessThanOrEqual(content.x);
 
-    if (!isMigrated('workspace')) return;
+    if (!isMigrated('workspace-overview')) return;
     await openWorkspace(page, 'Design studio');
     await expect(page.locator('#workspace-focus-list')).toHaveAttribute('aria-busy', 'false');
     await expectNoHorizontalScroll(page);
 
+    if (!isMigrated('kanban')) return;
     // Board: four columns side by side, or one column per row under 700 px.
     await openProject(page, 'Website redesign');
     await expect(kanbanColumn(page, 'done').getByRole('button')).toHaveCount(1);
@@ -63,6 +64,7 @@ test('the main screens adapt their layout to the screen width', { tag: '@vue' },
         expect((await box(page.getByRole('button', { name: 'New task' }))).height).toBeGreaterThanOrEqual(44);
     }
 
+    if (!isMigrated('task-details')) return;
     // Task: properties beside the editor on a computer, below it on a phone.
     await openTask(page, 'in_progress', 'Design the home page');
     await expectNoHorizontalScroll(page);

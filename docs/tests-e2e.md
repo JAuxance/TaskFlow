@@ -17,9 +17,10 @@ Ils complètent les suites existantes sans les remplacer : `pytest` (routes et s
 | `dashboard.spec.ts` | Tâches de chaque projet, filtre par statut, rôle affiché à chaque membre, bascule du thème. |
 | `profile.spec.ts` | Prénom, photo de profil, téléchargement des données avec mot de passe, copie de l'email, oubli des mots de passe à la fermeture, suppression du compte et blocage tant qu'un workspace est partagé. |
 | `task.spec.ts` | Création d'une tâche, statut et priorité enregistrés automatiquement, titre et description enregistrés sur demande, persistance après rechargement, suppression. |
-| `guest.spec.ts` | Un guest lit le tableau et la tâche ; les champs sont désactivés **et** le serveur refuse les mêmes actions (403). |
+| `guest.spec.ts` | Un guest voit le workspace sans aucune commande de gestion, lit le tableau et la tâche ; les champs sont désactivés **et** le serveur refuse les mêmes actions (403). |
 | `session.spec.ts` | Session expirée ou cookie absent : retour à la connexion ; message d'expiration dans le chat. |
-| `members.spec.ts` | Ajout d'un membre, changement de rôle, retrait ; le chat ouvert du membre retiré se ferme aussitôt et le serveur répond 404. |
+| `members.spec.ts` | Ajout d'un membre, changement de rôle, retrait et refus de la confirmation ; limites d'un admin ; le chat ouvert du membre retiré se ferme aussitôt et le serveur répond 404. |
+| `workspace.spec.ts` | Totaux et tâches prioritaires de l'aperçu, renommage, emoji et image du workspace, transfert de la propriété, suppression protégée par le nom exact. |
 | `messaging.spec.ts` | Chat du workspace et messages privés entre deux navigateurs, sans rechargement. |
 | `responsive.spec.ts` | Mise en page à 1440 px et à 390 px : barre latérale, colonnes du Kanban, formulaire de tâche, absence de défilement horizontal. |
 | `visual.spec.ts` | Onze écrans comparés à leurs captures de référence, en thèmes clair et sombre, aux deux largeurs. |
@@ -134,6 +135,6 @@ Sur le tag `pre-vue-migration`, avant tout changement du frontend :
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
 | Playwright | 30 réussis, dont 2 échecs attendus (D2) ; stable sur trois passages consécutifs |
 
-Depuis, la suite compte 44 tests sur le frontend actuel et 39 sur le frontend Vue.
+Depuis, la suite compte 53 tests sur le frontend actuel et 51 sur le frontend Vue.
 
 La capture `profile` a été régénérée une fois, volontairement : le dialogue était photographié par-dessus l'écran de tâche, il l'est maintenant par-dessus le tableau de bord, pour ne dépendre que des écrans migrés en premier. Les 40 autres captures n'ont pas changé.
