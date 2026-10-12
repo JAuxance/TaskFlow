@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
-// E2E_FRONTEND selects the frontend under test: the current one (default) or
-// the Vue rebuild served by Vite. Both talk to the same disposable backend.
-export const FRONTEND = process.env.E2E_FRONTEND ?? 'legacy';
+// E2E_FRONTEND selects the frontend under test: the Vue one served by Vite
+// (default), or `legacy` for the previous one. Both talk to the same
+// disposable backend.
+export const FRONTEND = process.env.E2E_FRONTEND ?? 'vue';
 if (FRONTEND !== 'legacy' && FRONTEND !== 'vue') {
     throw new Error(`E2E_FRONTEND must be "legacy" or "vue", not "${FRONTEND}"`);
 }
