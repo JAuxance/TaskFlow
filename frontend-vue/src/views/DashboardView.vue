@@ -12,6 +12,7 @@ import AppDialog from '../components/AppDialog.vue';
 import FormMessage from '../components/FormMessage.vue';
 import ProtectedImage from '../components/ProtectedImage.vue';
 import { useBusy } from '../composables/useBusy';
+import { formatShortDay } from '../dates';
 import { ROLE_LABELS, colorOf } from '../domain';
 import { useSessionStore } from '../stores/session';
 import { useSidebarStore } from '../stores/sidebar';
@@ -24,7 +25,6 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
     todo: 'To do', in_progress: 'In progress', review: 'In review', done: 'Done',
 };
 const PRIORITY_LABELS: Record<string, string> = { urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
-const dueFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
 // The list endpoints are paginated: limit how many are read at the same time.
 const BATCH = 4;
 
@@ -165,7 +165,7 @@ const binders = computed(() => workspaces.value.map(workspace => {
 
 function dueLabel(task: Task): string {
     const due = task.due_date ? new Date(task.due_date) : null;
-    return due && !Number.isNaN(due.getTime()) ? dueFormat.format(due) : '';
+    return due && !Number.isNaN(due.getTime()) ? formatShortDay(due) : '';
 }
 
 function load(): void {
