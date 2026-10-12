@@ -19,6 +19,13 @@
 .task-assignee { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .task-meta time { flex-shrink: 0; white-space: nowrap; }
 .task-cards .empty-state { padding: 12px 6px; }
+/* Moving a card: it fades where it was, a blue line shows where it would land. */
+.board-help { color: var(--color-secondary); font-size: 13px; line-height: 20px; }
+.task-card[draggable="true"] { cursor: grab; }
+.task-card.is-dragged { opacity: .4; }
+.kanban-column.is-landing { box-shadow: inset 0 0 0 2px var(--color-focus); }
+/* Its margins cancel its height and the gap it adds: the cards do not shift while one is dragged. */
+.landing-mark { height: 3px; margin: -6px 4px -5px; border-radius: var(--radius-pill); background: var(--color-primary); }
 
 .task-form { width: 100%; min-width: 0; }
 #task-form { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }

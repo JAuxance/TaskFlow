@@ -10,6 +10,8 @@ import { seedStudio } from '../support/seed';
 
 async function capture(page: Page, name: string, fullPage = true) {
     await page.evaluate(async () => { await document.fonts.ready; });
+    // Park the pointer in a corner: a screenshot must not show whatever it was last hovering.
+    await page.mouse.move(0, 0);
     // Soft: one differing screen does not hide the comparison of the others.
     await expect.soft(page).toHaveScreenshot(`${name}.png`, { fullPage });
 }

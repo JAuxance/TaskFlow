@@ -41,6 +41,7 @@ Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, 
 | `src/dates.ts` | Lecture d'une échéance et format court d'un jour, définis une seule fois. |
 | `src/composables/useSerialQueue.ts` | File qui envoie les enregistrements d'une tâche un par un. |
 | `src/task/dueDate.ts` | Conversions de l'échéance entre le serveur et le champ de saisie. |
+| `src/task/board.ts` | Règles du Kanban : ordre d'une colonne, effet d'un déplacement. |
 | `src/api/tasks.ts` | Appels des tâches. |
 | `src/chat/ChatPanel.vue` | Une conversation : historique, messages en direct, saisie. Sert au chat du workspace et aux messages privés. |
 | `src/chat/subscribe.ts` | Abonnement Socket.IO d'une conversation. |
@@ -127,6 +128,30 @@ Ce qui a été ajouté :
 
 La file ne protège toujours que l'onglet courant. Deux personnes, ou deux onglets, peuvent encore s'écraser : corriger cela demande un contrôle de version côté serveur, hors du périmètre de la migration.
 
+## Déplacement d'une tâche dans le Kanban
+
+Une colonne est un statut. Dans une colonne, les tâches sont rangées de la plus pressante à la moins pressante ; à priorité égale, la plus ancienne est en premier.
+
+Un membre déplace une carte pour changer deux choses :
+
+| Geste | Effet |
+| --- | --- |
+| Vers une autre colonne | La tâche prend le statut de cette colonne. |
+| Vers le haut ou le bas | La tâche prend la priorité de la carte sous laquelle elle est déposée ; tout en haut, celle de la première carte. |
+| Dans une colonne vide | Seul le statut change. |
+
+Il existe quatre priorités, pas un ordre libre : la carte rejoint donc un groupe de priorité, et peut ne pas rester exactement à l'endroit du dépôt. Pour donner une priorité qu'aucune carte de la colonne n'a encore, on passe par la fiche de la tâche.
+
+Les règles sont des fonctions sans effet de bord, dans `src/task/board.ts` (`sortForBoard`, `dropChanges`, `stepChanges`), testées à part. L'écran applique le déplacement tout de suite, puis l'enregistre ; si le serveur refuse, il relit les tâches et affiche l'erreur. Les enregistrements partent un par un, par la même file que l'écran de tâche.
+
+Le glisser-déposer n'est pas le seul moyen, pour qui n'utilise pas de souris :
+
+- au clavier, Maj et une flèche déplacent la carte qui a le focus d'une colonne ou d'un niveau de priorité ;
+- chaque déplacement est annoncé aux lecteurs d'écran ;
+- la fiche de la tâche permet toujours de changer le statut et la priorité.
+
+Un guest ne peut rien déplacer : les cartes ne sont pas déplaçables pour lui, et le serveur refuse la modification.
+
 ## Messages
 
 Le chat du workspace et les messages privés partagent un seul composant, `ChatPanel`. Il assure :
@@ -183,8 +208,8 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | Vérification | Résultat |
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
-| Tests unitaires | 86 réussis |
-| Tests navigateur | 78 réussis sur les quatre profils |
+| Tests unitaires | 95 réussis |
+| Tests navigateur | 84 réussis sur les quatre profils |
 | Captures de référence | les 45 identiques au pixel près à celles de l'ancien frontend à la fin de la migration, puis régénérées volontairement pour la refonte graphique |
 | `pytest` | 104 réussis, et 41 tests d'intégration |
 | Contrôle Nginx (`scripts/check_nginx_security.py`) sur le build | tous les contrôles réussis |
