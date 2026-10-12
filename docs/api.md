@@ -203,11 +203,11 @@ Framework-generated errors, including unmatched routes and rate-limit responses,
 With an existing account, save the session cookie and reuse it for authenticated requests:
 
 ```bash
-taskflow_csrf=$(curl -s -c cookies.txt -H 'Origin: http://localhost:5500' \
+taskflow_csrf=$(curl -s -c cookies.txt -H 'Origin: http://localhost:5173' \
   http://localhost:5000/api/auth/csrf | python3 -c 'import json,sys; print(json.load(sys.stdin)["csrf_token"])')
 
 curl -b cookies.txt -c cookies.txt \
-  -H 'Origin: http://localhost:5500' -H "X-CSRF-Token: $taskflow_csrf" \
+  -H 'Origin: http://localhost:5173' -H "X-CSRF-Token: $taskflow_csrf" \
   -H 'Content-Type: application/json' \
   -d '{"email":"alex@example.com","password":"your-password"}' \
   http://localhost:5000/api/auth/login
@@ -215,10 +215,10 @@ curl -b cookies.txt -c cookies.txt \
 curl -b cookies.txt \
   http://localhost:5000/api/workspaces
 
-taskflow_csrf=$(curl -s -b cookies.txt -c cookies.txt -H 'Origin: http://localhost:5500' \
+taskflow_csrf=$(curl -s -b cookies.txt -c cookies.txt -H 'Origin: http://localhost:5173' \
   http://localhost:5000/api/auth/csrf | python3 -c 'import json,sys; print(json.load(sys.stdin)["csrf_token"])')
 
 curl -b cookies.txt -c cookies.txt -X POST \
-  -H 'Origin: http://localhost:5500' -H "X-CSRF-Token: $taskflow_csrf" \
+  -H 'Origin: http://localhost:5173' -H "X-CSRF-Token: $taskflow_csrf" \
   http://localhost:5000/api/auth/logout
 ```

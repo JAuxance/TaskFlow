@@ -58,7 +58,7 @@ def site(app, monkeypatch):
     url = f"http://127.0.0.1:{server.server_port}"
 
     def request(client, method, path, data=None, status=200):
-        headers = {"Origin": "http://localhost:5500"}
+        headers = {"Origin": "http://localhost:5173"}
         if method not in {"GET", "HEAD", "OPTIONS"}:
             token = client.get(url + "/api/auth/csrf", headers=headers, timeout=5)
             assert token.status_code == 200
@@ -83,7 +83,7 @@ def site(app, monkeypatch):
         received = Queue()
         connection = socketio_client.Client(
             reconnection=False, http_session=client,
-            websocket_extra_options={"origin": "http://localhost:5500"},
+            websocket_extra_options={"origin": "http://localhost:5173"},
         )
         for name in ("new_message", "new_direct_message", "socket_error", "workspace_joined", "direct_message_joined"):
             connection.on(name, lambda data, name=name: received.put((name, data)))

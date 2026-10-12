@@ -1,5 +1,5 @@
-// Same rules as applyTheme() in frontend/js/app.js. public/theme-init.js has
-// already set the theme on <html> before the stylesheet loaded.
+// Light or dark theme. public/theme-init.js has already set it on <html>
+// before the stylesheet loaded; this module follows later changes.
 import { computed, ref } from 'vue';
 
 const STORAGE_KEY = 'taskflow-theme';

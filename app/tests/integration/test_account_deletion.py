@@ -194,7 +194,7 @@ def test_deletion_never_unlinks_another_profiles_picture(site, app, monkeypatch,
 def test_delete_without_csrf_preserves_the_account(site):
     response = site['outsider'].delete(site['url'] + '/api/users/me',
         json={'password': PASSWORD, 'confirmed_workspace_ids': []},
-        headers={'Origin': 'http://localhost:5500'}, timeout=5)
+        headers={'Origin': 'http://localhost:5173'}, timeout=5)
     assert response.status_code == 403
     assert response.json()['code'] == 'csrf_failed'
     assert sql('SELECT id FROM users WHERE id=%s', (site['outsider_id'],)) == [(site['outsider_id'],)]

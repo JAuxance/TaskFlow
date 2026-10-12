@@ -76,7 +76,7 @@ router.beforeEach(async to => {
     const target = redirectFor(to.meta, session.status === 'signed-in');
     if (target) return { name: target };
     if (to.meta.requiresAuth) {
-        // Like the current frontend, a screen is shown with a fresh sidebar.
+        // A screen is always shown with a fresh sidebar.
         await useSidebarStore().refresh();
         // The refresh may have revealed that the session expired.
         if (session.status !== 'signed-in') return { name: 'login' };

@@ -15,8 +15,8 @@ export type TaskFields = {
 export const emailOf = (name: string) => `${name}@example.com`;
 
 /**
- * Call the API the way frontend/js/api.js does: allowed origin, session cookie
- * and a fresh CSRF token for every mutation. Used to prepare data quickly; the
+ * Call the API as the frontend does: allowed origin, session cookie and a
+ * CSRF token for every mutation. Used to prepare data quickly; the
  * journeys under test go through the interface.
  */
 export async function api<T = unknown>(

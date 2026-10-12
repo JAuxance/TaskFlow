@@ -1,7 +1,7 @@
 import { composer, expect, openDashboard, openWorkspace, reloadApp, socketEvent, test } from '../support/test';
 import { addMember, api, createWorkspace, emailOf } from '../support/api';
 
-test('an owner adds a member, changes their role, then removes them', { tag: '@vue' }, async ({ actor }) => {
+test('an owner adds a member, changes their role, then removes them', async ({ actor }) => {
     const owner = await actor('alice');
     const bob = await actor('bob');
     const workspace = await createWorkspace(owner.request, 'Design studio');
@@ -44,7 +44,7 @@ test('an owner adds a member, changes their role, then removes them', { tag: '@v
     await api(bob.request, 'POST', `/api/workspaces/${workspace.id}/messages`, { message: 'Still here?' }, 404);
 });
 
-test('declining the confirmation keeps the member', { tag: '@vue' }, async ({ actor }) => {
+test('declining the confirmation keeps the member', async ({ actor }) => {
     const owner = await actor('alice');
     await actor('bob');
     const workspace = await createWorkspace(owner.request, 'Design studio');
@@ -60,7 +60,7 @@ test('declining the confirmation keeps the member', { tag: '@vue' }, async ({ ac
     await expect(owner.page.getByRole('tab', { name: /Members/ })).toContainText('2');
 });
 
-test('only an existing account can be added', { tag: '@vue' }, async ({ actor }) => {
+test('only an existing account can be added', async ({ actor }) => {
     const owner = await actor('alice');
     await createWorkspace(owner.request, 'Design studio');
     await reloadApp(owner.page);
@@ -75,7 +75,7 @@ test('only an existing account can be added', { tag: '@vue' }, async ({ actor })
     await expect(owner.page.getByRole('tab', { name: /Members/ })).toContainText('1');
 });
 
-test('an admin manages members and guests, but not owners or the workspace itself', { tag: '@vue' }, async ({ actor }) => {
+test('an admin manages members and guests, but not owners or the workspace itself', async ({ actor }) => {
     const owner = await actor('alice');
     const admin = await actor('adam');
     await actor('bob');
@@ -112,7 +112,7 @@ test('an admin manages members and guests, but not owners or the workspace itsel
     await api(admin.request, 'PATCH', `/api/workspaces/${workspace.id}/members/${target.user_id}`, { role: 'owner' }, 403);
 });
 
-test('the open chat of a removed member is closed at once', { tag: '@vue' }, async ({ actor }) => {
+test('the open chat of a removed member is closed at once', async ({ actor }) => {
     const owner = await actor('alice');
     const bob = await actor('bob');
     const workspace = await createWorkspace(owner.request, 'Design studio');

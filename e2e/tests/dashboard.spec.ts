@@ -9,7 +9,7 @@ async function dashboardLoaded(page: Page) {
     await expect(page.locator('#overview-tasks')).toHaveAttribute('aria-busy', 'false');
 }
 
-test('the dashboard lists the tasks of every project and filters them by status', { tag: '@vue' }, async ({ actor }) => {
+test('the dashboard lists the tasks of every project and filters them by status', async ({ actor }) => {
     const { alice: { page } } = await seedStudio(actor);
     await dashboardLoaded(page);
 
@@ -34,7 +34,7 @@ test('the dashboard lists the tasks of every project and filters them by status'
     await expect(taskCount(page)).toHaveText('6');
 });
 
-test('each member sees their own role on the workspace card', { tag: '@vue' }, async ({ actor }) => {
+test('each member sees their own role on the workspace card', async ({ actor }) => {
     const { alice, bob, gina } = await seedStudio(actor);
     for (const [member, role] of [[alice, 'Owner'], [bob, 'Member'], [gina, 'Guest']] as const) {
         await dashboardLoaded(member.page);
@@ -45,7 +45,7 @@ test('each member sees their own role on the workspace card', { tag: '@vue' }, a
     await expect(gina.page.getByText('No conversations yet.')).toBeVisible();
 });
 
-test('the theme switch changes the theme and remembers it', { tag: '@vue' }, async ({ actor }) => {
+test('the theme switch changes the theme and remembers it', async ({ actor }) => {
     const { page } = await actor('alice');
     const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
     expect(await theme()).toBe('light');

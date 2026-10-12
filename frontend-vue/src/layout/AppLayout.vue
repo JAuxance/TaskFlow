@@ -1,11 +1,10 @@
 <script setup lang="ts">
 // Frame of every signed-in screen: sidebar, breadcrumb, theme switch.
-// Same structure as renderLayout() in frontend/js/app.js.
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import folderIcon from '../../../frontend/assets/icons/folder.svg';
-import markIcon from '../../../frontend/assets/icons/mark.svg';
-import workspaceIcon from '../../../frontend/assets/icons/workspace.svg';
+import folderIcon from '../assets/icons/folder.svg';
+import markIcon from '../assets/icons/mark.svg';
+import workspaceIcon from '../assets/icons/workspace.svg';
 import type { Conversation, Workspace } from '../api/types';
 import FormMessage from '../components/FormMessage.vue';
 import ProtectedImage from '../components/ProtectedImage.vue';
@@ -32,8 +31,8 @@ const activeWorkspaceId = computed(() => activeConversationId.value !== null ? n
 const breadcrumbs = computed(() => layoutState.trail ?? route.meta.breadcrumbs ?? []);
 const onAllWorkspaces = computed(() => route.name === 'home');
 
-// Changing it rebuilds the current screen, as "All workspaces" does today when
-// it is clicked from the dashboard itself.
+// Changing it rebuilds the current screen: "All workspaces" reloads the
+// dashboard when it is clicked from the dashboard itself.
 const reload = ref(0);
 
 async function showAllWorkspaces(): Promise<void> {
@@ -110,7 +109,7 @@ const openConversation = (conversation: Conversation) => router.push({ name: 'me
                 </button>
             </header>
             <section id="page-content" class="page-content" :class="route.meta.pageClass" tabindex="-1">
-                <!-- A new address or a reload rebuilds the screen from fresh data, as today. -->
+                <!-- A new address or a reload rebuilds the screen from fresh data. -->
                 <RouterView :key="`${route.path}#${reload}`" />
             </section>
         </main>

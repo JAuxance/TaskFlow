@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // The profile dialog opened from the sidebar: account, first name, picture,
-// data export, sign-out and account deletion. Same content as
-// setupProfileDialog() in frontend/js/app.js, one section per component.
+// data export, sign-out and account deletion, one section per component.
 import { computed, provide, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { logout } from '../api/auth';

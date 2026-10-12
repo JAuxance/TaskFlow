@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// "Members" tab: who has access, with which role, and what the current user
-// may change. Same rules as the members table of the current frontend.
+// "Members" tab: who has access, with which role, and what the current user may change.
 import { reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import type { Workspace, WorkspaceMember, WorkspaceRole } from '../api/types';

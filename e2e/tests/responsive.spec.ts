@@ -1,7 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { expect, kanbanColumn, openProject, openTask, openWorkspace, test } from '../support/test';
 import { seedStudio } from '../support/seed';
-import { isMigrated } from '../support/stack';
 
 // Runs at 1440 px and at 390 px (see playwright.config.ts).
 
@@ -17,7 +16,7 @@ async function expectNoHorizontalScroll(page: Page) {
     expect(overflow).toBeLessThanOrEqual(0);
 }
 
-test('the login form fits the screen', { tag: '@vue' }, async ({ page }) => {
+test('the login form fits the screen', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await expectNoHorizontalScroll(page);
@@ -26,7 +25,7 @@ test('the login form fits the screen', { tag: '@vue' }, async ({ page }) => {
     expect(form.x + form.width).toBeLessThanOrEqual(page.viewportSize()!.width);
 });
 
-test('the main screens adapt their layout to the screen width', { tag: '@vue' }, async ({ actor, isMobile }) => {
+test('the main screens adapt their layout to the screen width', async ({ actor, isMobile }) => {
     const { alice: { page } } = await seedStudio(actor);
     const sidebar = page.getByRole('complementary', { name: 'Workspace navigation' });
     const main = page.locator('#page-content');
@@ -38,12 +37,10 @@ test('the main screens adapt their layout to the screen width', { tag: '@vue' },
     if (isMobile) expect(side.y + side.height).toBeLessThanOrEqual(content.y);
     else expect(side.x + side.width).toBeLessThanOrEqual(content.x);
 
-    if (!isMigrated('workspace-overview')) return;
     await openWorkspace(page, 'Design studio');
     await expect(page.locator('#workspace-focus-list')).toHaveAttribute('aria-busy', 'false');
     await expectNoHorizontalScroll(page);
 
-    if (!isMigrated('kanban')) return;
     // Board: four columns side by side, or one column per row under 700 px.
     await openProject(page, 'Website redesign');
     await expect(kanbanColumn(page, 'done').getByRole('button')).toHaveCount(1);
@@ -64,7 +61,6 @@ test('the main screens adapt their layout to the screen width', { tag: '@vue' },
         expect((await box(page.getByRole('button', { name: 'New task' }))).height).toBeGreaterThanOrEqual(44);
     }
 
-    if (!isMigrated('task-details')) return;
     // Task: properties beside the editor on a computer, below it on a phone.
     await openTask(page, 'in_progress', 'Design the home page');
     await expectNoHorizontalScroll(page);

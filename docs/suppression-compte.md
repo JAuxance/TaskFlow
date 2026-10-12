@@ -20,7 +20,7 @@ Après lecture, l'utilisateur coche la confirmation, saisit son mot de passe et 
 - La suppression SQL retire le compte, toutes ses sessions/appartenances et les échanges directs impliquant ce compte. Elle supprime les espaces seuls confirmés, leurs projets, tâches et chats. Les autres espaces restent ; les liens du compte dans leurs tâches et messages passent à `NULL`.
 - Les abonnements Socket.IO sont recontrôlés après la suppression ; les diffusions recontrôlent aussi la session et les droits avant chaque envoi.
 
-Code principal : `app/account_deletion.py`, routes dans `app/routes/auth.py`, présentation dans `frontend/js/app.js`. Le code utilise des fonctions, des requêtes SQL explicites et les clés étrangères déjà présentes.
+Code principal : `app/account_deletion.py`, routes dans `app/routes/auth.py`, présentation dans `frontend-vue/src/layout/profile/ProfileDeletionForm.vue`. Le code utilise des fonctions, des requêtes SQL explicites et les clés étrangères déjà présentes.
 
 ## Nettoyage des fichiers
 

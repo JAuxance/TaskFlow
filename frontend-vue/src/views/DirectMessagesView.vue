@@ -1,6 +1,5 @@
 <script setup lang="ts">
 // A private conversation with another member.
-// Same content as frontend/js/views/directMessagesView.js.
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getDirectMessages, sendDirectMessage } from '../api/messages';

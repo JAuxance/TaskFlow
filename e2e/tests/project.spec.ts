@@ -1,7 +1,7 @@
 import { expect, kanbanColumn, openProject, openWorkspace, reloadApp, test } from '../support/test';
 import { addMember, createProject, createTask, createWorkspace } from '../support/api';
 
-test('an owner renames a project, edits its description, then deletes it', { tag: '@vue' }, async ({ actor }) => {
+test('an owner renames a project, edits its description, then deletes it', async ({ actor }) => {
     const { page, request } = await actor('alice');
     const workspace = await createWorkspace(request, 'Design studio');
     const project = await createProject(request, workspace.id, 'Website redesign');
@@ -33,7 +33,7 @@ test('an owner renames a project, edits its description, then deletes it', { tag
     await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
 });
 
-test('a member adds tasks but cannot change the project itself', { tag: '@vue' }, async ({ actor }) => {
+test('a member adds tasks but cannot change the project itself', async ({ actor }) => {
     const owner = await actor('alice');
     const member = await actor('bob');
     const workspace = await createWorkspace(owner.request, 'Design studio');

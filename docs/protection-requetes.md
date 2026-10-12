@@ -7,13 +7,13 @@ Une attaque CSRF cherche à faire envoyer une action par le navigateur d'une per
 `app/security.py` contrôle toutes les requêtes qui modifient `/api/` : inscription, connexion, déconnexion, créations, modifications, suppressions et images. Le contrôle précède le traitement métier.
 
 1. Le frontend demande un jeton aléatoire à `GET /api/auth/csrf`. Flask l'associe à sa session signée.
-2. `frontend/js/api.js` transmet ce jeton dans `X-CSRF-Token` avec le cookie.
+2. Le client HTTP du frontend (`frontend-vue/src/api/client.ts`) transmet ce jeton dans `X-CSRF-Token` avec le cookie.
 3. Le serveur vérifie l'origine exacte et compare le jeton à celui de la session. Une origine étrangère, une origine absente sans Referer valable ou un jeton incorrect donne `403`.
 4. Après une connexion ou une inscription réussie, la session change et un nouveau jeton sera demandé. Les mutations suivantes récupèrent le jeton courant ; plusieurs sauvegardes simultanées partagent la requête de récupération en cours.
 
 Le jeton est une protection complémentaire : les routes continuent à vérifier l'utilisateur et ses droits. Il n'est ni un mot de passe ni un mécanisme d'autorisation. Une erreur ne déclenche pas une répétition automatique de la mutation. Une requête `FormData` conserve son type multipart et sa frontière générée par le navigateur.
 
-En développement, les origines autorisées sont `http://localhost:5500` et `http://127.0.0.1:5500` pour le frontend actuel, ainsi que `http://localhost:5173` et `http://127.0.0.1:5173` pour le serveur Vite du frontend Vue. En production, `PUBLIC_ORIGIN` doit être l'origine HTTPS publique exacte, sans chemin. Socket.IO utilise la même liste. Les cookies de production restent `Secure`, `HttpOnly` et `SameSite=Lax`.
+En développement, les origines autorisées sont `http://localhost:5173` et `http://127.0.0.1:5173`, celles du serveur Vite du frontend. En production, `PUBLIC_ORIGIN` doit être l'origine HTTPS publique exacte, sans chemin. Socket.IO utilise la même liste. Les cookies de production restent `Secure`, `HttpOnly` et `SameSite=Lax`.
 
 ## Cache et scripts
 
@@ -56,7 +56,6 @@ Depuis le dépôt, après installation de `requirements.txt` et `requirements-de
 
 ```bash
 python -m pytest -q
-node --test frontend/tests/api.test.mjs
 npm test --prefix frontend-vue
 npm run build --prefix frontend-vue
 docker compose -f compose.chat-tests.yaml up -d --wait

@@ -11,8 +11,6 @@ export default defineConfig({
         port: 5173,
         // The backend only accepts this port: fail instead of moving to another one.
         strictPort: true,
-        // style.css and its fonts stay in ../frontend while both frontends coexist.
-        fs: { allow: ['..'] },
         // Same paths as the production Nginx, so the browser stays on one origin.
         proxy: {
             '/api': backend,

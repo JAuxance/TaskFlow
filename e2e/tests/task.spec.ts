@@ -30,21 +30,12 @@ async function openNewTask(actor: ActorFactory) {
 const status = (page: Page) => page.getByLabel('Status', { exact: true });
 const priority = (page: Page) => page.getByLabel('Priority', { exact: true });
 
-/**
- * Intercept the saves of a task, on either frontend. `handle` receives each
- * PATCH; a made-up answer must carry the CORS headers of the real API, since
- * the current frontend calls it from another port.
- */
+/** Intercept the saves of a task: `handle` receives each PATCH. */
 async function onTaskSave(page: Page, handle: (route: Route) => Promise<void>) {
     await page.route('**/api/tasks/*', route => route.request().method() === 'PATCH' ? handle(route) : route.fallback());
 }
 
-const corsHeaders = (route: Route) => {
-    const origin = route.request().headers().origin;
-    return origin ? { 'access-control-allow-origin': origin, 'access-control-allow-credentials': 'true' } : {};
-};
-
-test('a member creates a task and edits it from the board', { tag: '@vue' }, async ({ actor }) => {
+test('a member creates a task and edits it from the board', async ({ actor }) => {
     const page = await openEmptyBoard(actor);
     for (const column of ['todo', 'in_progress', 'review', 'done']) {
         await expect(kanbanColumn(page, column)).toContainText('No tasks yet.');
@@ -91,7 +82,7 @@ test('a member creates a task and edits it from the board', { tag: '@vue' }, asy
     await expect(status(page)).toHaveValue('in_progress');
 });
 
-test('a task needs a title and can be deleted', { tag: '@vue' }, async ({ actor }) => {
+test('a task needs a title and can be deleted', async ({ actor }) => {
     const page = await openEmptyBoard(actor);
     await page.getByRole('button', { name: 'New task' }).click();
     const dialog = page.getByRole('dialog', { name: 'New task' });
@@ -113,7 +104,7 @@ test('a task needs a title and can be deleted', { tag: '@vue' }, async ({ actor 
     await expect(kanbanColumn(page, 'todo')).toContainText('No tasks yet.');
 });
 
-test('color, assignee and due date are shown on the card', { tag: '@vue' }, async ({ actor }) => {
+test('color, assignee and due date are shown on the card', async ({ actor }) => {
     const alice = await openNewTask(actor);
     await actor('bob');
     await addMember(alice.request, alice.workspace.id, 'bob', 'member');
@@ -152,7 +143,7 @@ test('color, assignee and due date are shown on the card', { tag: '@vue' }, asyn
 });
 
 test.describe('saves of a task', () => {
-    test('are sent one after the other, never two at once', { tag: '@vue' }, async ({ actor }) => {
+    test('are sent one after the other, never two at once', async ({ actor }) => {
         const { page, request, task } = await openNewTask(actor);
         let inFlight = 0;
         let mostAtOnce = 0;
@@ -181,7 +172,7 @@ test.describe('saves of a task', () => {
             .toMatchObject({ status: 'review', priority: 'urgent', title: 'Write the final brief' });
     });
 
-    test('are finished before "Back to project" shows the board', { tag: '@vue' }, async ({ actor }) => {
+    test('are finished before "Back to project" shows the board', async ({ actor }) => {
         const { page } = await openNewTask(actor);
         await onTaskSave(page, async route => {
             await new Promise(resolve => setTimeout(resolve, 600));
@@ -197,11 +188,9 @@ test.describe('saves of a task', () => {
         await expect(kanbanColumn(page, 'todo')).toContainText('No tasks yet.');
     });
 
-    test('put the previous value back when the server refuses', { tag: '@vue' }, async ({ actor }) => {
+    test('put the previous value back when the server refuses', async ({ actor }) => {
         const { page, request, task } = await openNewTask(actor);
-        await onTaskSave(page, route => route.fulfill({
-            status: 500, json: { error: 'database unavailable' }, headers: corsHeaders(route),
-        }));
+        await onTaskSave(page, route => route.fulfill({ status: 500, json: { error: 'database unavailable' } }));
 
         await status(page).selectOption('done');
         await expect(page.locator('#autosave-message')).toHaveText('database unavailable');
@@ -214,7 +203,7 @@ test.describe('saves of a task', () => {
         expect(await api<Task>(request, 'GET', `/api/tasks/${task.id}`)).toMatchObject({ status: 'todo', priority: 'high' });
     });
 
-    test('tell the user when they typed again while the form was being saved', { tag: '@vue' }, async ({ actor }) => {
+    test('tell the user when they typed again while the form was being saved', async ({ actor }) => {
         const { page } = await openNewTask(actor);
         await onTaskSave(page, async route => {
             await new Promise(resolve => setTimeout(resolve, 600));
@@ -229,8 +218,7 @@ test.describe('saves of a task', () => {
         await expect(page.getByLabel('Description', { exact: true })).toHaveValue('Typed during the save');
     });
 
-    test('are also finished before leaving by the breadcrumb', { tag: '@vue-only' }, async ({ actor }) => {
-        // On the current frontend only "Back to project" waits (audit, section 3.1).
+    test('are also finished before leaving by the breadcrumb', async ({ actor }) => {
         const { page } = await openNewTask(actor);
         await onTaskSave(page, async route => {
             await new Promise(resolve => setTimeout(resolve, 600));

@@ -15,7 +15,7 @@ async function twoMembers(actor: ActorFactory): Promise<[Actor, Actor]> {
     return [alice, bob];
 }
 
-test('workspace messages reach the other member without a reload', { tag: '@vue' }, async ({ actor }) => {
+test('workspace messages reach the other member without a reload', async ({ actor }) => {
     const [alice, bob] = await twoMembers(actor);
     for (const { page } of [alice, bob]) {
         const joined = socketEvent(page, 'workspace_joined');
@@ -39,7 +39,7 @@ test('workspace messages reach the other member without a reload', { tag: '@vue'
     }
 });
 
-test('two members exchange private messages', { tag: '@vue' }, async ({ actor }) => {
+test('two members exchange private messages', async ({ actor }) => {
     const [alice, bob] = await twoMembers(actor);
     const navigation = (page: Actor['page']) => page.getByRole('navigation', { name: 'Workspaces' });
 
@@ -74,7 +74,7 @@ async function openWorkspaceChat(page: Page) {
     await joined;
 }
 
-test('a long history is read fifty messages at a time', { tag: '@vue' }, async ({ actor }) => {
+test('a long history is read fifty messages at a time', async ({ actor }) => {
     const [alice] = await twoMembers(actor);
     sql(`INSERT INTO workspace_messages(workspace_id, user_id, content)
          SELECT workspace_id, user_id, 'Message ' || n FROM workspace_members, generate_series(1, 60) n WHERE role = 'owner'`);
@@ -93,7 +93,7 @@ test('a long history is read fifty messages at a time', { tag: '@vue' }, async (
     await expect(page.getByRole('button', { name: 'Load older messages' })).toBeHidden();
 });
 
-test('an empty message cannot be sent, and a refused one stays in the field', { tag: '@vue' }, async ({ actor }) => {
+test('an empty message cannot be sent, and a refused one stays in the field', async ({ actor }) => {
     const [alice] = await twoMembers(actor);
     const page = alice.page;
     await openWorkspaceChat(page);
@@ -107,14 +107,8 @@ test('an empty message cannot be sent, and a refused one stays in the field', { 
     await expect(send).toBeEnabled();
 
     // The server fails: the draft is kept so nothing has to be typed again.
-    const refuse = (route: Route) => {
-        if (route.request().method() !== 'POST') return route.fallback();
-        const origin = route.request().headers().origin;
-        return route.fulfill({
-            status: 500, json: { error: 'message creation failed' },
-            headers: origin ? { 'access-control-allow-origin': origin, 'access-control-allow-credentials': 'true' } : {},
-        });
-    };
+    const refuse = (route: Route) => route.request().method() === 'POST'
+        ? route.fulfill({ status: 500, json: { error: 'message creation failed' } }) : route.fallback();
     await page.route('**/api/workspaces/*/messages', refuse);
     await send.click();
     await expect(page.locator('.chat-send-error')).toHaveText('message creation failed');
@@ -126,7 +120,7 @@ test('an empty message cannot be sent, and a refused one stays in the field', { 
     await expect(composer(page)).toHaveValue('');
 });
 
-test('a private conversation ends when the two members no longer share a workspace', { tag: '@vue' }, async ({ actor }) => {
+test('a private conversation ends when the two members no longer share a workspace', async ({ actor }) => {
     const [alice, bob] = await twoMembers(actor);
     await alice.page.getByRole('tab', { name: /Members/ }).click();
     const joined = socketEvent(alice.page, 'direct_message_joined');

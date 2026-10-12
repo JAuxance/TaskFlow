@@ -1,6 +1,5 @@
 <script setup lang="ts">
 // A project as a Kanban board: one column per status.
-// Same content and behavior as frontend/js/views/projectView.js.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deleteProject, getProject, updateProject } from '../api/projects';

@@ -1,6 +1,5 @@
-// Live messages over Socket.IO. One connection per open chat, as in
-// frontend/js/workspaceChat.js: it joins its room at every (re)connection and
-// stops for good when the server refuses access.
+// Live messages over Socket.IO. One connection per open chat: it joins its
+// room at every (re)connection and stops for good when the server refuses access.
 import { io } from 'socket.io-client';
 import type { ChatMessage, DirectMessage, WorkspaceMessage } from '../api/types';
 

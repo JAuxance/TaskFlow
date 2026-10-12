@@ -1,14 +1,8 @@
 import { defineConfig } from '@playwright/test';
-import { FRONTEND_ORIGIN, isLegacyFrontend } from './support/stack';
+import { FRONTEND_ORIGIN } from './support/stack';
 
 const desktop = { viewport: { width: 1440, height: 900 } };
 const mobile = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
-
-// Tests tagged @vue also pass on the Vue frontend: tag a test when its screens
-// are migrated, until every test is tagged and the current frontend can be
-// retired. Tests tagged @vue-only check the Vite setup and make no sense on
-// the current frontend.
-const selection = isLegacyFrontend ? { grepInvert: /@vue-only/ } : { grep: /@vue/ };
 
 export default defineConfig({
     testDir: './tests',
@@ -19,7 +13,6 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     timeout: 30_000,
     expect: { timeout: 7_000 },
-    ...selection,
     globalSetup: './global-setup.ts',
     globalTeardown: './global-teardown.ts',
     // No platform suffix: reference screenshots are produced on Linux with Chromium only.
@@ -27,7 +20,7 @@ export default defineConfig({
     reporter: [
         ['list'],
         ['html', { outputFolder: 'playwright-report', open: 'never' }],
-        ['junit', { outputFile: isLegacyFrontend ? '../reports/e2e-junit.xml' : '../reports/e2e-vue-junit.xml' }],
+        ['junit', { outputFile: '../reports/e2e-junit.xml' }],
     ],
     use: {
         baseURL: FRONTEND_ORIGIN,
@@ -37,15 +30,8 @@ export default defineConfig({
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
     },
-    webServer: isLegacyFrontend ? {
-        // Same static server as the README; the frontend then calls the API on port 5000.
-        command: 'python3 -m http.server 5500 --bind 127.0.0.1 --directory ../frontend',
-        url: 'http://127.0.0.1:5500/',
-        reuseExistingServer: false,
-        stdout: 'ignore',
-        stderr: 'ignore',
-    } : {
-        // Vite serves the Vue frontend and proxies the API, as Nginx does in production.
+    webServer: {
+        // Vite serves the frontend and relays the API, as Nginx does in production.
         command: 'npm run dev --prefix ../frontend-vue',
         url: 'http://127.0.0.1:5173/',
         // E2E_REUSE_VITE=1 tests through a Vite server you already have running.
