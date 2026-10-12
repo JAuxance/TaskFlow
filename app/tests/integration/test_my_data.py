@@ -117,6 +117,6 @@ def test_export_limits_return_no_partial_data(site, monkeypatch, limit, value):
 def test_new_actions_require_csrf_even_with_a_password(site):
     for path, method in (("/api/users/me/data-export", "POST"), ("/api/users/me/avatar", "DELETE")):
         response = site["member"].request(method, site["url"] + path,
-            headers={"Origin": "http://localhost:5500"}, json={"password": PASSWORD}, timeout=5)
+            headers={"Origin": "http://localhost:5173"}, json={"password": PASSWORD}, timeout=5)
         assert response.status_code == 403
         assert response.json()["code"] == "csrf_failed"

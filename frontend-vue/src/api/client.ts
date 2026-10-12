@@ -1,5 +1,5 @@
-// Same contract as frontend/js/api.js: every call resolves to { ok, status, data }
-// and never throws. On failure, data.error is always a message for the user.
+// Every call resolves to { ok, status, data } and never throws. On failure,
+// data.error is always a message for the user.
 
 export interface ApiFailure {
     error: string;

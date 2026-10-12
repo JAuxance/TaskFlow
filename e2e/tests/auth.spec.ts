@@ -15,7 +15,7 @@ test.describe('with an existing account', () => {
         await setup.dispose();
     });
 
-    test('signing in opens a session that survives a reload', { tag: '@vue' }, async ({ page }) => {
+    test('signing in opens a session that survives a reload', async ({ page }) => {
         await page.goto('/');
         await fillLogin(page, 'alice');
 
@@ -25,7 +25,7 @@ test.describe('with an existing account', () => {
         await expectSignedIn(page, 'alice');
     });
 
-    test('a wrong password is refused with a clear message', { tag: '@vue' }, async ({ page }) => {
+    test('a wrong password is refused with a clear message', async ({ page }) => {
         await page.goto('/');
         await fillLogin(page, 'alice', 'not-the-password');
 
@@ -34,7 +34,7 @@ test.describe('with an existing account', () => {
         await api(page.context().request, 'GET', '/api/auth/me', undefined, 401);
     });
 
-    test('an email address cannot be registered twice', { tag: '@vue' }, async ({ page }) => {
+    test('an email address cannot be registered twice', async ({ page }) => {
         await page.goto('/');
         await page.getByRole('button', { name: 'Create an account' }).click();
         await page.getByLabel('Username').fill('alice2');
@@ -47,7 +47,7 @@ test.describe('with an existing account', () => {
     });
 });
 
-test('registration opens a session without a second sign-in', { tag: '@vue' }, async ({ page }) => {
+test('registration opens a session without a second sign-in', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Create an account' }).click();
     await expect(page.getByRole('heading', { name: 'Create account' })).toBeVisible();
@@ -63,7 +63,7 @@ test('registration opens a session without a second sign-in', { tag: '@vue' }, a
     await expectSignedIn(page, 'alice');
 });
 
-test('the login and registration screens lead to each other', { tag: '@vue' }, async ({ page }) => {
+test('the login and registration screens lead to each other', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await expect(page).toHaveTitle('Login — TaskFlow');
@@ -76,7 +76,7 @@ test('the login and registration screens lead to each other', { tag: '@vue' }, a
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
 });
 
-test('signing out from the profile closes the session on the server', { tag: '@vue' }, async ({ actor }) => {
+test('signing out from the profile closes the session on the server', async ({ actor }) => {
     const { page } = await actor('alice');
     await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
 

@@ -1,6 +1,6 @@
 import { expect, test } from '../support/test';
 
-test('the privacy and cookies pages are open to a visitor', { tag: '@vue' }, async ({ page }) => {
+test('the privacy and cookies pages are open to a visitor', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('navigation', { name: 'Privacy information' }).getByRole('link', { name: 'Privacy' }).click();
 
@@ -23,7 +23,7 @@ test('the privacy and cookies pages are open to a visitor', { tag: '@vue' }, asy
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
 });
 
-test('a signed-in user reads the privacy page and comes back to the application', { tag: '@vue' }, async ({ actor }) => {
+test('a signed-in user reads the privacy page and comes back to the application', async ({ actor }) => {
     const { page } = await actor('alice');
     await page.getByRole('navigation', { name: 'Privacy information' }).getByRole('link', { name: 'Privacy' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
@@ -32,7 +32,7 @@ test('a signed-in user reads the privacy page and comes back to the application'
     await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();
 });
 
-test('the privacy page matches its reference', { tag: '@vue' }, async ({ page }) => {
+test('the privacy page matches its reference', async ({ page }) => {
     await page.goto('/confidentialite/');
     await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
     await page.evaluate(async () => { await document.fonts.ready; });

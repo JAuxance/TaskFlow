@@ -7,7 +7,7 @@ if os.getenv("TASKFLOW_CHAT_INTEGRATION") != "1":
 
 from app.tests.integration.test_chat_revocation import schema, site, sql
 
-ORIGIN = "http://localhost:5500"
+ORIGIN = "http://localhost:5173"
 
 
 def get_token(site, user):
@@ -56,7 +56,7 @@ def test_registration_and_login_are_protected_before_writes(site):
 
 
 def test_preflight_and_no_store_headers(site):
-    for origin in (ORIGIN, "http://127.0.0.1:5500"):
+    for origin in (ORIGIN, "http://127.0.0.1:5173"):
         response = site["owner"].options(site["url"] + "/api/users/me", headers={
             "Origin": origin, "Access-Control-Request-Method": "PATCH",
             "Access-Control-Request-Headers": "Content-Type,X-CSRF-Token",

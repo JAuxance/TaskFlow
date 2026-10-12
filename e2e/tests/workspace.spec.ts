@@ -14,7 +14,7 @@ async function openSettings(page: Page) {
     await page.getByRole('tab', { name: 'Settings' }).click();
 }
 
-test('the overview totals the projects and lists the tasks to focus on', { tag: '@vue' }, async ({ actor }) => {
+test('the overview totals the projects and lists the tasks to focus on', async ({ actor }) => {
     const { alice: { page } } = await seedStudio(actor);
     await openWorkspace(page, 'Design studio');
     const focus = page.locator('#workspace-focus-list');
@@ -45,7 +45,7 @@ test('the overview totals the projects and lists the tasks to focus on', { tag: 
     await expect(items).toHaveText([/Review the color palette/]);
 });
 
-test('an owner renames the workspace', { tag: '@vue' }, async ({ actor }) => {
+test('an owner renames the workspace', async ({ actor }) => {
     const { page, request } = await actor('alice');
     await createWorkspace(request, 'Design studio');
     await openSettings(page);
@@ -60,7 +60,7 @@ test('an owner renames the workspace', { tag: '@vue' }, async ({ actor }) => {
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Brand studio');
 });
 
-test('an owner gives the workspace an emoji, then a picture', { tag: '@vue' }, async ({ actor }) => {
+test('an owner gives the workspace an emoji, then a picture', async ({ actor }) => {
     const { page, request } = await actor('alice');
     await createWorkspace(request, 'Design studio');
     await openSettings(page);
@@ -82,7 +82,7 @@ test('an owner gives the workspace an emoji, then a picture', { tag: '@vue' }, a
     await expect(sidebar(page).getByRole('button', { name: 'Design studio' }).locator('img')).toHaveAttribute('src', /^data:image\//);
 });
 
-test('the primary owner hands the workspace over to another owner', { tag: '@vue' }, async ({ actor }) => {
+test('the primary owner hands the workspace over to another owner', async ({ actor }) => {
     const alice = await actor('alice');
     const bob = await actor('bob');
     const workspace = await createWorkspace(alice.request, 'Design studio');
@@ -110,7 +110,7 @@ test('the primary owner hands the workspace over to another owner', { tag: '@vue
     await expect(bob.page.getByRole('heading', { name: 'Ownership and deletion' })).toBeVisible();
 });
 
-test('deleting a workspace requires typing its exact name', { tag: '@vue' }, async ({ actor }) => {
+test('deleting a workspace requires typing its exact name', async ({ actor }) => {
     const { page, request } = await actor('alice');
     await createWorkspace(request, 'Design studio');
     await openSettings(page);

@@ -1,6 +1,5 @@
-// The design stays in the current frontend until the switch: one stylesheet for both.
-import '../../frontend/css/style.css';
-import '../../frontend/css/privacy.css';
+import './styles/style.css';
+import './styles/privacy.css';
 
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';

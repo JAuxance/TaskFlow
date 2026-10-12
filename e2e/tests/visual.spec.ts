@@ -3,11 +3,9 @@ import {
     expect, kanbanColumn, openDashboard, openProject, openTask, openWorkspace, socketEvent, test,
 } from '../support/test';
 import { seedStudio } from '../support/seed';
-import { isMigrated } from '../support/stack';
 
 // Reference screenshots, taken at both widths and in both themes (see
-// playwright.config.ts). They are the visual contract for the migration:
-// regenerate them only on purpose, with `npm run screenshots:update`, and
+// playwright.config.ts). Regenerate them only on purpose, with `npm run screenshots:update`, and
 // review the image diff before committing.
 
 async function capture(page: Page, name: string, fullPage = true) {
@@ -16,7 +14,7 @@ async function capture(page: Page, name: string, fullPage = true) {
     await expect.soft(page).toHaveScreenshot(`${name}.png`, { fullPage });
 }
 
-test('signed-out screens match their reference', { tag: '@vue' }, async ({ page }) => {
+test('signed-out screens match their reference', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await capture(page, 'login');
@@ -26,13 +24,12 @@ test('signed-out screens match their reference', { tag: '@vue' }, async ({ page 
     await capture(page, 'register');
 });
 
-test('signed-in screens match their reference', { tag: '@vue' }, async ({ actor }) => {
+test('signed-in screens match their reference', async ({ actor }) => {
     const { alice, gina } = await seedStudio(actor);
     const page = alice.page;
     const messages = page.getByRole('log').getByRole('article');
 
-    // Every screen is opened from the dashboard, so each one stands alone and
-    // is compared only if the frontend under test has it.
+    // Every screen is opened from the dashboard, so each one stands alone.
     const screens: [name: string, open: (page: Page) => Promise<void>, viewer?: Page][] = [
         ['dashboard', async () => {
             await expect(page.locator('#workspace-cards .role-badge')).toHaveText('Owner');
@@ -85,7 +82,6 @@ test('signed-in screens match their reference', { tag: '@vue' }, async ({ actor 
     ];
 
     for (const [name, open, viewer = page] of screens) {
-        if (!isMigrated(name)) continue;
         await test.step(name, async () => {
             await openDashboard(viewer);
             await open(viewer);

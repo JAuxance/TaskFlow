@@ -44,7 +44,7 @@ assert response.status_code == 200
 cookie = response.headers["Set-Cookie"]
 assert "Secure" in cookie and "HttpOnly" in cookie and "SameSite=Lax" in cookie
 response = client.post("/api/auth/login", base_url=origin, headers={
-    "Origin": "http://localhost:5500", "X-CSRF-Token": response.json["csrf_token"]})
+    "Origin": "http://localhost:5173", "X-CSRF-Token": response.json["csrf_token"]})
 assert response.status_code == 403
 assert "Access-Control-Allow-Origin" not in response.headers
 '''

@@ -1,6 +1,6 @@
 // The due date of a task travels between three forms: what the server stores
 // (with or without a time zone), what a datetime-local field holds (local
-// time, no zone) and what is sent back. Same rules as frontend/js/views/taskView.js.
+// time, no zone) and what is sent back.
 
 const pad = (value: number) => String(value).padStart(2, '0');
 const hasOffset = (value: string | null | undefined) => /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value ?? '');

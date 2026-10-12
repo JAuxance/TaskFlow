@@ -1,10 +1,9 @@
 <script setup lang="ts">
-// "Overview" tab: totals, projects with their progress, and the tasks to
-// focus on. Same content as the first panel of frontend/js/views/workspaceView.js.
+// "Overview" tab: totals, projects with their progress, and the tasks to focus on.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import chevronIcon from '../../../frontend/assets/icons/chevron.svg';
-import folderIcon from '../../../frontend/assets/icons/folder.svg';
+import chevronIcon from '../assets/icons/chevron.svg';
+import folderIcon from '../assets/icons/folder.svg';
 import { getProjects } from '../api/projects';
 import { getTasks } from '../api/tasks';
 import type { Project, Task, Workspace } from '../api/types';
@@ -31,7 +30,7 @@ const projectsError = ref('');
 const loadingTasks = ref(false);
 const filter = ref<Filter>('active');
 const visibleCount = ref(PAGE);
-// "Now" is read once per display, like the single render of the current frontend.
+// "Now" is read once per display, so every count uses the same instant.
 const now = ref(Date.now());
 
 let mounted = true;

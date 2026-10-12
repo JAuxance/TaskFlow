@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// The details of a task. Same content and behavior as
-// frontend/js/views/taskView.js, including the order in which saves are sent.
+// The details of a task, with its saves sent one at a time.
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { getProject } from '../api/projects';

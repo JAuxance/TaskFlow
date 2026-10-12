@@ -1,9 +1,8 @@
 <script setup lang="ts">
 // A workspace: overview, messages, members and settings in tabs.
-// Same structure as frontend/js/views/workspaceView.js.
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import folderIcon from '../../../frontend/assets/icons/folder.svg';
+import folderIcon from '../assets/icons/folder.svg';
 import { getWorkspaceMessages, sendWorkspaceMessage } from '../api/messages';
 import { createProject } from '../api/projects';
 import type { WorkspaceRole } from '../api/types';

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import markIcon from '../../../frontend/assets/icons/mark.svg';
+import markIcon from '../assets/icons/mark.svg';
 import { login } from '../api/auth';
 import FormMessage from '../components/FormMessage.vue';
 import { useBusy } from '../composables/useBusy';

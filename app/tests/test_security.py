@@ -114,7 +114,7 @@ def test_private_responses_and_errors_are_not_cacheable(protected_app, method, p
 def test_real_routes_reject_missing_csrf_before_processing(app, path, method):
     # This is deliberately a raw client, without the valid-browser test helper.
     client = FlaskClient(app, app.response_class, use_cookies=True)
-    response = client.open(path, method=method, headers={"Origin": "http://localhost:5500"})
+    response = client.open(path, method=method, headers={"Origin": "http://localhost:5173"})
     assert response.status_code == 403
     assert response.json["code"] == "csrf_failed"
 
@@ -155,13 +155,12 @@ def test_proxy_configuration_and_rate_limit(trust_proxy):
     assert client.get("/api/ip", headers={"X-Forwarded-For": "192.0.2.1"}).status_code == 429
 
 
-def test_development_accepts_both_local_frontends_only(client):
+def test_development_accepts_the_vite_server_only(client):
     from app.extensions import socketio
 
-    local = ["http://localhost:5500", "http://127.0.0.1:5500",
-             "http://localhost:5173", "http://127.0.0.1:5173"]
+    local = ["http://localhost:5173", "http://127.0.0.1:5173"]
     for origin in local:
         assert client.get("/api/auth/csrf", headers={"Origin": origin}).status_code == 200
     assert socketio.server.eio.cors_allowed_origins == local
-    for origin in ("http://localhost:3000", "http://localhost:51730", "https://localhost:5173"):
+    for origin in ("http://localhost:5500", "http://localhost:51730", "https://localhost:5173"):
         assert client.get("/api/auth/csrf", headers={"Origin": origin}).status_code == 403

@@ -85,7 +85,7 @@ export function socketEvent(page: Page, name: string): Promise<void> {
 /** The message field of the chat currently displayed. */
 export const composer = (page: Page) => page.getByLabel('Message', { exact: true });
 
-/** A signed-in screen is displayed, whichever frontend renders it. */
+/** A signed-in screen is displayed. */
 export async function expectSignedIn(page: Page, name: string): Promise<void> {
     await expect(page.getByText(emailOf(name)).filter({ visible: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Login' })).toHaveCount(0);

@@ -1,10 +1,9 @@
 <script setup lang="ts">
 // "All workspaces": one card per workspace with its projects and tasks.
-// Same content and behavior as frontend/js/views/dashboardView.js.
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import chevronIcon from '../../../frontend/assets/icons/chevron.svg';
-import folderIcon from '../../../frontend/assets/icons/folder.svg';
+import chevronIcon from '../assets/icons/chevron.svg';
+import folderIcon from '../assets/icons/folder.svg';
 import { getProjects } from '../api/projects';
 import { getTasks } from '../api/tasks';
 import type { Project, Task, TaskStatus, Workspace } from '../api/types';

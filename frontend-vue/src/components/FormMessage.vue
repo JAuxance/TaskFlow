@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Same element as setMessage() in frontend/js/ui.js: hidden while empty,
-// announced as an alert for errors and as a status otherwise.
+// The message of a form: hidden while empty, announced as an alert for
+// errors and as a status otherwise.
 withDefaults(defineProps<{ text?: string; type?: 'error' | 'success' | 'info' }>(), {
     text: '', type: 'error',
 });

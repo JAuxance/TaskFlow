@@ -2,7 +2,7 @@ import { inject, type InjectionKey, type Ref } from 'vue';
 
 /**
  * One lock for the whole profile dialog: while a section saves, the others
- * wait and the dialog cannot be closed, as in the current frontend.
+ * wait and the dialog cannot be closed.
  */
 export interface ProfileLock {
     busy: Ref<boolean>;

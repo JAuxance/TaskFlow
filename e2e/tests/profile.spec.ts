@@ -17,7 +17,7 @@ async function openProfile(page: Page) {
 const accountName = (page: Page) => page.locator('#profile-button .account-name');
 const accountPicture = (page: Page) => page.locator('#profile-button .avatar img');
 
-test('a user sets a first name, shown instead of the username, then clears it', { tag: '@vue' }, async ({ actor }) => {
+test('a user sets a first name, shown instead of the username, then clears it', async ({ actor }) => {
     const { page } = await actor('alice');
     await expect(accountName(page)).toHaveText('alice');
     const profile = await openProfile(page);
@@ -39,7 +39,7 @@ test('a user sets a first name, shown instead of the username, then clears it', 
     await expect(accountName(page)).toHaveText('alice');
 });
 
-test('a user uploads a profile picture, then removes it', { tag: '@vue' }, async ({ actor }) => {
+test('a user uploads a profile picture, then removes it', async ({ actor }) => {
     const { page } = await actor('alice');
     await expect(accountPicture(page)).toBeHidden();
     const profile = await openProfile(page);
@@ -65,7 +65,7 @@ test('a user uploads a profile picture, then removes it', { tag: '@vue' }, async
     await expect(profile.getByText('Profile updated.')).toBeVisible();
 });
 
-test('a user downloads their data after giving their password', { tag: '@vue' }, async ({ actor }) => {
+test('a user downloads their data after giving their password', async ({ actor }) => {
     const { page, request } = await actor('alice');
     const workspace = await createWorkspace(request, 'Design studio');
     const project = await createProject(request, workspace.id, 'Website redesign');
@@ -92,7 +92,7 @@ test('a user downloads their data after giving their password', { tag: '@vue' },
     expect(JSON.stringify(data)).not.toContain('password');
 });
 
-test('the email address can be copied from the profile', { tag: '@vue' }, async ({ actor }) => {
+test('the email address can be copied from the profile', async ({ actor }) => {
     const { page } = await actor('alice');
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     const profile = await openProfile(page);
@@ -103,7 +103,7 @@ test('the email address can be copied from the profile', { tag: '@vue' }, async 
     await expect(profile.getByRole('button', { name: 'Copy email' })).toBeVisible();
 });
 
-test('closing the profile forgets the passwords and the deletion review', { tag: '@vue' }, async ({ actor }) => {
+test('closing the profile forgets the passwords and the deletion review', async ({ actor }) => {
     const { page } = await actor('alice');
     const profile = await openProfile(page);
     await profile.getByLabel('Current password for download').fill('typed-but-not-sent');
@@ -122,7 +122,7 @@ test('closing the profile forgets the passwords and the deletion review', { tag:
 });
 
 test.describe('account deletion', () => {
-    test('a user deletes their account after reviewing what will be removed', { tag: '@vue' }, async ({ actor }) => {
+    test('a user deletes their account after reviewing what will be removed', async ({ actor }) => {
         const { page, request } = await actor('alice');
         const workspace = await createWorkspace(request, 'Design studio');
         const project = await createProject(request, workspace.id, 'Website redesign');
@@ -169,7 +169,7 @@ test.describe('account deletion', () => {
         await expect(page.getByRole('alert')).toHaveText('Invalid email or password. Please try again.');
     });
 
-    test('the owner of a shared workspace must hand it over first', { tag: '@vue' }, async ({ actor }) => {
+    test('the owner of a shared workspace must hand it over first', async ({ actor }) => {
         const alice = await actor('alice');
         await actor('bob');
         const workspace = await createWorkspace(alice.request, 'Design studio');

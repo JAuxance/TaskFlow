@@ -1,9 +1,8 @@
 import { expect, expectSignedIn, test } from '../support/test';
 import { PASSWORD, addMember, createProject, createTask, createWorkspace, emailOf, signUp } from '../support/api';
 
-// Vue frontend only (E2E_FRONTEND=vue). These tests check what the current
-// frontend does not have: the Vite proxy and URLs.
-test.describe('Vite setup', { tag: '@vue-only' }, () => {
+// The Vite proxy, and the addresses of the screens.
+test.describe('Vite setup', () => {
     test('the application reads the session through the proxy', async ({ page }) => {
         const profile = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/me');
         await page.goto('/');
@@ -11,7 +10,7 @@ test.describe('Vite setup', { tag: '@vue-only' }, () => {
         expect((await profile).status()).toBe(401);
         await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
         await expect(page).toHaveURL('/login');
-        // The stylesheet of the current frontend is applied, with its local font.
+        // The stylesheet is applied, with its local font.
         await expect(page.locator('body')).toHaveCSS('font-family', /Inter/);
     });
 

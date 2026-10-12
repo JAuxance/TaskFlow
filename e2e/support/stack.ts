@@ -1,24 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
-// E2E_FRONTEND selects the frontend under test: the Vue one served by Vite
-// (default), or `legacy` for the previous one. Both talk to the same
-// disposable backend.
-export const FRONTEND = process.env.E2E_FRONTEND ?? 'vue';
-if (FRONTEND !== 'legacy' && FRONTEND !== 'vue') {
-    throw new Error(`E2E_FRONTEND must be "legacy" or "vue", not "${FRONTEND}"`);
-}
-export const isLegacyFrontend = FRONTEND === 'legacy';
-
-// Screens the Vue frontend already has. A test that crosses several screens
-// stops where the migration stops; on the current frontend it goes all the way.
-const VUE_SCREENS = [
-    'login', 'register', 'dashboard', 'profile', 'workspace-overview', 'workspace-members',
-    'kanban', 'task-details', 'task-details-guest', 'workspace-messages', 'direct-messages',
-];
-export const isMigrated = (screen: string) => isLegacyFrontend || VUE_SCREENS.includes(screen);
-
-export const FRONTEND_ORIGIN = isLegacyFrontend ? 'http://localhost:5500' : 'http://localhost:5173';
+// The frontend is served by Vite, which relays API calls to the backend. The
+// tests also call the backend directly to prepare data.
+export const FRONTEND_ORIGIN = 'http://localhost:5173';
 export const API_URL = 'http://localhost:5000';
 export const SENTINEL_EMAIL = 'e2e-sentinel@example.com';
 

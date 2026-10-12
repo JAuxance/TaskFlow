@@ -1,7 +1,6 @@
 /**
  * After a navigation, name the browser tab after the main heading and move the
  * focus to it, so keyboard and screen-reader users land on the new screen.
- * Same behavior as showView() in frontend/js/app.js.
  */
 export function announcePage(): void {
     const heading = document.querySelector<HTMLElement>('#app h1');

@@ -17,5 +17,4 @@ outsider.txt
 .claude/
 e2e/
 reports/
-frontend-vue/node_modules/
-frontend-vue/dist/
+frontend-vue/

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // A conversation: history, live messages and the composer. Used by the
-// workspace chat and by private messages; same behavior as renderChat() in
-// frontend/js/views/workspaceChatView.js.
+// workspace chat and by private messages.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowReactive } from 'vue';
 import { useRouter } from 'vue-router';
 import type { ApiResult } from '../api/client';

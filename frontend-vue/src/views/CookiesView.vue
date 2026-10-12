@@ -1,5 +1,5 @@
 <template>
-    <!-- Cookies and storage notice. Public page, same text as the static page it replaces. -->
+    <!-- Cookies and storage notice. Public page. -->
     <main id="page-content" class="privacy-page">
         <header>
             <a href="/">Back to TaskFlow</a>

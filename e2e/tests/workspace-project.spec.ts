@@ -1,7 +1,7 @@
 import { expect, openWorkspace, reloadApp, test } from '../support/test';
 import { createWorkspace } from '../support/api';
 
-test('a user creates a workspace from the dashboard and becomes its owner', { tag: '@vue' }, async ({ actor }) => {
+test('a user creates a workspace from the dashboard and becomes its owner', async ({ actor }) => {
     const { page } = await actor('alice');
     const sidebar = page.getByRole('navigation', { name: 'Workspaces' });
     await expect(sidebar.getByText('No workspaces yet.')).toBeVisible();
@@ -21,7 +21,7 @@ test('a user creates a workspace from the dashboard and becomes its owner', { ta
     await expect(sidebar.getByText('No workspaces yet.')).toHaveCount(0);
 });
 
-test('a workspace needs a name', { tag: '@vue' }, async ({ actor }) => {
+test('a workspace needs a name', async ({ actor }) => {
     const { page } = await actor('alice');
     await page.getByRole('button', { name: '+ New workspace' }).click();
     const dialog = page.getByRole('dialog', { name: 'New workspace' });
@@ -34,7 +34,7 @@ test('a workspace needs a name', { tag: '@vue' }, async ({ actor }) => {
     await expect(page.getByText('No workspaces yet.')).toBeVisible();
 });
 
-test('an owner creates a project inside a workspace', { tag: '@vue' }, async ({ actor }) => {
+test('an owner creates a project inside a workspace', async ({ actor }) => {
     const { page, request } = await actor('alice');
     await createWorkspace(request, 'Design studio');
     await reloadApp(page);
