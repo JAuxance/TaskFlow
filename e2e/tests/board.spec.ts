@@ -97,7 +97,7 @@ test('a guest cannot move a task', async ({ actor }) => {
     const page = gina.page;
     const guestCard = card(page, 'todo', 'Write the brief');
     await expect(guestCard).toHaveAttribute('draggable', 'false');
-    await expect(page.getByText(/Drag a task/)).toHaveCount(0);
+    await expect(guestCard).not.toHaveAttribute('aria-describedby');
     await guestCard.focus();
     await page.keyboard.press('Shift+ArrowRight');
     await expect(guestCard).toBeFocused();

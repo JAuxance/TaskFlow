@@ -17,12 +17,13 @@ test('an owner renames a project, edits its description, then deletes it', async
     await settings.getByRole('button', { name: 'Save changes' }).click();
 
     await expect(page.getByRole('heading', { level: 1, name: 'Website relaunch' })).toBeVisible();
-    await expect(page.locator('.page-heading')).toContainText('Second version of the site');
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Website relaunch');
     // The board is still there after the change.
     await expect(kanbanColumn(page, 'todo').getByRole('button', { name: /Write the brief/ })).toBeVisible();
 
+    // The board does not show the description: the settings and the workspace do.
     await page.getByRole('button', { name: 'Project settings' }).click();
+    await expect(settings.getByLabel('Description')).toHaveValue('Second version of the site');
     page.once('dialog', confirmation => confirmation.dismiss());
     await settings.getByRole('button', { name: 'Delete project' }).click();
     await expect(settings).toBeVisible();
@@ -43,8 +44,8 @@ test('a member adds tasks but cannot change the project itself', async ({ actor 
     const page = member.page;
     await reloadApp(page);
     await openWorkspace(page, 'Design studio');
+    await expect(page.getByRole('region', { name: 'Projects', exact: true })).toContainText('New marketing site');
     await openProject(page, 'Website redesign');
-    await expect(page.getByText('New marketing site')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Project settings' })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'New task' }).click();

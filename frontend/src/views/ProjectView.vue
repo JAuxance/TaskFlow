@@ -277,7 +277,6 @@ function removeProject() {
         <div class="page-heading page-heading-row">
             <div class="heading-copy">
                 <h1>{{ project.name }}</h1>
-                <p v-if="project.description" class="secondary-text">{{ project.description }}</p>
             </div>
             <div class="header-actions">
                 <button v-if="canEditProject" id="project-settings-button" type="button" class="btn-secondary" @click="openSettings">Project settings</button>
@@ -285,7 +284,8 @@ function removeProject() {
             </div>
         </div>
         <FormMessage id="tasks-message" :text="tasksMessage" />
-        <p v-if="canEditTasks" id="board-help" class="board-help">Drag a task to another column to change its status, or up and down to give it the priority of the task above. With the keyboard: Shift and an arrow key.</p>
+        <!-- Not displayed: read with each card by screen readers. -->
+        <p v-if="canEditTasks" id="board-help" class="visually-hidden">Drag a task to another column to change its status, or up and down to give it the priority of the task above. With the keyboard: Shift and an arrow key.</p>
         <p class="visually-hidden" role="status">{{ moveAnnouncement }}</p>
         <div class="kanban-board" aria-label="Project task board">
             <section
