@@ -277,7 +277,6 @@ function removeProject() {
         <div class="page-heading page-heading-row">
             <div class="heading-copy">
                 <h1>{{ project.name }}</h1>
-                <p v-if="project.description" class="secondary-text">{{ project.description }}</p>
             </div>
             <div class="header-actions">
                 <button v-if="canEditProject" id="project-settings-button" type="button" class="btn-secondary" @click="openSettings">Project settings</button>
