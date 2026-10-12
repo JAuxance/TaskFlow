@@ -1,12 +1,12 @@
 /* Workspace discussion and private conversations. */
 
-.workspace-chat { position: relative; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: var(--shadow-surface); }
+.workspace-chat { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-card); background: var(--color-surface); }
 .app-layout:has(.direct-messages-page) { height: 100vh; height: 100dvh; }
 .main-content:has(.direct-messages-page) { min-height: 0; }
 .page-content.direct-messages-page { min-height: 0; gap: 0; padding: 0; }
-.direct-messages-page > .page-heading { flex-shrink: 0; padding: 24px 32px; border-bottom: 1px solid var(--color-border); }
+.direct-messages-page > .page-heading { flex-shrink: 0; padding: 8px 32px 20px; border-bottom: 1px solid var(--color-border); }
 .direct-chat-panel { display: flex; flex: 1; min-height: 0; }
-.direct-chat-panel .workspace-chat { flex: 1; min-width: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.direct-chat-panel .workspace-chat { flex: 1; min-width: 0; border-radius: 0; background: transparent; }
 .direct-chat-panel .chat-thread { flex: 1; height: auto; min-height: 0; padding: 16px 32px 24px; }
 .direct-chat-panel .chat-composer { flex-shrink: 0; padding: 16px 32px 24px; border-top: 0; }
 .chat-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--color-border); }
@@ -31,16 +31,13 @@
 .chat-message-meta strong { overflow-wrap: anywhere; font-size: 13px; }
 .chat-message-meta time { font-size: 11px; color: var(--color-secondary); }
 .chat-you { display: none; }
-.chat-message-body { max-width: 100%; padding: 10px 16px; border-radius: 20px 20px 20px 5px; background: #e9e9eb; color: #1d1d1f; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 22px; }
-.chat-message-own .chat-message-body { border-radius: 20px 20px 5px 20px; background: #0071e3; color: #fff; }
+.chat-message-body { max-width: 100%; padding: 10px 16px; border-radius: 20px 20px 20px 5px; background: var(--color-bubble); color: var(--color-text); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 22px; }
+.chat-message-own .chat-message-body { border-radius: 20px 20px 5px 20px; background: var(--color-primary); color: var(--color-on-primary); }
 .direct-chat-panel .chat-message > .avatar, .direct-chat-panel .chat-message-meta strong { display: none; }
-html[data-theme="dark"] .chat-message-body { background: #343438; color: #f5f5f7; }
-html[data-theme="dark"] .chat-message-own .chat-message-body { background: #0071e3; color: #fff; }
 .chat-jump { align-self: center; margin: 8px 0; color: var(--color-accent); }
 .chat-composer { display: flex; flex-direction: column; gap: 8px; padding: 18px 24px 20px; border-top: 1px solid var(--color-border); }
 .chat-composer label { font-size: 13px; font-weight: 600; }
 .chat-composer textarea { min-height: 64px; max-height: 240px; padding: 12px 16px; border-radius: 22px; }
-.chat-composer button[type="submit"] { border-radius: 999px; }
 .chat-composer-footer { display: flex; align-items: center; gap: 12px; }
 .chat-composer-footer .field-hint:first-child { margin-right: auto; }
 #chat-character-count { white-space: nowrap; }
@@ -48,7 +45,7 @@ html[data-theme="dark"] .chat-message-own .chat-message-body { background: #0071
 @media (max-width: 700px) {
     .app-layout:has(.direct-messages-page) { display: flex; flex-direction: column; }
     .app-layout:has(.direct-messages-page) > .sidebar { flex: 0 0 auto; }
-    .direct-messages-page > .page-heading { padding: 16px; gap: 12px; }
+    .direct-messages-page > .page-heading { padding: 8px 16px 16px; gap: 12px; }
     .direct-chat-panel .chat-thread { padding: 8px 16px 16px; }
     .direct-chat-panel .chat-composer { padding: 12px 16px 16px; }
     .chat-header { align-items: flex-start; flex-direction: column; gap: 12px; padding: 16px; }

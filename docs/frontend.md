@@ -48,6 +48,25 @@ Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, 
 | `src/styles/` | Feuilles de style : `tokens.css` (police, couleurs des deux thèmes), `base.css`, `components.css` (blocs partagés), `layout.css` (cadre), puis une feuille par écran. `main.ts` les charge dans cet ordre, qui est celui de la cascade. |
 | `src/assets/` | Police Inter et icônes. |
 
+## Direction artistique
+
+La refonte graphique a suivi la migration, une fois le code unique. Elle mélange deux inspirations : la sobriété d'Apple et de Slack pour le cadre, et les aplats de couleurs de MetaMask pour les repères. Rien n'est copié : ni logo, ni police, ni couleur de marque.
+
+| Élément | Choix |
+| --- | --- |
+| Barre latérale | Prune foncé dans les deux thèmes. L'élément ouvert est une pilule lilas. |
+| Contenu | Fond gris très clair, cartes blanches sans contour, coins de 16 px. |
+| Actions | Un seul bleu : bouton principal, barres de progression, liens. Les boutons sont des pilules. |
+| Chiffres clés | Un aplat par total : lilas, citron, bleu ciel. Le total des retards passe à l'orange quand il n'est pas nul. |
+| Statuts et priorités | Petites pilules dans ces mêmes paires de couleurs. |
+| Kanban | Volontairement sobre : colonnes grises, cartes blanches, un point pour le statut. |
+| Couleur d'une tâche | Un point devant son titre, à la place du liseré. |
+| Onglets | Contrôle segmenté : l'onglet ouvert est relevé en blanc. |
+| Logo | Une coche dont le grand trait s'incurve, blanche sur un carré bleu arrondi. Il sert aussi d'icône d'onglet. |
+| Police | Inter, embarquée ; aucune police n'est chargée depuis un autre site. |
+
+Toutes les couleurs sont dans `src/styles/tokens.css`, pour les deux thèmes ; les autres feuilles n'en écrivent aucune. Chaque aplat est une paire, un fond et son encre : en thème sombre la paire s'inverse, fond profond et encre vive. Les paires ont été choisies pour un contraste d'au moins 4,5 pour 1 entre le texte et son fond.
+
 ## Routes
 
 | Adresse | Écran | Accès |
@@ -161,7 +180,7 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | Types stricts (`vue-tsc`) | aucune erreur |
 | Tests unitaires | 84 réussis |
 | Tests navigateur | 75 réussis sur les quatre profils |
-| Captures de référence | les 45 identiques au pixel près à celles de l'ancien frontend |
+| Captures de référence | les 45 identiques au pixel près à celles de l'ancien frontend à la fin de la migration, puis régénérées volontairement pour la refonte graphique |
 | `pytest` | 104 réussis, et 41 tests d'intégration |
 | Contrôle Nginx (`scripts/check_nginx_security.py`) sur le build | tous les contrôles réussis |
 
@@ -175,4 +194,4 @@ Nginx sert le contenu de `frontend/dist/` et renvoie vers `index.html` toute adr
 
 ## Ce qui reste
 
-La refonte graphique, sur cette base désormais unique.
+La suite de la refonte graphique : finitions écran par écran et réorganisation de la mise en page.

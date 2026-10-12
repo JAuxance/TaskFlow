@@ -1,15 +1,17 @@
 /* Dashboard: one binder per workspace and the list of tasks. */
 
 .workspace-binders { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
-.workspace-binder { min-width: 0; overflow: hidden; border: 1px solid var(--color-border); border-top: 3px solid var(--item-color); border-radius: 12px; background: var(--color-surface); box-shadow: var(--shadow-surface); }
-.workspace-binder .workspace-card { gap: 16px; padding: 20px; border: 0; border-radius: 0; background: var(--item-tint); box-shadow: none; }
-.workspace-binder .workspace-card:hover:not(:disabled) { background: var(--item-tint); box-shadow: inset 0 0 0 1px var(--item-color); }
+.workspace-binder { min-width: 0; overflow: hidden; border-radius: var(--radius-card); background: var(--color-surface); }
+/* The head of a binder is a block in the color of its workspace. */
+.workspace-binder .workspace-card { gap: 16px; padding: 20px; border: 0; border-radius: 0; background: var(--item-tint); }
+.workspace-binder .workspace-card:hover:not(:disabled) { background: var(--item-tint); box-shadow: inset 0 0 0 2px var(--item-color); }
 .workspace-binder .workspace-card:focus-visible { outline-offset: -3px; }
-.workspace-binder .workspace-card-footer { border-top-color: rgb(29 41 57 / 10%); }
-.workspace-binder .role-badge { background: rgb(255 255 255 / 75%); color: var(--item-ink); }
+.workspace-binder .workspace-icon { background: var(--color-veil); }
+.workspace-binder .workspace-card-footer { border-top-color: color-mix(in srgb, var(--item-ink) 18%, transparent); }
+.workspace-binder .role-badge { background: var(--color-veil); color: var(--item-ink); }
 .workspace-binder .card-link { color: var(--item-ink); }
 .binder-tasks-heading .count-badge { background: var(--item-tint); color: var(--item-ink); }
-.binder-content { display: flex; flex-direction: column; gap: 18px; padding: 16px; border-top: 1px solid var(--color-border); background: var(--color-surface-muted); }
+.binder-content { display: flex; flex-direction: column; gap: 18px; padding: 16px 20px 20px; }
 .binder-tasks-heading, .binder-project-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .binder-projects { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .binder-project { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
@@ -17,26 +19,26 @@
 .binder-project-heading h4 { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .binder-project-count { color: var(--color-secondary); font-size: 12px; line-height: 18px; }
 .binder-message, .binder-project-message { color: var(--color-secondary); font-size: 12px; line-height: 18px; }
-.binder-project-message { padding: 12px; border: 1px dashed var(--color-border); border-radius: 8px; }
+.binder-project-message { padding: 12px; border: 1px dashed var(--color-border-hover); border-radius: 12px; }
+
 .overview-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-.overview-total { padding-left: 12px; border-left: 1px solid var(--color-border); color: var(--color-secondary); font-size: 12px; font-weight: 400; }
+.overview-total { padding-left: 12px; border-left: 1px solid var(--color-border-hover); color: var(--color-secondary); font-size: 12px; font-weight: 400; }
 .overview-filter { display: flex; align-items: center; gap: 10px; color: var(--color-secondary); font-size: 13px; }
 .overview-filter select { width: auto; }
 .overview-feedback { display: flex; align-items: center; gap: 12px; }
 .overview-feedback:not(:has(:not([hidden]))) { display: none; }
-.overview-task-list { overflow: hidden; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
-.overview-task-list > [role="listitem"] + [role="listitem"] { border-top: 1px solid var(--color-border); }
-.overview-task-row { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: 100%; min-width: 0; padding: 12px; border: 0; border-left: 3px solid var(--item-color); background: transparent; color: var(--color-text); text-align: left; }
+.overview-task-list { overflow: hidden; border-radius: 12px; background: var(--color-surface-muted); }
+.overview-task-list > [role="listitem"] + [role="listitem"] { border-top: 1px solid var(--color-surface); }
+.overview-task-row { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; min-width: 0; padding: 12px 14px; border: 0; background: transparent; color: var(--color-text); text-align: left; }
 .overview-task-row:hover:not(:disabled) { background: var(--color-hover); }
 .overview-task-row:focus-visible { outline-offset: -3px; }
+/* The color of the task: a dot before its title. */
 .overview-task-main { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.overview-task-main::before { content: ""; flex: 0 0 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--item-color); }
 .overview-task-title { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 .overview-task-main .icon-chevron { margin-top: 3px; }
-.overview-task-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.overview-task-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding-left: 16px; }
 .overview-priority, .overview-due { color: var(--color-secondary); font-size: 12px; line-height: 18px; white-space: nowrap; }
-html[data-theme="dark"] .workspace-binder .workspace-card-footer { border-top-color: rgb(220 232 250 / 14%); }
-html[data-theme="dark"] .workspace-binder .role-badge { background: rgb(4 12 24 / 25%); }
-html[data-theme="dark"] .binder-tasks-heading .count-badge { background: var(--item-tint); }
 
 @media (max-width: 700px) {
     .overview-filter { width: 100%; }

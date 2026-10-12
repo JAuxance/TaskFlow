@@ -53,7 +53,7 @@ const openConversation = (conversation: Conversation) => router.push({ name: 'me
 <template>
     <div class="app-layout">
         <aside class="sidebar" aria-label="Workspace navigation">
-            <div class="sidebar-header"><img class="icon icon-mark" :src="markIcon" width="24" height="24" alt="" aria-hidden="true"><span>TaskFlow</span></div>
+            <div class="sidebar-header"><img class="icon icon-mark" :src="markIcon" width="28" height="28" alt="" aria-hidden="true"><span>TaskFlow</span></div>
             <nav class="sidebar-navigation" aria-label="Workspaces">
                 <button
                     id="all-workspaces-button" type="button" class="workspace-button" :class="{ 'is-active': onAllWorkspaces }"
@@ -98,7 +98,7 @@ const openConversation = (conversation: Conversation) => router.push({ name: 'me
             <header class="main-header">
                 <nav class="breadcrumbs" aria-label="Breadcrumb">
                     <template v-for="(crumb, index) in breadcrumbs" :key="crumb.label">
-                        <span v-if="index" class="breadcrumb-separator" aria-hidden="true">/</span>
+                        <span v-if="index" class="breadcrumb-separator" aria-hidden="true">›</span>
                         <button v-if="crumb.to" type="button" class="breadcrumb-link" :title="crumb.label" @click="router.push(crumb.to)">{{ crumb.label }}</button>
                         <span v-else :title="crumb.label" aria-current="page">{{ crumb.label }}</span>
                     </template>
