@@ -39,11 +39,14 @@ export const useSessionStore = defineStore('session', () => {
         user.value = profile;
     }
 
-    /** The server no longer recognizes the session: forget it locally as well. */
-    function expire(): void {
+    /**
+     * The server no longer recognizes the session: forget it locally as well.
+     * `notice` is shown on the login screen, to say why the user is back there.
+     */
+    function expire(notice = ''): void {
         user.value = null;
         status.value = 'signed-out';
-        error.value = '';
+        error.value = notice;
         resetCsrfToken();
     }
 

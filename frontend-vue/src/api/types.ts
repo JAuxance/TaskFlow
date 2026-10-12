@@ -99,3 +99,38 @@ export interface DeletionPreview {
         retained_messages: number;
     };
 }
+
+export interface MessageAuthor {
+    username: string | null;
+    first_name: string | null;
+    avatar_url: string | null;
+}
+
+/**
+ * A message of a workspace chat. The history lists the author in flat fields;
+ * a message just sent or received live carries an `author` object instead.
+ */
+export interface WorkspaceMessage {
+    id: number;
+    workspace_id: number;
+    /** null once the author deleted their account. */
+    user_id: number | null;
+    message: string;
+    created_at: string;
+    author?: MessageAuthor;
+    user_name?: string | null;
+    first_name?: string | null;
+    avatar_url?: string | null;
+}
+
+/** A private message between two users. */
+export interface DirectMessage {
+    id: number;
+    sender_id: number;
+    receiver_id: number;
+    message: string;
+    created_at: string;
+    author: MessageAuthor;
+}
+
+export type ChatMessage = WorkspaceMessage | DirectMessage;

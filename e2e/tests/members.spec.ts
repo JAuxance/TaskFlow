@@ -112,7 +112,7 @@ test('an admin manages members and guests, but not owners or the workspace itsel
     await api(admin.request, 'PATCH', `/api/workspaces/${workspace.id}/members/${target.user_id}`, { role: 'owner' }, 403);
 });
 
-test('the open chat of a removed member is closed at once', async ({ actor }) => {
+test('the open chat of a removed member is closed at once', { tag: '@vue' }, async ({ actor }) => {
     const owner = await actor('alice');
     const bob = await actor('bob');
     const workspace = await createWorkspace(owner.request, 'Design studio');

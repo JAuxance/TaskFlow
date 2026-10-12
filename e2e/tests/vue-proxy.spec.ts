@@ -2,8 +2,7 @@ import { expect, expectSignedIn, test } from '../support/test';
 import { PASSWORD, addMember, createProject, createTask, createWorkspace, emailOf, signUp } from '../support/api';
 
 // Vue frontend only (E2E_FRONTEND=vue). These tests check what the current
-// frontend does not have: the Vite proxy, URLs, and the notice shown in place
-// of the screens that are not migrated yet.
+// frontend does not have: the Vite proxy and URLs.
 test.describe('Vite setup', { tag: '@vue-only' }, () => {
     test('the application reads the session through the proxy', async ({ page }) => {
         const profile = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/me');
@@ -78,7 +77,7 @@ test.describe('Vite setup', { tag: '@vue-only' }, () => {
         expect(refused).toEqual([]);
     });
 
-    test('a screen that is not migrated yet says so, and the browser history works', async ({ actor }) => {
+    test('the browser history moves between the screens', async ({ actor }) => {
         const alice = await actor('alice');
         await actor('bob');
         const workspace = await createWorkspace(alice.request, 'Design studio');
@@ -88,10 +87,12 @@ test.describe('Vite setup', { tag: '@vue-only' }, () => {
 
         await page.getByRole('button', { name: 'Send a private message to bob' }).click();
         await expect(page).toHaveURL(/\/messages\/\d+/);
-        await expect(page.getByRole('heading', { name: 'Not migrated yet' })).toBeVisible();
+        await expect(page.getByText('Conversation with bob')).toBeVisible();
 
         await page.goBack();
         await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
+        await page.goForward();
+        await expect(page.getByText('Conversation with bob')).toBeVisible();
         await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Workspaces' }).click();
         await expect(page).toHaveURL('/');
         await expect(page.getByRole('heading', { name: 'All workspaces' })).toBeVisible();

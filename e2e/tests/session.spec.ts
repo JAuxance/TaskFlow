@@ -25,7 +25,7 @@ test('a page without its session cookie shows the login screen', { tag: '@vue' }
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
 });
 
-test('the chat explains that the session expired', async ({ actor }) => {
+test('the chat explains that the session expired', { tag: '@vue' }, async ({ actor }) => {
     const { page, request } = await actor('alice');
     await createWorkspace(request, 'Design studio');
     await reloadApp(page);

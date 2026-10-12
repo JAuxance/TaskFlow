@@ -22,5 +22,13 @@ export const useSidebarStore = defineStore('sidebar', () => {
         conversationsError.value = conversationResult.ok ? '' : conversationResult.data.error;
     }
 
-    return { workspaces, workspacesError, conversations, conversationsError, refresh };
+    /** A message was sent or received: only the conversations can have changed. */
+    async function refreshConversations(): Promise<void> {
+        const result = await getDirectConversations();
+        if (result.status === 401) return;
+        if (result.ok) conversations.value = result.data;
+        conversationsError.value = result.ok ? '' : result.data.error;
+    }
+
+    return { workspaces, workspacesError, conversations, conversationsError, refresh, refreshConversations };
 });

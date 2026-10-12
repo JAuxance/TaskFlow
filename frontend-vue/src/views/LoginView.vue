@@ -13,8 +13,10 @@ const { busy, run } = useBusy();
 
 const email = ref('');
 const password = ref('');
-// Shown on arrival when the session could not be checked (server unreachable).
+// Shown on arrival: why the user is back here (expired session), or why the
+// session could not be checked (server unreachable). Said once.
 const message = ref(session.error);
+session.error = '';
 
 function submit() {
     return run(async () => {
