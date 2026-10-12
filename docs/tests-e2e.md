@@ -16,7 +16,8 @@ Ils complètent les suites existantes sans les remplacer : `pytest` (routes et s
 | `workspace-project.spec.ts` | Création d'un workspace depuis le tableau de bord, nom obligatoire, création d'un projet. |
 | `dashboard.spec.ts` | Tâches de chaque projet, filtre par statut, rôle affiché à chaque membre, bascule du thème. |
 | `profile.spec.ts` | Prénom, photo de profil, téléchargement des données avec mot de passe, copie de l'email, oubli des mots de passe à la fermeture, suppression du compte et blocage tant qu'un workspace est partagé. |
-| `task.spec.ts` | Création d'une tâche, statut et priorité enregistrés automatiquement, titre et description enregistrés sur demande, persistance après rechargement, suppression. |
+| `task.spec.ts` | Création d'une tâche, statut et priorité enregistrés automatiquement, titre et description enregistrés sur demande, couleur, responsable et échéance, persistance, suppression. Enregistrements envoyés un par un, attendus avant le retour au tableau, annulés à l'écran si le serveur refuse. |
+| `project.spec.ts` | Renommage, description et suppression d'un projet ; un membre ajoute des tâches sans pouvoir modifier le projet. |
 | `guest.spec.ts` | Un guest voit le workspace sans aucune commande de gestion, lit le tableau et la tâche ; les champs sont désactivés **et** le serveur refuse les mêmes actions (403). |
 | `session.spec.ts` | Session expirée ou cookie absent : retour à la connexion ; message d'expiration dans le chat. |
 | `members.spec.ts` | Ajout d'un membre, changement de rôle, retrait et refus de la confirmation ; limites d'un admin ; le chat ouvert du membre retiré se ferme aussitôt et le serveur répond 404. |
@@ -93,7 +94,9 @@ Relire ensuite la différence des images dans Git avant de valider.
 
 ## Défaut connu documenté par les tests
 
-Après expiration de la session, le Kanban et le détail d'une tâche affichent une erreur au lieu de revenir à la connexion (constat D2 de l'audit). Deux tests de `session.spec.ts` décrivent le comportement attendu et sont marqués « échec attendu » sur le frontend actuel : ils apparaissent avec une croix dans la liste, mais comptent comme réussis. Le frontend Vue devra les faire passer ; le marqueur sera alors retiré.
+Sur le frontend actuel, après expiration de la session, le Kanban et le détail d'une tâche affichent une erreur au lieu de revenir à la connexion (constat D2 de l'audit). Deux tests de `session.spec.ts` décrivent le comportement attendu et sont marqués « échec attendu » sur ce frontend seulement : ils y apparaissent avec une croix dans la liste, mais comptent comme réussis.
+
+Le frontend Vue les fait passer normalement. Le marqueur disparaîtra avec le frontend actuel.
 
 ## Réutilisation pour le frontend Vue
 
@@ -135,6 +138,6 @@ Sur le tag `pre-vue-migration`, avant tout changement du frontend :
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
 | Playwright | 30 réussis, dont 2 échecs attendus (D2) ; stable sur trois passages consécutifs |
 
-Depuis, la suite compte 53 tests sur le frontend actuel et 51 sur le frontend Vue.
+Depuis, la suite compte 60 tests sur le frontend actuel et 65 sur le frontend Vue.
 
 La capture `profile` a été régénérée une fois, volontairement : le dialogue était photographié par-dessus l'écran de tâche, il l'est maintenant par-dessus le tableau de bord, pour ne dépendre que des écrans migrés en premier. Les 40 autres captures n'ont pas changé.
