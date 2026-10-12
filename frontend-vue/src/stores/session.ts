@@ -34,6 +34,11 @@ export const useSessionStore = defineStore('session', () => {
         return firstLoad;
     }
 
+    /** The profile was changed: show the version the server returned. */
+    function update(profile: User): void {
+        user.value = profile;
+    }
+
     /** The server no longer recognizes the session: forget it locally as well. */
     function expire(): void {
         user.value = null;
@@ -42,5 +47,5 @@ export const useSessionStore = defineStore('session', () => {
         resetCsrfToken();
     }
 
-    return { user, status, error, load, ensureLoaded, expire };
+    return { user, status, error, load, ensureLoaded, update, expire };
 });
