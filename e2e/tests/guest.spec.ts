@@ -28,7 +28,7 @@ test('a guest sees the workspace without any management control', { tag: '@vue' 
     await api(guest.request, 'POST', `/api/workspaces/${workspace.id}/members`, { email: 'alice@example.com', role: 'guest' }, 403);
 });
 
-test('a guest reads the board and the task but cannot change them', async ({ actor }) => {
+test('a guest reads the board and the task but cannot change them', { tag: '@vue' }, async ({ actor }) => {
     const owner = await actor('alice');
     const guest = await actor('gina');
     const workspace = await createWorkspace(owner.request, 'Design studio');
