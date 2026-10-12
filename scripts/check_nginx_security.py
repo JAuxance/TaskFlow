@@ -1,6 +1,11 @@
-"""Check the proposed Nginx files in a disposable local Docker container."""
+"""Check the proposed Nginx files in a disposable local Docker container.
+
+The site root is the production build of the frontend: run
+`npm run build --prefix frontend-vue` first.
+"""
 import json
 from pathlib import Path
+import re
 import subprocess
 from tempfile import TemporaryDirectory
 import time
@@ -8,7 +13,11 @@ import time
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
+SITE = ROOT / "frontend-vue/dist"
 NAME = "taskflow-nginx-security-test"
+
+if not (SITE / "index.html").is_file():
+    raise SystemExit("Build the frontend first: npm run build --prefix frontend-vue")
 
 
 def run(*args, quiet=False):
@@ -36,7 +45,7 @@ with TemporaryDirectory(prefix="taskflow-nginx-", dir=cache) as folder:
         "-v", f"{ROOT / 'deploy/nginx/taskflow.auxance.dev.conf'}:/etc/nginx/conf.d/default.conf:ro",
         "-v", f"{temp / 'upstream.conf'}:/etc/nginx/conf.d/test-upstream.conf:ro",
         "-v", f"{temp}:/etc/letsencrypt/live/taskflow.auxance.dev:ro",
-        "-v", f"{ROOT / 'frontend'}:/var/www/taskflow:ro",
+        "-v", f"{SITE}:/var/www/taskflow:ro",
     ]
     run("docker", "run", "--rm", *mounts, "nginx:stable-alpine", "nginx", "-t")
     run("docker", "run", "--rm", "-d", "--name", NAME,
@@ -73,14 +82,19 @@ with TemporaryDirectory(prefix="taskflow-nginx-", dir=cache) as folder:
         assert "img-src 'self' data:" in policy
         assert "blob:" not in policy
         assert "script-src 'self'" in policy
-        script = session.get("https://127.0.0.1:54443/js/api.js", headers=headers, timeout=3)
-        assert script.status_code == 200
-        assert "createObjectURL" not in script.text
-        assert "data:${contentType};base64," in script.text
-        for path, expected in (("/confidentialite/", "Privacy"), ("/cookies/", "Cookies"),
-                               ("/vendor/socket.io-4.8.1/socket.io.min.js", "Socket.IO")):
+        # The build references its script and stylesheet as files, never inline.
+        assert "<style" not in html.text and 'style="' not in html.text
+        bundle = re.search(r'<script type="module" crossorigin src="(/assets/[^"]+\.js)">', html.text).group(1)
+        script = session.get("https://127.0.0.1:54443" + bundle, headers=headers, timeout=3)
+        assert script.status_code == 200 and "javascript" in script.headers["Content-Type"]
+        assert "eval(" not in script.text and "new Function(" not in script.text
+        for path in ("/theme-init.js", "/assets/icons/folder.svg"):
+            assert session.get("https://127.0.0.1:54443" + path, headers=headers, timeout=3).status_code == 200
+        # Every screen has an address: Nginx hands them all to the application.
+        for path in ("/login", "/workspaces/12/members", "/tasks/3", "/confidentialite/", "/cookies/"):
             page = session.get("https://127.0.0.1:54443" + path, headers=headers, timeout=3)
-            assert page.status_code == 200 and expected in page.text
+            assert page.status_code == 200 and page.text == html.text
+            assert page.headers["Content-Security-Policy"] == policy
         redirect = session.get("http://127.0.0.1:54080/project?a=1", headers=headers,
                                allow_redirects=False, timeout=3)
         assert redirect.status_code == 301
@@ -88,6 +102,6 @@ with TemporaryDirectory(prefix="taskflow-nginx-", dir=cache) as folder:
         print(json.dumps({"nginx_syntax": "passed", "spoofed_ip_headers": "rejected",
             "upstream_https": "passed", "private_cache": "no-store",
             "frontend_csp": "passed", "http_redirect": "passed",
-            "public_pages_and_local_socketio": "passed"}, indent=2))
+            "built_assets_and_screen_addresses": "passed"}, indent=2))
     finally:
         run("docker", "stop", NAME)

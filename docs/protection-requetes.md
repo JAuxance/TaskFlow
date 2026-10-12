@@ -37,12 +37,14 @@ Le test montre que deux adresses transmises par le proxy disposent de quotas dis
 
 Ces étapes concernent la configuration Nginx active ; le fichier Compose Caddy reste une variante de secours. Le correctif est actuellement local.
 
-La branche inclut désormais les pages de préparation RG-02 et les outils de données : finaliser les informations signalées dans [la procédure de publication](donnees-personnelles.md) avant de publier cette version complète. Copier le frontend entier, dont `vendor/`, `confidentialite/` et `cookies/`, et recharger les anciens onglets avec actualisation du cache si nécessaire.
+La branche inclut désormais les pages de préparation RG-02 et les outils de données : finaliser les informations signalées dans [la procédure de publication](donnees-personnelles.md) avant de publier cette version complète.
+
+Le site servi par Nginx est le build du frontend Vue. Le produire avec `npm ci --prefix frontend-vue` puis `npm run build --prefix frontend-vue`, et copier **tout le contenu** de `frontend-vue/dist/` à la racine du site (`/var/www/taskflow`), en remplaçant l'ancien contenu. Les pages `/confidentialite/` et `/cookies/` font partie de l'application : il n'y a plus de dossier à copier à part. Recharger les anciens onglets avec actualisation du cache si nécessaire.
 
 1. Sauvegarder les versions actives du site Nginx, du frontend et l'identifiant de l'image backend pour un retour arrière. Comparer le site proposé à la configuration réelle, notamment les chemins du frontend et des certificats et les réglages Certbot.
 2. Installer les trois fichiers inclus de `deploy/nginx/` dans `/etc/nginx/taskflow/` : `cloudflare-real-ip.conf`, `proxy-headers.conf`, `security-headers.conf`. Actualiser les plages Cloudflare depuis ses listes officielles si nécessaire. Préparer le site `taskflow.auxance.dev.conf` dans le site activé pour ce seul domaine.
 3. Dans Cloudflare, créer une règle **Bypass cache** pour les chemins commençant par `/api/`, `/socket.io/`, `/static/avatars/` et `/static/workspace_icons/`. La placer après toute règle contradictoire : la dernière règle applicable l'emporte pour un réglage en conflit. Purger les éventuelles copies antérieures des données et des anciens fichiers frontend. Prévoir une courte fenêtre de maintenance pour coordonner le changement.
-4. Configurer `PUBLIC_ORIGIN=https://taskflow.auxance.dev` dans le fichier d'environnement du VPS. Conserver la clé secrète existante. Construire l'image backend et préparer les fichiers frontend de la même révision, dont `js/theme-init.js`. Aucune migration SQL ni remise à zéro de la base n'est nécessaire.
+4. Configurer `PUBLIC_ORIGIN=https://taskflow.auxance.dev` dans le fichier d'environnement du VPS. Conserver la clé secrète existante. Construire l'image backend et le build du frontend à partir de la même révision. Aucune migration SQL ni remise à zéro de la base n'est nécessaire.
 5. Installer le frontend préparé avant d'activer la nouvelle CSP. Vérifier Nginx avec `sudo nginx -t`, puis recharger avec `sudo systemctl reload nginx` uniquement si le contrôle réussit.
 6. Après installation de cette chaîne de proxy et vérification que le backend est toujours lié à l'adresse locale, mettre `TRUST_PROXY_HEADERS=1`, puis recréer le backend avec `docker compose -f compose.prod.yaml up -d --no-deps --build backend`. Ne pas publier PostgreSQL ou Redis. Une ancienne page ouverte devra être rechargée pour utiliser le nouveau client API.
 7. Vérifier sur le domaine public : connexion, création/modification, image, chat, déconnexion ; refus d'une mutation sans jeton ; origine WebSocket autorisée ; en-têtes CSP et `no-store`. Vérifier que les réponses privées ne deviennent jamais `HIT` dans Cloudflare après plusieurs lectures. `DYNAMIC` ou `BYPASS` est attendu selon son traitement.
@@ -55,6 +57,8 @@ Depuis le dépôt, après installation de `requirements.txt` et `requirements-de
 ```bash
 python -m pytest -q
 node --test frontend/tests/api.test.mjs
+npm test --prefix frontend-vue
+npm run build --prefix frontend-vue
 docker compose -f compose.chat-tests.yaml up -d --wait
 TASKFLOW_CHAT_INTEGRATION=1 python -m pytest -q app/tests/integration
 python scripts/check_nginx_security.py
