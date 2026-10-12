@@ -7,10 +7,12 @@ export { expect };
 /** A signed-in person with their own browser window. */
 export type Actor = { page: Page; request: APIRequestContext; user: User };
 
+/** Register `name` and open the application in a separate browser context. */
+export type ActorFactory = (name: string) => Promise<Actor>;
+
 type Fixtures = {
     cleanDatabase: void;
-    /** Register `name` and open the application in a separate browser context. */
-    actor: (name: string) => Promise<Actor>;
+    actor: ActorFactory;
 };
 
 export const test = base.extend<Fixtures>({
@@ -60,3 +62,25 @@ export async function reloadApp(page: Page): Promise<void> {
     await page.goto('/');
     await expect(page.getByRole('button', { name: 'Edit your profile' })).toBeVisible();
 }
+
+/**
+ * Resolve once the page has received the Socket.IO event `name`, whichever
+ * transport carried it. Arm it before the action that opens the chat: only
+ * then is the page guaranteed to be subscribed to live messages.
+ */
+export function socketEvent(page: Page, name: string): Promise<void> {
+    const marker = `"${name}"`;
+    return new Promise(resolve => {
+        page.on('websocket', socket => socket.on('framereceived', frame => {
+            if (String(frame.payload).includes(marker)) resolve();
+        }));
+        page.on('response', async response => {
+            if (!response.url().includes('/socket.io/')) return;
+            const body = await response.text().catch(() => '');
+            if (body.includes(marker)) resolve();
+        });
+    });
+}
+
+/** The message field of the chat currently displayed. */
+export const composer = (page: Page) => page.getByLabel('Message', { exact: true });
