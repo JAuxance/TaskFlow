@@ -60,7 +60,7 @@ La refonte graphique a suivi la migration, une fois le code unique. Elle mélang
 | Actions | Un seul bleu : bouton principal, barres de progression, liens. Les boutons sont des pilules. |
 | Chiffres clés | Un aplat par total : lilas, citron, bleu ciel. Le total des retards passe à l'orange quand il n'est pas nul. |
 | Statuts et priorités | Petites pilules dans ces mêmes paires de couleurs. |
-| Kanban | Volontairement sobre : colonnes grises, cartes blanches, un point pour le statut. |
+| Kanban | Volontairement sobre : colonnes grises, cartes blanches, un point pour le statut. Le nom du projet est dans une bulle lilas. |
 | Couleur d'une tâche | Un point devant son titre, à la place du liseré. |
 | Onglets | Contrôle segmenté : l'onglet ouvert est relevé en blanc. |
 | Logo | Une coche dont le grand trait s'incurve, blanche sur un carré bleu arrondi. Il sert aussi d'icône d'onglet. |
@@ -147,6 +147,7 @@ Les règles sont des fonctions sans effet de bord, dans `src/task/board.ts` (`so
 Le glisser-déposer n'est pas le seul moyen, pour qui n'utilise pas de souris :
 
 - au clavier, Maj et une flèche déplacent la carte qui a le focus d'une colonne ou d'un niveau de priorité ;
+- le mode d'emploi n'est pas affiché, pour ne pas charger l'écran, mais il est lu avec chaque carte par les lecteurs d'écran ;
 - chaque déplacement est annoncé aux lecteurs d'écran ;
 - la fiche de la tâche permet toujours de changer le statut et la priorité.
 
