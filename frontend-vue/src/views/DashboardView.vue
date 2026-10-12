@@ -5,7 +5,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import { useRouter } from 'vue-router';
 import chevronIcon from '../../../frontend/assets/icons/chevron.svg';
 import folderIcon from '../../../frontend/assets/icons/folder.svg';
-import { getProjects, getTasks } from '../api/projects';
+import { getProjects } from '../api/projects';
+import { getTasks } from '../api/tasks';
 import type { Project, Task, TaskStatus, Workspace } from '../api/types';
 import { createWorkspace, getWorkspaceMembers } from '../api/workspaces';
 import AppDialog from '../components/AppDialog.vue';
