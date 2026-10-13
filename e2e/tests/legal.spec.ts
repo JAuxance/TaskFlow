@@ -20,7 +20,7 @@ test('the privacy and cookies pages are open to a visitor', async ({ page }) => 
     await expect(footer.getByRole('link', { name: 'Privacy' })).not.toHaveAttribute('aria-current', 'page');
 
     await page.getByRole('link', { name: 'Back to TaskFlow' }).click();
-    await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: /Plan projects/ })).toBeVisible();
 });
 
 test('a signed-in user reads the privacy page and comes back to the application', async ({ actor }) => {

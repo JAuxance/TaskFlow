@@ -18,6 +18,12 @@ async function capture(page: Page, name: string, fullPage = true) {
 
 test('signed-out screens match their reference', async ({ page }) => {
     await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1, name: /Plan projects/ })).toBeVisible();
+    // The picture of the application is part of the page: wait until it is loaded and decoded.
+    await page.locator('.landing-shot:visible').evaluate((picture: HTMLImageElement) => picture.decode());
+    await capture(page, 'landing');
+
+    await page.getByRole('link', { name: 'Log in' }).click();
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await capture(page, 'login');
 

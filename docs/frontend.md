@@ -27,6 +27,7 @@ Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, 
 | `src/stores/sidebar.ts` | Workspaces et conversations affichés dans la barre latérale. |
 | `src/theme.ts` | Bascule clair/sombre et mémorisation du choix. |
 | `src/domain.ts` | Couleurs, libellés des rôles, initiale d'un avatar : définis une seule fois. |
+| `src/layout/RootView.vue` | Les deux visages de l'adresse `/` : la présentation pour un visiteur, l'application pour un utilisateur connecté. |
 | `src/layout/AppLayout.vue` | Cadre des écrans connectés : barre latérale, fil d'Ariane, thème. |
 | `src/layout/CreateWorkspaceDialog.vue` | Fenêtre de création d'un workspace, ouverte par le « + » de la barre latérale ou par l'écran d'accueil. |
 | `src/layout/ProfileDialog.vue` | Dialogue du profil : compte, copie de l'email, déconnexion. |
@@ -46,7 +47,7 @@ Les écrans ont gardé le HTML d'origine : mêmes classes, mêmes identifiants, 
 | `src/api/tasks.ts` | Appels des tâches. |
 | `src/chat/ChatPanel.vue` | Une conversation : historique, messages en direct, saisie. Sert au chat du workspace et aux messages privés. |
 | `src/chat/subscribe.ts` | Abonnement Socket.IO d'une conversation. |
-| `src/views/` | Un écran par fichier : connexion, inscription, accueil sans workspace, workspace, projet, tâche, messages privés, pages légales. |
+| `src/views/` | Un écran par fichier : présentation, connexion, inscription, accueil sans workspace, workspace, projet, tâche, messages privés, pages légales. |
 | `src/styles/` | Feuilles de style : `tokens.css` (police, couleurs des deux thèmes), `base.css`, `components.css` (blocs partagés), `layout.css` (cadre), puis une feuille par écran. `main.ts` les charge dans cet ordre, qui est celui de la cascade. |
 | `src/assets/` | Police Inter et icônes. |
 
@@ -65,6 +66,7 @@ La refonte graphique a suivi la migration, une fois le code unique. Elle mélang
 | Couleur d'une tâche | Un point devant son titre, à la place du liseré. |
 | Onglets | Contrôle segmenté : l'onglet ouvert est relevé en blanc. |
 | Logo | Une coche dont le grand trait s'incurve, blanche sur un carré bleu arrondi. Il sert aussi d'icône d'onglet. |
+| Page de présentation | Un titre, un bouton, une vraie capture de l'application dans un cadre lilas, puis quatre aplats qui disent ce qu'elle offre. La capture suit le thème ; les deux images sont des copies des captures de référence des tests (`e2e/__screenshots__/desktop-*/workspace-overview.png`), à recopier dans `src/assets/landing/` quand l'écran change. |
 | Police | Inter, embarquée ; aucune police n'est chargée depuis un autre site. |
 | Animations | Courtes (0,1 à 0,3 s) : un contrôle répond au pointeur, un écran ou un onglet fait monter ses blocs, une fenêtre s'ouvre et se referme en fondu. Tout est dans `src/styles/motion.css` et rien ne bouge quand le système demande moins d'animations (`prefers-reduced-motion`). |
 | Fenêtres | Une fenêtre se ferme par sa croix, par Échap ou par un clic à côté ; jamais pendant un enregistrement. |
@@ -78,7 +80,7 @@ Toutes les couleurs sont dans `src/styles/tokens.css`, pour les deux thèmes ; l
 | `/login` | Connexion | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/register` | Inscription | visiteur ; un utilisateur connecté est renvoyé vers `/` |
 | `/confidentialite/`, `/cookies/` | Pages légales, même texte et mêmes adresses que les pages statiques qu'elles remplacent | tout le monde |
-| `/` | Arrivée : ouvre le premier workspace de la barre latérale (le plus ancien) ; sans aucun workspace, écran d'accueil qui invite à en créer un | utilisateur connecté ; sinon renvoi vers `/login` |
+| `/` | Pour un visiteur : page de présentation de TaskFlow, avec les liens vers la connexion et l'inscription. Pour un utilisateur connecté : arrivée, qui ouvre le premier workspace de la barre latérale (le plus ancien) ou, sans aucun workspace, un écran d'accueil invitant à en créer un | tout le monde |
 | `/workspaces/:id` | Workspace ; `/members`, `/settings` ou `/messages` à la suite ouvre directement cet onglet | membre du workspace |
 | `/projects/:id` | Kanban du projet | membre du workspace |
 | `/tasks/:id` | Détail d'une tâche | membre du workspace |
@@ -214,7 +216,7 @@ TypeScript est volontairement fixé à la version 6 : `vue-tsc` ne fonctionne pa
 | --- | --- |
 | Types stricts (`vue-tsc`) | aucune erreur |
 | Tests unitaires | 95 réussis |
-| Tests navigateur | 84 réussis sur les quatre profils |
+| Tests navigateur | 89 réussis sur les quatre profils |
 | Captures de référence | les 45 identiques au pixel près à celles de l'ancien frontend à la fin de la migration, puis régénérées volontairement pour la refonte graphique |
 | `pytest` | 104 réussis, et 41 tests d'intégration |
 | Contrôle Nginx (`scripts/check_nginx_security.py`) sur le build | tous les contrôles réussis |

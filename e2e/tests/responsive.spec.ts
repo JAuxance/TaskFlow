@@ -16,8 +16,20 @@ async function expectNoHorizontalScroll(page: Page) {
     expect(overflow).toBeLessThanOrEqual(0);
 }
 
-test('the login form fits the screen', async ({ page }) => {
+test('the presentation fits the screen', async ({ page, isMobile }) => {
     await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1, name: /Plan projects/ })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+    // Four blocks side by side on a computer, one per row on a phone.
+    const blocks = page.getByRole('list', { name: 'What TaskFlow offers' }).getByRole('listitem');
+    await expect(blocks).toHaveCount(4);
+    const [first, second] = [await box(blocks.nth(0)), await box(blocks.nth(1))];
+    if (isMobile) expect(second.y).toBeGreaterThan(first.y + first.height - 1);
+    else expect(second.y).toBe(first.y);
+});
+
+test('the login form fits the screen', async ({ page }) => {
+    await page.goto('/login');
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await expectNoHorizontalScroll(page);
     const form = await box(page.locator('#login-form'));
