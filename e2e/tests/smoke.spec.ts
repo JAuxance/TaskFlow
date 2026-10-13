@@ -5,7 +5,7 @@ test('the frontend loads and talks to the disposable backend', async ({ page, re
     const privacy = await request.get(`${API_URL}/api/privacy`);
     expect((await privacy.json()).contact_email).toBe(SENTINEL_EMAIL);
 
-    await page.goto('/');
+    await page.goto('/login');
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await expect(page).toHaveTitle('Login — TaskFlow');
 });

@@ -19,7 +19,9 @@
     .page-content > :nth-child(2) { animation-delay: 40ms; }
     .page-content > :nth-child(3) { animation-delay: 80ms; }
     .page-content > :nth-child(n + 4) { animation-delay: 120ms; }
-    .login-form, .privacy-page { animation: rise var(--motion-slow) var(--motion-ease) backwards; }
+    .login-form, .privacy-page, .landing-hero, .landing-preview, .landing-feature { animation: rise var(--motion-slow) var(--motion-ease) backwards; }
+    .landing-preview { animation-delay: 80ms; }
+    .landing-feature { animation-delay: 160ms; }
 
     /* Figures, columns and cards follow, slightly staggered. */
     .workspace-stat, .kanban-column { animation: rise var(--motion-slow) var(--motion-ease) backwards; }

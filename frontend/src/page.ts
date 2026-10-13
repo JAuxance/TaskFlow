@@ -1,7 +1,10 @@
-/** Name the browser tab after the main heading, for instance once that heading has been renamed. */
+/**
+ * Name the browser tab after the main heading, for instance once that heading
+ * has been renamed. A heading may give the whole title itself, in `data-tab-title`.
+ */
 export function nameTab(): HTMLElement | null {
     const heading = document.querySelector<HTMLElement>('#app h1');
-    if (heading) document.title = heading.textContent === 'TaskFlow' ? 'TaskFlow — Sign in' : `${heading.textContent} — TaskFlow`;
+    if (heading) document.title = heading.dataset.tabTitle ?? `${heading.textContent} — TaskFlow`;
     return heading;
 }
 

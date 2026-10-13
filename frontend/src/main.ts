@@ -8,6 +8,7 @@ import './styles/workspace.css';
 import './styles/project.css';
 import './styles/chat.css';
 import './styles/auth.css';
+import './styles/landing.css';
 import './styles/legal.css';
 import './styles/motion.css';
 

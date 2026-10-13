@@ -21,7 +21,10 @@ test('an expired session returns to the login screen on the next navigation', as
 });
 
 test('a page without its session cookie shows the login screen', async ({ actor }) => {
-    const { page } = await actor('alice');
+    const { page, request } = await actor('alice');
+    await createWorkspace(request, 'Design studio');
+    await reloadApp(page);
+    await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
     await page.context().clearCookies();
 
     await page.reload();

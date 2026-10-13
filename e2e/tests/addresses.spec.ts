@@ -7,9 +7,10 @@ test.describe('Vite setup', () => {
         const profile = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/me');
         await page.goto('/');
 
+        // Nobody is signed in: the presentation of TaskFlow is displayed.
         expect((await profile).status()).toBe(401);
-        await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
-        await expect(page).toHaveURL('/login');
+        await expect(page.getByRole('heading', { level: 1, name: /Plan projects/ })).toBeVisible();
+        await expect(page).toHaveURL('/');
         // The stylesheet is applied, with its local font.
         await expect(page.locator('body')).toHaveCSS('font-family', /Inter/);
     });

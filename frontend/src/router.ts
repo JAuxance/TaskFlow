@@ -1,7 +1,7 @@
 import { nextTick } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { arrivalFor, redirectFor } from './guards';
-import AppLayout from './layout/AppLayout.vue';
+import RootView from './layout/RootView.vue';
 import { resetLayoutState } from './layout/state';
 import { announcePage } from './page';
 import { useSessionStore } from './stores/session';
@@ -22,6 +22,8 @@ declare module 'vue-router' {
         requiresAuth?: boolean;
         /** Only for a visitor; a signed-in user is sent to the application. */
         guestOnly?: boolean;
+        /** Open to everyone: a visitor sees the presentation there, a signed-in user arrives in the application. */
+        landing?: boolean;
         /** Extra class of the content area, used by the stylesheet. */
         pageClass?: string;
     }
@@ -37,26 +39,26 @@ export const router = createRouter({
         { path: '/cookies', name: 'cookies', component: CookiesView },
         {
             path: '/',
-            component: AppLayout,
-            meta: { requiresAuth: true },
+            component: RootView,
             children: [
-                // Only displayed to someone without a workspace: the guard below opens the first one otherwise.
-                { path: '', name: 'home', component: WelcomeView, meta: { pageClass: 'welcome-page' } },
+                // A visitor sees the presentation instead (RootView). Signed in, this screen is only displayed
+                // to someone without a workspace: the guard below opens the first one otherwise.
+                { path: '', name: 'home', component: WelcomeView, meta: { landing: true, pageClass: 'welcome-page' } },
                 {
                     path: 'workspaces/:id(\\d+)/:tab(messages|members|settings)?', name: 'workspace', component: WorkspaceView,
-                    meta: { pageClass: 'workspace-page' },
+                    meta: { requiresAuth: true, pageClass: 'workspace-page' },
                 },
                 {
                     path: 'projects/:id(\\d+)', name: 'project', component: ProjectView,
-                    meta: { pageClass: 'project-page' },
+                    meta: { requiresAuth: true, pageClass: 'project-page' },
                 },
                 {
                     path: 'tasks/:id(\\d+)', name: 'task', component: TaskView,
-                    meta: { pageClass: 'task-page' },
+                    meta: { requiresAuth: true, pageClass: 'task-page' },
                 },
                 {
                     path: 'messages/:userId(\\d+)', name: 'messages', component: DirectMessagesView,
-                    meta: { pageClass: 'direct-messages-page' },
+                    meta: { requiresAuth: true, pageClass: 'direct-messages-page' },
                 },
             ],
         },
@@ -67,9 +69,11 @@ export const router = createRouter({
 router.beforeEach(async to => {
     const session = useSessionStore();
     await session.ensureLoaded();
-    const target = redirectFor(to.meta, session.status === 'signed-in');
+    const signedIn = session.status === 'signed-in';
+    const target = redirectFor(to.meta, signedIn);
     if (target) return { name: target };
-    if (to.meta.requiresAuth) {
+    // A screen of the application: the protected ones, and "/" for someone signed in.
+    if (to.meta.requiresAuth || (to.meta.landing && signedIn)) {
         // A screen is always shown with a fresh sidebar.
         const sidebar = useSidebarStore();
         await sidebar.refresh();

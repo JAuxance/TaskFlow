@@ -16,7 +16,7 @@ test.describe('with an existing account', () => {
     });
 
     test('signing in opens a session that survives a reload', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/login');
         await fillLogin(page, 'alice');
 
         await expectSignedIn(page, 'alice');
@@ -26,7 +26,7 @@ test.describe('with an existing account', () => {
     });
 
     test('a wrong password is refused with a clear message', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/login');
         await fillLogin(page, 'alice', 'not-the-password');
 
         await expect(page.getByRole('alert')).toHaveText('Invalid email or password. Please try again.');
@@ -35,7 +35,7 @@ test.describe('with an existing account', () => {
     });
 
     test('an email address cannot be registered twice', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/login');
         await page.getByRole('button', { name: 'Create an account' }).click();
         await page.getByLabel('Username').fill('alice2');
         await page.getByLabel('Email').fill(emailOf('alice'));
@@ -48,7 +48,7 @@ test.describe('with an existing account', () => {
 });
 
 test('registration opens a session without a second sign-in', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/login');
     await page.getByRole('button', { name: 'Create an account' }).click();
     await expect(page.getByRole('heading', { name: 'Create account' })).toBeVisible();
 
@@ -64,7 +64,7 @@ test('registration opens a session without a second sign-in', async ({ page }) =
 });
 
 test('the login and registration screens lead to each other', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/login');
     await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
     await expect(page).toHaveTitle('Login — TaskFlow');
 

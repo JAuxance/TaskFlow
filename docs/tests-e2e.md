@@ -25,11 +25,12 @@ Ils complètent les autres suites sans les remplacer : `pytest` (routes et sécu
 | `members.spec.ts` | Ajout d'un membre, changement de rôle, retrait et refus de la confirmation ; limites d'un admin ; le chat ouvert du membre retiré se ferme aussitôt et le serveur répond 404. |
 | `workspace.spec.ts` | Totaux et tâches prioritaires de l'aperçu, renommage, emoji et image du workspace, transfert de la propriété, suppression protégée par le nom exact. |
 | `board.spec.ts` | Ordre d'une colonne par priorité, déplacement d'une carte à la souris et au clavier, annulation d'un déplacement refusé, interdiction pour un guest. |
+| `landing.spec.ts` | Présentation affichée à un visiteur, liens vers la connexion et l'inscription, image selon le thème, application à la place pour un utilisateur connecté. |
 | `motion.spec.ts` | Les écrans s'animent, sauf quand le système demande moins d'animations. |
 | `legal.spec.ts` | Pages de confidentialité et de cookies ouvertes à tous, liens entre elles et retour à l'application, capture de la page de confidentialité. |
 | `messaging.spec.ts` | Chat du workspace et messages privés entre deux navigateurs, sans rechargement ; historique lu par pages de cinquante ; message vide impossible, brouillon conservé si le serveur refuse ; conversation privée fermée quand les deux membres ne partagent plus de workspace. |
 | `responsive.spec.ts` | Mise en page à 1440 px et à 390 px : barre latérale, colonnes du Kanban, formulaire de tâche, absence de défilement horizontal. |
-| `visual.spec.ts` | Onze écrans comparés à leurs captures de référence, en thèmes clair et sombre, aux deux largeurs. |
+| `visual.spec.ts` | Douze écrans comparés à leurs captures de référence, en thèmes clair et sombre, aux deux largeurs. |
 
 Chaque parcours testé passe par l'interface. Les données préalables (comptes, workspace, tâches) sont créées par l'API, comme le ferait le frontend : origine autorisée, cookie de session et jeton CSRF.
 
@@ -87,7 +88,7 @@ La commande construit et démarre la pile jetable, sert le frontend Vue sur le p
 
 Les images sont dans `e2e/__screenshots__/<profil>/`, avec quatre profils : `desktop-light`, `desktop-dark`, `mobile-light` et `mobile-dark`.
 
-Écrans : connexion, inscription, accueil sans workspace, workspace (aperçu, membres, messages), messages privés, Kanban, tâche, tâche vue par un guest, profil.
+Écrans : présentation, connexion, inscription, accueil sans workspace, workspace (aperçu, membres, messages), messages privés, Kanban, tâche, tâche vue par un guest, profil.
 
 Elles sont reproductibles parce que les données sont fixes (`e2e/support/seed.ts`), que l'horloge du navigateur est figée au 12 octobre 2026 et que les dates des messages sont réécrites dans la base jetable. Elles ne valent que pour Chromium sous Linux : sur une autre machine, les polices et l'anticrénelage diffèrent.
 
@@ -122,4 +123,4 @@ Quelques repères techniques sont utilisés quand aucun rôle ni libellé ne con
 | `pytest` intégration (`TASKFLOW_CHAT_INTEGRATION=1`) | 41 réussis |
 | Tests unitaires du frontend | 84 réussis |
 | `scripts/check_nginx_security.py` | tous les contrôles réussis |
-| Playwright | 84 réussis sur les quatre profils |
+| Playwright | 89 réussis sur les quatre profils |
