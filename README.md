@@ -155,13 +155,10 @@ Set `PUBLIC_ORIGIN=https://taskflow.auxance.dev` to the public origin used by yo
 - [Architecture](docs/architecture.md)
 - [API reference](docs/api.md)
 - [Request security and deployment](docs/protection-requetes.md)
-- [RNCP5 simplification and verification](docs/simplification-rncp5.md)
 - [Reference deployment](docs/deploiement.md)
 - [Browser tests](docs/tests-e2e.md)
 - [Frontend](docs/frontend.md)
 - [Database schema](docs/db.md)
-- [API security audit](docs/audit-securite-api.md)
-- [Audit closure report](docs/cloture-audit-securite-api.md)
 - [UI mockups](docs/design/figma-desktop/README.md)
 - [RNCP5 real application screenshots](docs/design/captures-reelles/)
 
