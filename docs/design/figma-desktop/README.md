@@ -28,12 +28,13 @@ Depuis le point de départ **TaskFlow · Main workflow**, suivre : **Sign in →
 
 ## Frontend
 
-Les cinq écrans sont intégrés en HTML, CSS et JavaScript natifs dans `frontend/`. La navigation reste dans `app.js` et les formulaires dans les vues existantes. Le backend n'a pas été modifié.
+Ces maquettes documentent la conception. L’interface actuelle utilise Vue 3, TypeScript et Vite dans `frontend/`.
 
-Avec le backend démarré, lancer depuis la racine :
+Avec le backend démarré, depuis la racine :
 
 ```sh
-python3 -m http.server 5500 --directory frontend
+npm ci --prefix frontend
+npm run dev --prefix frontend
 ```
 
-Ouvrir **http://localhost:5500**, l'origine déjà autorisée par l'API. Aucune compilation nécessaire.
+Ouvrir http://localhost:5173. Le serveur Vite relaie les appels à l’API. En production, `npm run build --prefix frontend` produit les fichiers servis par Nginx.

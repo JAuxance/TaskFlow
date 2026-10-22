@@ -2,11 +2,11 @@
 
 # Information et gestion des données — RG-02, RG-03, RG-04, RG-05, RG-11
 
-Version locale préparée le 8 octobre 2026. Aucun déploiement ni effacement de la base du VPS. L'adresse publique retenue est `contact@auxance.dev` ; sa redirection Cloudflare a été activée le même jour.
+Version publiée le 22 octobre 2026. Le contact public fourni par GET /api/privacy est `contact@auxance.dev`. Les fonctions décrites ci-dessous traitent aussi les données historiques encore conservées.
 
 ## Ce qui fonctionne
 
-- `/confidentialite/` et `/cookies/` sont des pages HTML autonomes : ouverture directe, rechargement et lecture sans connexion. Elles utilisent les styles et thèmes du site. Les liens figurent en pied de page et dans le profil ; le formulaire d'inscription présente l'utilisation des champs avant le bouton.
+- `/confidentialite/` et `/cookies/` sont des routes publiques de l’application Vue : ouverture directe, rechargement et lecture sans connexion. Elles utilisent les styles et thèmes du site. Les liens figurent en pied de page et dans le profil ; le formulaire d'inscription présente l'utilisation des champs avant le bouton.
 - Le prénom facultatif peut être effacé. Une chaîne vide ou composée d'espaces devient `NULL` en base et l'interface reprend le pseudonyme.
 - Le bouton de retrait de l'avatar supprime le fichier courant puis sa référence dans une transaction qui verrouille le profil. Si le fichier résiste à la suppression, la réponse `503` conserve la référence pour permettre un nouvel essai. Cette route ne modifie pas le traitement des autres fichiers orphelins, prévu au lot RG-08/RG-09.
 - La liste des membres omet les e-mails pour tous les rôles. Les pseudonymes, avatars, identifiants et rôles suffisent à afficher et administrer cette liste. L'ajout d'un membre conserve la saisie de son adresse connue.
@@ -26,20 +26,11 @@ Le curseur serveur lit une ligne à la fois. Au-delà de 5 000 lignes au total o
 
 Au déploiement, renseigner `PRIVACY_CONTACT_EMAIL=contact@auxance.dev` dans l'environnement, puis redémarrer le backend. Une valeur non vide est validée au démarrage. `GET /api/privacy` expose uniquement cette adresse publique. Les pages et le profil fabriquent un lien `mailto:` avec un objet générique, sans mot de passe, jeton ou donnée du compte dans le corps.
 
-Le code fonctionne sans adresse pendant la préparation : il affiche l'état de la bêta, jamais une adresse fictive. La boîte Gmail de destination est vérifiée chez Cloudflare, la règle est active et les MX sont publiés. Un message de test envoyé par Auxance à `contact@auxance.dev` depuis une autre boîte a bien été reçu dans Gmail le 8 octobre, initialement dans les indésirables. Auxance a également confirmé la réception de sa réponse Gmail dans sa boîte personnelle : le test aller-retour est terminé. Les réponses partiront de l'adresse Gmail pour cette première configuration : le routage Cloudflare seul ne fournit pas de boîte d'envoi sous `contact@auxance.dev`. Aucun abonnement payant n'a été souscrit.
+La configuration du courrier reste extérieure au code applicatif. Ne jamais transmettre de mot de passe ou de jeton dans une demande par e-mail.
 
-## Conditions avant publication complète
+## Limites et suivi
 
-Les textes sont actuellement une **notice de bêta en préparation, version 0.1**, et non une politique complète pour une ouverture à de vrais projets. Compléter ces points, puis passer le texte en version de publication datée :
-
-1. Adresse de contact fonctionnelle et procédure de traitement des demandes, y compris après suppression d'un compte. Le pseudonyme et l'e-mail se rectifient via cette procédure ; ne pas changer une adresse sur un simple message non vérifié.
-2. Identité juridique de l'exploitant, finalités et bases légales correspondant au fonctionnement retenu. L'adresse postale du dossier RNCP n'a pas été réutilisée sur le site.
-3. Hébergeur, lieux de traitement, garanties contractuelles, rôle et réglages effectifs de Cloudflare, éventuels transferts internationaux. Ne pas déduire un pays de stockage de la seule adresse IP du VPS.
-4. Durées et procédures effectivement appliquées aux comptes, contenus, sessions, journaux et sauvegardes, après les lots RG-09/RG-10.
-5. Déployer le lot RG-06 et sa migration : récapitulatif, blocage des espaces avec collaborateurs et reprise des fichiers. Les textes de suppression correspondent à cette version locale. Voir `suppression-compte.md`.
-6. Vérification des cookies réellement déposés sur le domaine public et retrait des mentions de préparation. Les pages sont marquées `noindex` pendant cette étape ; cela ne constitue pas un contrôle d'accès.
-
-Le code applicatif ne modifie aucun DNS ni aucune boîte mail. La configuration de messagerie a été réalisée séparément dans Cloudflare, à la demande d'Auxance. L'option d'une remise à zéro de la base est laissée à plus tard.
+Le code met en œuvre des mesures techniques ; il ne constitue pas une certification de conformité RGPD. Les durées, les informations sur l’exploitant et les sous-traitants ainsi que le traitement des demandes nécessitent un suivi opérationnel. La sauvegarde de livraison a été vérifiée, mais aucune planification TaskFlow de sauvegarde ou de nettoyage n’a été constatée dans les crontabs et timers système contrôlés le 22 octobre 2026. Voir [retention-sauvegardes.md](retention-sauvegardes.md).
 
 ## Inventaire du stockage dans le navigateur
 

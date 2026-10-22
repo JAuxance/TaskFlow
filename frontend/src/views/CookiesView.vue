@@ -4,7 +4,7 @@
         <header>
             <a href="/">Back to TaskFlow</a>
             <h1>Cookies &amp; storage</h1>
-            <p class="privacy-version">8 October 2026</p>
+            <p class="privacy-version">22 October 2026</p>
             <p>This page describes the storage used by TaskFlow. Cloudflare may set cookies needed to deliver and protect the public site. TaskFlow itself does not add an advertising or measurement cookie.</p>
         </header>
         <section aria-labelledby="session-heading">
@@ -18,7 +18,7 @@
         </section>
         <section aria-labelledby="external-heading">
             <h2 id="external-heading">External resources and tracking</h2>
-            <p>The fonts and Socket.IO client are served with TaskFlow. The application does not include an advertising or audience-measurement script. Cloudflare may store what it needs to proxy and protect taskflow.auxance.dev.</p>
+            <p>The fonts and application scripts are served with TaskFlow. The application does not include an advertising or audience-measurement script. Cloudflare may store what it needs to proxy and protect taskflow.auxance.dev.</p>
             <p>Storage needed for authentication, security and an appearance choice does not by itself require a general “accept all cookies” banner. Any future optional tracking must be assessed before activation. <a href="https://www.cnil.fr/fr/cookies-et-autres-traceurs/que-dit-la-loi">CNIL guidance on cookies and trackers</a>.</p>
         </section>
         <section aria-labelledby="questions-heading">

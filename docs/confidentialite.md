@@ -13,14 +13,14 @@ Auxance Jourdan exploite TaskFlow. Le service tourne sur un VPS qu'il administre
 - Compte, espaces, projets, tâches et messages : exécution du service demandé.
 - Sessions, limitation des requêtes et journaux techniques : intérêt légitime de protection du service.
 - Mot de passe : empreinte Argon2, jamais en clair.
-- Aucune vente, aucun outil de mesure d'audience. Les polices et le client Socket.IO sont servis par TaskFlow.
+- Aucune vente, aucun outil de mesure d'audience. Les polices et les scripts applicatifs sont servis par TaskFlow.
 
 ## Durées
 
-Session authentifiée : 24 heures. Le nettoyage retire les sessions expirées et les sessions révoquées depuis plus de 7 jours. Le contenu reste jusqu'à la suppression du compte ou de l'espace. Une image qui n'est plus référencée est retirée après 24 heures. Les sauvegardes SQL sont conservées 30 jours, avec au plus 14 copies. Un compte supprimé peut rester dans une copie plus ancienne jusqu'à son expiration.
+Session authentifiée : 24 heures. Le script de nettoyage prévoit le retrait des sessions expirées et des sessions révoquées créées depuis plus de 7 jours. Le contenu reste jusqu'à la suppression du compte ou de l'espace. Le script de nettoyage cible les images non référencées après 24 heures. Le script de sauvegarde applique une rétention de 30 jours, avec au plus 14 copies, lorsqu’il est exécuté. La planification automatique de ces scripts n’a pas été constatée sur le VPS le 22 octobre 2026. Un compte supprimé peut rester dans une copie plus ancienne jusqu'à son expiration.
 
 ## Demandes
 
-Dans le profil : prénom, avatar, téléchargement JSON (mot de passe requis), suppression du compte. Sinon, écrire à `contact@auxance.dev` sans envoyer le mot de passe. Réponse sous un mois. Le changement de pseudonyme ou d'e-mail n'est fait qu'après vérification. Une réclamation peut aussi être adressée à la CNIL.
+Dans le profil : prénom, téléchargement JSON (mot de passe requis), suppression du compte. Sinon, écrire à `contact@auxance.dev` sans envoyer le mot de passe. Réponse sous un mois. Le changement de pseudonyme ou d'e-mail n'est fait qu'après vérification. Une réclamation peut aussi être adressée à la CNIL.
 
 La procédure interne est dans [demandes-et-incidents.md](demandes-et-incidents.md).

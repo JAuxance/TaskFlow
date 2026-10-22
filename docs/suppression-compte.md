@@ -1,6 +1,6 @@
 # Suppression du compte — RG-06
 
-Version préparée localement le 8 octobre 2026. Le reset et le déploiement restent reportés.
+Fonctionnement du code publié le 22 octobre 2026. La table file_cleanup_jobs et le volume du journal de suppressions sont présents sur le VPS.
 
 ## Parcours
 
@@ -18,7 +18,7 @@ Après lecture, l'utilisateur coche la confirmation, saisit son mot de passe et 
 - Si un autre membre existe : `409 shared_workspaces`. Si la liste des espaces possédés diffère de la confirmation : `409 preview_changed`. Dans les deux cas, rien n'est supprimé.
 - Un conflit de verrous ou un interblocage renvoie `409 deletion_busy`, avec annulation de la transaction et invitation à relire le récapitulatif.
 - La suppression SQL retire le compte, toutes ses sessions/appartenances et les échanges directs impliquant ce compte. Elle supprime les espaces seuls confirmés, leurs projets, tâches et chats. Les autres espaces restent ; les liens du compte dans leurs tâches et messages passent à `NULL`.
-- Les abonnements Socket.IO sont recontrôlés après la suppression ; les diffusions recontrôlent aussi la session et les droits avant chaque envoi.
+- Les sessions du compte sont supprimées ; les requêtes HTTP suivantes ne sont plus authentifiées.
 
 Code principal : `app/account_deletion.py`, routes dans `app/routes/auth.py`, présentation dans `frontend/src/layout/profile/ProfileDeletionForm.vue`. Le code utilise des fonctions, des requêtes SQL explicites et les clés étrangères déjà présentes.
 
@@ -26,7 +26,7 @@ Code principal : `app/account_deletion.py`, routes dans `app/routes/auth.py`, pr
 
 La table `file_cleanup_jobs` conserve uniquement le chemin généré du fichier, sa date d'enregistrement et un compteur d'échecs. Les demandes sont enregistrées dans la même transaction que l'effacement du compte. Après commit, une première tentative supprime les images ; en cas d'échec, la ligne reste disponible pour reprise. Un chemin arbitraire, une image par défaut ou un fichier portant l'identifiant d'un autre propriétaire n'est pas pris en charge par cette suppression.
 
-`app/file_cleanup.py` empêche Flask de servir les images générées qui ne sont plus référencées par un profil ou un espace. Cela couvre les fichiers en attente de reprise après suppression. La configuration Nginx préparée transmet `/static/` à Flask ; ne pas la remplacer par un accès direct au répertoire d'images. Les copies déjà téléchargées par un navigateur ne peuvent pas être reprises.
+`app/file_cleanup.py` empêche Flask de servir les images générées qui ne sont plus référencées par un profil ou un espace. Cela couvre les fichiers en attente de reprise après suppression. La configuration Nginx active transmet `/static/` à Flask ; ne pas la remplacer par un accès direct au répertoire d'images. Les copies déjà téléchargées par un navigateur ne peuvent pas être reprises.
 
 Commande manuelle de reprise (100 fichiers au maximum par exécution) :
 
@@ -34,7 +34,7 @@ Commande manuelle de reprise (100 fichiers au maximum par exécution) :
 flask --app app.app cleanup-deleted-files
 ```
 
-Elle affiche uniquement les nombres de suppressions et d'échecs. Vérifier les permissions disque en cas d'échec, puis relancer. Plusieurs exécutions sont sans effet supplémentaire une fois la file vide. La planification, le nettoyage des autres orphelins et l'expiration des sauvegardes seront traités dans RG-09/RG-10. Aucune durée de sauvegarde non appliquée n'est promise dans l'interface.
+Elle affiche uniquement les nombres de suppressions et d'échecs. Vérifier les permissions disque en cas d'échec, puis relancer. Plusieurs exécutions sont sans effet supplémentaire une fois la file vide. Les scripts de nettoyage et de sauvegarde sont décrits dans retention-sauvegardes.md. Leur exécution planifiée reste à installer et à vérifier sur le VPS. Aucune durée de sauvegarde non appliquée n'est promise dans l'interface.
 
 ## Migration et livraison
 
@@ -57,8 +57,8 @@ Chaque suppression, depuis le profil ou par `scripts/delete_account.py`, écrit 
 
 ## Recette
 
-`app/tests/integration/test_account_deletion.py` utilise uniquement la base jetable locale `taskflow_chat_test`. Il couvre propriétaire avec collaborateurs, transfert puis suppression, espace solo et images, contenu partagé conservé, deux sessions distinctes, mot de passe incorrect, liste devenue obsolète, échec disque puis reprise, protection CSRF, chemins étrangers, migration idempotente et deux ordres de concurrence entre ajout de membre et suppression. Les tests du chat couvrent aussi la révocation sur plusieurs connexions.
+`app/tests/integration/test_account_deletion.py` utilise uniquement la base jetable locale `taskflow_chat_test`. Il couvre propriétaire avec collaborateurs, transfert puis suppression, espace solo et images, contenu partagé conservé, deux sessions distinctes, mot de passe incorrect, liste devenue obsolète, échec disque puis reprise, protection CSRF, chemins étrangers, migration idempotente et deux ordres de concurrence entre ajout de membre et suppression.
 
-Les tests ont été préparés et exécutés avec Codex ; la fiche d'oral propose un cas court à reprendre personnellement.
+Les tests unitaires et les intégrations sur base jetable doivent être exécutés séparément. La recette de production du 22 octobre a également vérifié la suppression de deux comptes temporaires et la révocation de leurs sessions.
 
 [Documentation PostgreSQL 17 : verrous de lignes et conflits](https://www.postgresql.org/docs/17/explicit-locking.html).

@@ -2,6 +2,8 @@
 
 La cible de production est `compose.prod.yaml`. Pour un essai local, passer `COMPOSE_FILE=compose.yaml`.
 
+Le 22 octobre 2026, une sauvegarde de livraison a été créée et vérifiée. Les crontabs et timers système contrôlés ne présentent pas de planification TaskFlow. Les règles ci-dessous sont celles des scripts ; les lignes cron sont des exemples à installer, pas une automatisation attestée.
+
 ## Ce qui est conservé
 
 Les sessions durent **24 heures**. `scripts/cleanup.py` supprime les sessions expirées, et les sessions révoquées créées depuis plus de **7 jours**.
