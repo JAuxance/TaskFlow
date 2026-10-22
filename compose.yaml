@@ -4,16 +4,19 @@ services:
     container_name: taskflow_backend
     ports:
       - "5000:5000"
-    volumes:
-      - .:/app
     environment:
       APP_ENV: ${APP_ENV:-development}
+      PRIVACY_CONTACT_EMAIL: ${PRIVACY_CONTACT_EMAIL:-}
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_NAME: taskflow
       DATABASE_USER: taskflow_app
       DATABASE_PASSWORD: ${DATABASE_APP_PASSWORD}
       SECRET_KEY: ${SECRET_KEY}
+      DELETION_LOG_PATH: /var/taskflow/deletions.log
+    volumes:
+      - .:/app
+      - deletion_log:/var/taskflow
     depends_on:
       db:
         condition: service_healthy
@@ -38,3 +41,4 @@ services:
 
 volumes:
   postgres_data:
+  deletion_log:

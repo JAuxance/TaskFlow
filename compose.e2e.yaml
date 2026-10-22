@@ -1,0 +1,49 @@
+# Disposable stack for the browser tests in e2e/. Nothing is persistent: the
+# database, uploads and deletion log live in memory and vanish on `down`.
+name: taskflow-e2e
+
+services:
+  backend:
+    build: .
+    command: ["gunicorn", "--workers", "1", "--threads", "4", "--bind", "0.0.0.0:5000", "e2e_server:app"]
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      APP_ENV: development
+      # Sentinel checked by e2e/global-setup.ts: tests refuse any other backend.
+      PRIVACY_CONTACT_EMAIL: e2e-sentinel@example.com
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: taskflow
+      DATABASE_USER: taskflow_app
+      DATABASE_PASSWORD: e2e_only_app_password
+      SECRET_KEY: e2e_only_secret_key
+      DELETION_LOG_PATH: /var/taskflow/deletions.log
+    volumes:
+      - ./e2e/server.py:/app/e2e_server.py:ro
+    tmpfs:
+      - /var/taskflow
+      - /app/app/static/avatars
+      - /app/app/static/workspace_icons
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: taskflow
+      POSTGRES_USER: taskflow
+      POSTGRES_PASSWORD: e2e_only_admin_password
+      DATABASE_APP_PASSWORD: e2e_only_app_password
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./app/sql/01-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./app/sql/02-create-app-user.sh:/docker-entrypoint-initdb.d/02-create-app-user.sh:ro
+    healthcheck:
+      # TCP opens only after the initialization scripts, unlike the local socket.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U taskflow -d taskflow"]
+      interval: 1s
+      timeout: 3s
+      retries: 30

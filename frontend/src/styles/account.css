@@ -1,0 +1,41 @@
+/* Profile dialog and account deletion. */
+
+/* Wide enough for an explanation beside its controls. */
+#profile-dialog { width: 840px; }
+.email-copy { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.email-copy > span { overflow-wrap: anywhere; }
+.email-copy .btn-quiet { min-height: 32px; padding-block: 5px; }
+
+/* Who is signed in, and the way out: a lilac block at the top of the dialog. */
+.profile-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 16px; border-radius: var(--radius-card); background: var(--block-lilac); color: var(--block-lilac-ink); }
+.profile-identity .heading-copy { flex: 1; }
+.profile-identity strong { font-family: var(--font-display); font-size: 17px; line-height: 24px; }
+.profile-identity .secondary-text { color: var(--block-lilac-soft); }
+.profile-identity .avatar-large { background: var(--color-primary); color: var(--color-on-primary); }
+.profile-identity .btn-quiet, .profile-identity .btn-secondary { border-color: transparent; background: var(--color-veil); color: var(--block-lilac-ink); }
+.profile-identity .btn-quiet:hover:not(:disabled), .profile-identity .btn-secondary:hover:not(:disabled) { background: var(--color-surface); }
+
+.profile-section { padding-top: 24px; border-top: 1px solid var(--color-border); }
+/* First name and picture side by side. */
+.profile-forms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 32px; }
+.profile-forms > .profile-section { padding-top: 0; border-top: 0; }
+.form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Data export and deletion: the explanation on one side, the controls on the other. */
+.profile-row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; gap: 16px 32px; }
+.profile-row-intro { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.profile-row-intro h3 { font-family: var(--font-display); font-size: 16px; }
+.profile-row-intro .field-hint { font-size: 13px; line-height: 20px; }
+#profile-delete-form h3 { color: var(--color-danger); }
+.profile-section .privacy-links { justify-content: flex-start; }
+
+.deletion-summary { padding: 16px; border-radius: 12px; background: var(--color-surface-muted); overflow-wrap: anywhere; }
+.deletion-summary ul { padding-left: 20px; margin: 12px 0 0; }
+.deletion-summary li + li { margin-top: 8px; }
+.deletion-confirm { display: flex; gap: 10px; align-items: flex-start; line-height: 1.5; }
+.deletion-confirm input { width: auto; min-height: auto; margin-top: 5px; accent-color: var(--color-primary); }
+
+@media (max-width: 700px) {
+    .profile-identity { align-items: flex-start; }
+    .profile-forms, .profile-row { grid-template-columns: minmax(0, 1fr); }
+    .email-copy .btn-quiet { min-height: 44px; }
+}

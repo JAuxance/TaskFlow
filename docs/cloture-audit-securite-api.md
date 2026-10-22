@@ -1,3 +1,5 @@
+> Document historique. Depuis le 22 octobre 2026, la messagerie et les nouveaux uploads sont retirés. Pour le comportement actuel, voir [la simplification RNCP5](simplification-rncp5.md). Les résultats datés ci-dessous décrivent leur révision d’origine.
+
 # Clôture de l’audit de sécurité — TaskFlow
 
 Date : 14 septembre 2026. Référence : [audit initial du 11 septembre](audit-securite-api.md).

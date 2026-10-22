@@ -1,0 +1,69 @@
+/* Motion: short, and only to show that a control answered or where a block comes from.
+   Nothing moves when the system asks for less motion. */
+
+@media (prefers-reduced-motion: no-preference) {
+    /* Controls answer the pointer. */
+    .btn-primary, .btn-secondary, .btn-danger, .btn-quiet, .workspace-button, .account-profile, .page-tab, .tab-count,
+    .theme-toggle, .dialog-close, .sidebar-add, .breadcrumb-link, .project-card, .task-card, .workspace-focus-task,
+    input, textarea, select {
+        transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, color var(--motion-fast) ease,
+            box-shadow var(--motion-fast) ease, transform var(--motion-fast) var(--motion-ease);
+    }
+    .btn-primary:active:not(:disabled), .btn-secondary:active:not(:disabled), .btn-danger:active:not(:disabled),
+    .btn-quiet:active:not(:disabled), .theme-toggle:active, .dialog-close:active { transform: scale(.96); }
+    .theme-toggle svg { transition: transform var(--motion) var(--motion-ease); }
+    .theme-toggle:hover svg { transform: rotate(18deg); }
+
+    /* A screen arrives: its blocks rise into place one after the other. A tab does the same when it opens. */
+    .page-content > * { animation: rise var(--motion) var(--motion-ease) backwards; }
+    .page-content > :nth-child(2) { animation-delay: 40ms; }
+    .page-content > :nth-child(3) { animation-delay: 80ms; }
+    .page-content > :nth-child(n + 4) { animation-delay: 120ms; }
+    .login-form, .privacy-page, .landing-hero, .landing-preview, .landing-feature { animation: rise var(--motion-slow) var(--motion-ease) backwards; }
+    .landing-preview { animation-delay: 80ms; }
+    .landing-feature { animation-delay: 160ms; }
+
+    /* Figures, columns and cards follow, slightly staggered. */
+    .workspace-stat, .kanban-column { animation: rise var(--motion-slow) var(--motion-ease) backwards; }
+    :is(.workspace-stat, .kanban-column):nth-child(2) { animation-delay: 60ms; }
+    :is(.workspace-stat, .kanban-column):nth-child(3) { animation-delay: 120ms; }
+    :is(.workspace-stat, .kanban-column):nth-child(n + 4) { animation-delay: 180ms; }
+    .task-card, .workspace-project-card, .workspace-focus-item { animation: rise var(--motion) var(--motion-ease) backwards; }
+    /* A message grows in place: moving it would shift the end of the conversation. */
+    .chat-message { animation: grow var(--motion) var(--motion-ease) backwards; transform-origin: bottom left; }
+    .chat-message-own { transform-origin: bottom right; }
+
+    /* A progress bar fills up to its value. */
+    .workspace-project-progress progress::-webkit-progress-value { animation: fill var(--motion-slow) var(--motion-ease) backwards; }
+    .workspace-project-progress progress::-moz-progress-bar { animation: fill var(--motion-slow) var(--motion-ease) backwards; }
+
+    /* A dialog rises over a backdrop that fades in, and leaves the same way. */
+    .app-dialog {
+        opacity: 0;
+        transform: translateY(12px) scale(.98);
+        transition: opacity var(--motion) ease, transform var(--motion) var(--motion-ease),
+            overlay var(--motion) allow-discrete, display var(--motion) allow-discrete;
+    }
+    .app-dialog[open] { opacity: 1; transform: none; }
+    .app-dialog::backdrop { opacity: 0; transition: opacity var(--motion) ease, overlay var(--motion) allow-discrete, display var(--motion) allow-discrete; }
+    .app-dialog[open]::backdrop { opacity: 1; }
+    @starting-style {
+        .app-dialog[open] { opacity: 0; transform: translateY(12px) scale(.98); }
+        .app-dialog[open]::backdrop { opacity: 0; }
+    }
+}
+
+/* Lifting a card only makes sense under a pointer that hovers. */
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+    .project-card:hover:not(:disabled), .task-card:hover:not(:disabled), .workspace-focus-task:hover:not(:disabled) { transform: translateY(-2px); }
+}
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+}
+@keyframes grow {
+    from { opacity: 0; transform: scale(.94); }
+}
+@keyframes fill {
+    from { width: 0; }
+}

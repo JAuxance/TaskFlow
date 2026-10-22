@@ -1,0 +1,57 @@
+/* Project board and task editor. */
+
+/* The name of the project sits in a bubble. */
+.project-page .page-heading h1 { width: fit-content; max-width: 100%; padding: 6px 20px; border-radius: 22px; background: var(--block-lilac); color: var(--block-lilac-ink); }
+
+/* The board stays sober: grey columns, white cards, a dot for the status. */
+.kanban-board { display: grid; grid-template-columns: repeat(4, minmax(230px, 1fr)); flex: 1; gap: 16px; width: 100%; min-height: 360px; overflow-x: auto; padding: 4px 0 8px; }
+.kanban-column { --status-color: var(--status-todo); min-width: 0; padding: 0 10px 12px; border-radius: var(--radius-card); background: var(--color-sunken); }
+.kanban-column[data-status="in_progress"] { --status-color: var(--status-progress); }
+.kanban-column[data-status="review"] { --status-color: var(--status-review); }
+.kanban-column[data-status="done"] { --status-color: var(--status-done); }
+.kanban-heading { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 14px 6px 10px; font-size: 14px; line-height: 20px; letter-spacing: 0; }
+.kanban-heading::before { content: ""; width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: var(--status-color); }
+.kanban-count { margin-left: auto; background: var(--color-raised); color: var(--color-secondary); }
+.task-cards { display: flex; flex-direction: column; gap: 8px; }
+.task-card { display: flex; flex-direction: column; gap: 12px; width: 100%; padding: 14px; border: 1px solid transparent; border-radius: 12px; background: var(--color-surface); box-shadow: var(--shadow-raised); color: var(--color-text); text-align: left; }
+.task-card:hover:not(:disabled) { border-color: var(--color-border-hover); }
+/* The color of the task: a dot before its title. */
+.task-card-title { display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 600; line-height: 22px; overflow-wrap: anywhere; }
+.task-card[data-color] .task-card-title::before { content: ""; flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--item-color); }
+.task-meta { display: flex; align-items: baseline; gap: 8px; width: 100%; min-width: 0; color: var(--color-secondary); font-size: 12px; line-height: 18px; }
+.task-assignee { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.task-meta time { flex-shrink: 0; white-space: nowrap; }
+.task-cards .empty-state { padding: 12px 6px; }
+.task-form { width: 100%; min-width: 0; }
+#task-form { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.task-editor-main { display: flex; flex-direction: column; gap: 24px; min-width: 0; padding: 28px; border-radius: var(--radius-card); background: var(--color-surface); }
+#task-title { font-size: 16px; font-weight: 500; }
+.task-description-field textarea { min-height: 300px; }
+.task-properties { display: flex; flex-direction: column; gap: 24px; min-width: 0; padding: 24px; border-radius: var(--radius-card); background: var(--color-surface); }
+.task-properties > h2 { font-size: 15px; }
+.task-property-group { display: flex; flex-direction: column; gap: 16px; }
+.task-property-group + .task-property-group { padding-top: 20px; border-top: 1px solid var(--color-border); }
+.task-property-group h3 { color: var(--color-secondary); font-size: 12px; }
+.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.task-properties .field-grid { grid-template-columns: 1fr; gap: 16px; }
+.save-hint, .task-save-hint { font-size: 12px; line-height: 18px; color: var(--color-secondary); }
+.task-danger-zone { padding-top: 16px; border-top: 1px solid var(--color-border); }
+.task-danger-zone .btn-danger { min-height: 34px; padding: 6px 14px; font-size: 12px; }
+#create-task-form .task-color-field { max-width: 240px; }
+
+@media (max-width: 1000px) {
+    #task-form { grid-template-columns: 1fr; }
+    .task-properties { gap: 20px; }
+    .task-properties .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+    .field-grid { grid-template-columns: 1fr; gap: 20px; }
+    .kanban-board { grid-template-columns: minmax(0, 1fr); flex: none; min-height: 0; overflow: visible; padding: 0; }
+    .kanban-column { min-height: 0; padding: 0 10px 10px; }
+    #task-form { gap: 16px; }
+    .task-editor-main, .task-properties { gap: 20px; padding: 16px; }
+    .task-properties .field-grid { grid-template-columns: 1fr; }
+    .task-description-field textarea { height: 160px; min-height: 160px; }
+    .task-danger-zone .btn-danger { min-height: 44px; }
+}

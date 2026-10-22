@@ -4,7 +4,7 @@ from app.db import (
     create_project,
     get_projects_by_workspace,
     update_project_db,
-    deleted_project,
+    delete_project_db,
 )
 from app.permissions import (
     get_authenticated_user,
@@ -22,9 +22,7 @@ def projects(workspace_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
-    _, error = get_workspace_with_permission(
-        workspace_id, user_id, ("owner", "admin")
-    )
+    _, error = get_workspace_with_permission(workspace_id, user_id, ("owner", "admin"))
     if error:
         return error
     data, error = get_json_object()
@@ -43,13 +41,7 @@ def projects(workspace_id):
     ):
         return {"error": "invalid description"}, 400
     project = create_project(workspace_id, name, description)
-    return {
-        "id": project[0],
-        "workspace_id": project[1],
-        "name": project[2],
-        "description": project[3],
-        "created_at": project[4].isoformat(),
-    }, 201
+    return _project_response(project), 201
 
 
 @projects_bp.route("/api/workspaces/<int:workspace_id>/projects", methods=["GET"])
@@ -65,13 +57,7 @@ def get_projects(workspace_id):
         return error
     limit, offset = pagination
     return [
-        {
-            "id": project[0],
-            "workspace_id": project[1],
-            "name": project[2],
-            "description": project[3],
-            "created_at": project[4].isoformat(),
-        }
+        _project_response(project)
         for project in get_projects_by_workspace(workspace_id, limit, offset)
     ], 200
 
@@ -102,7 +88,9 @@ def update_project(project_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
-    project, error = get_project_with_permission(project_id, user_id, ("owner", "admin"))
+    project, error = get_project_with_permission(
+        project_id, user_id, ("owner", "admin")
+    )
     if error:
         return error
     data, error = get_json_object()
@@ -131,10 +119,12 @@ def delete_project(project_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
-    project, error = get_project_with_permission(project_id, user_id, ("owner", "admin"))
+    project, error = get_project_with_permission(
+        project_id, user_id, ("owner", "admin")
+    )
     if error:
         return error
-    deleted_project_row = deleted_project(project[0])
+    deleted_project_row = delete_project_db(project[0])
     if not deleted_project_row:
         return resource_not_found()
     return {"message": "project deleted successfuly"}, 200

@@ -1,0 +1,68 @@
+import {
+    expect, kanbanColumn, openProject, openTask, openWorkspace, reloadApp, test,
+} from '../support/test';
+import { createProject, createTask, createWorkspace } from '../support/api';
+import { sql } from '../support/stack';
+
+/** Same effect as waiting for the 24-hour lifetime of a session. */
+const expireSessions = () => sql("UPDATE sessions SET expires_at = now() - interval '1 minute'");
+
+test('an expired session returns to the login screen on the next navigation', async ({ actor }) => {
+    const { page, request } = await actor('alice');
+    await createWorkspace(request, 'Design studio');
+    await createWorkspace(request, 'Marketing');
+    await reloadApp(page);
+    expireSessions();
+
+    await page.getByRole('navigation', { name: 'Workspaces' }).getByRole('button', { name: 'Marketing', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+});
+
+test('a page without its session cookie shows the login screen', async ({ actor }) => {
+    const { page, request } = await actor('alice');
+    await createWorkspace(request, 'Design studio');
+    await reloadApp(page);
+    await expect(page.getByRole('heading', { level: 1, name: 'Design studio' })).toBeVisible();
+    await page.context().clearCookies();
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+});
+
+
+
+test.describe('screens that should also return to the login screen', () => {
+    // The previous frontend showed an error on these two screens and stayed in
+    // place (audit finding D2).
+    test('opening a task from the board after expiry', async ({ actor }) => {
+        const { page, request } = await actor('alice');
+        const workspace = await createWorkspace(request, 'Design studio');
+        const project = await createProject(request, workspace.id, 'Website redesign');
+        await createTask(request, project.id, { title: 'Write the brief' });
+        await reloadApp(page);
+        await openWorkspace(page, 'Design studio');
+        await openProject(page, 'Website redesign');
+        expireSessions();
+
+        await kanbanColumn(page, 'todo').getByRole('button', { name: /Write the brief/ }).click();
+        await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible({ timeout: 3000 });
+    });
+
+    test('saving a task status after expiry', async ({ actor }) => {
+        const { page, request } = await actor('alice');
+        const workspace = await createWorkspace(request, 'Design studio');
+        const project = await createProject(request, workspace.id, 'Website redesign');
+        await createTask(request, project.id, { title: 'Write the brief' });
+        await reloadApp(page);
+        await openWorkspace(page, 'Design studio');
+        await openProject(page, 'Website redesign');
+        await openTask(page, 'todo', 'Write the brief');
+        expireSessions();
+
+        await page.getByLabel('Status', { exact: true }).selectOption('done');
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible({ timeout: 3000 });
+    });
+});

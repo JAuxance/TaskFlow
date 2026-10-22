@@ -4,15 +4,15 @@ from psycopg.errors import UniqueViolation
 from app.db import (
     add_workspace_member,
     create_workspace_with_owner,
-    delet_workspace,
+    delete_workspace_db,
     get_user_by_email,
     get_workspace_member,
     get_workspace_members,
     get_workspaces_by_member,
     update_workspace,
-    update_role_member,
-    delete_member_db,
-    crowned_king,
+    update_workspace_member_role,
+    delete_workspace_member,
+    transfer_workspace_owner,
 )
 from app.permissions import (
     check_workspace_permission,
@@ -24,6 +24,18 @@ from app.permissions import (
 from app.validation import get_json_object, get_pagination, is_valid_id, is_valid_text
 
 workspaces_bp = Blueprint("workspaces", __name__)
+
+
+def _workspace_response(workspace):
+    return {
+        "id": workspace[0],
+        "owner_id": workspace[1],
+        "name": workspace[2],
+        "created_at": workspace[3].isoformat(),
+        "icon_type": workspace[4],
+        "icon_value": workspace[5],
+        "color": workspace[6],
+    }
 
 
 @workspaces_bp.route("/api/workspaces", methods=["POST"])
@@ -40,12 +52,7 @@ def create_workspace_endpoint():
     if not is_valid_text(name, allow_empty=False, max_length=50):
         return {"error": "invalid name"}, 400
     workspace = create_workspace_with_owner(user_id, name)
-    return {
-        "id": workspace[0],
-        "owner_id": workspace[1],
-        "name": workspace[2],
-        "created_at": workspace[3].isoformat(),
-    }, 201
+    return _workspace_response(workspace), 201
 
 
 @workspaces_bp.route("/api/workspaces", methods=["GET"])
@@ -58,15 +65,7 @@ def get_workspaces():
         return error
     limit, offset = pagination
     workspaces = get_workspaces_by_member(user_id, limit, offset)
-    return [
-        {
-            "id": workspace[0],
-            "owner_id": workspace[1],
-            "name": workspace[2],
-            "created_at": workspace[3].isoformat(),
-        }
-        for workspace in workspaces
-    ], 200
+    return [_workspace_response(workspace) for workspace in workspaces], 200
 
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>", methods=["GET"])
@@ -77,25 +76,18 @@ def get_workspaces_by_id_route(workspace_id):
     workspace, error = get_workspace_with_permission(workspace_id, user_id)
     if error:
         return error
-    return {
-        "id": workspace[0],
-        "owner_id": workspace[1],
-        "name": workspace[2],
-        "created_at": workspace[3].isoformat(),
-    }, 200
+    return _workspace_response(workspace), 200
 
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>", methods=["DELETE"])
-def del_workspace(workspace_id):
+def delete_workspace(workspace_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
-    _, error = get_workspace_with_permission(
-        workspace_id, user_id, require_owner=True
-    )
+    _, error = get_workspace_with_permission(workspace_id, user_id, require_owner=True)
     if error:
         return error
-    if not delet_workspace(workspace_id):
+    if not delete_workspace_db(workspace_id):
         return resource_not_found()
     return {"message": "workspace deleted successfuly"}, 200
 
@@ -105,9 +97,7 @@ def workspace_update(workspace_id):
     user_id, error = get_authenticated_user()
     if error:
         return error
-    _, error = get_workspace_with_permission(
-        workspace_id, user_id, ("owner", "admin")
-    )
+    _, error = get_workspace_with_permission(workspace_id, user_id, ("owner", "admin"))
     if error:
         return error
     data, error = get_json_object()
@@ -121,12 +111,7 @@ def workspace_update(workspace_id):
     edited_workspace = update_workspace(workspace_id, name)
     if not edited_workspace:
         return resource_not_found()
-    return {
-        "id": edited_workspace[0],
-        "owner_id": edited_workspace[1],
-        "name": edited_workspace[2],
-        "created_at": edited_workspace[3].isoformat(),
-    }, 200
+    return _workspace_response(edited_workspace), 200
 
 
 @workspaces_bp.route("/api/workspaces/<int:workspace_id>/members", methods=["POST"])
@@ -190,7 +175,7 @@ def get_members(workspace_id):
             "role": member[3],
             "created_at": member[4].isoformat(),
             "user_name": member[5],
-            "user_email": member[6],
+            "avatar_url": member[6],
         }
         for member in members
     ], 200
@@ -241,8 +226,8 @@ def update_member_role(workspace_id, user_id):
 
     if current_member_role == "admin" and target_member[3] == "admin":
         return insufficient_privileges()
-    
-    updated_member = update_role_member(workspace_id, user_id, role)
+
+    updated_member = update_workspace_member_role(workspace_id, user_id, role)
 
     if not updated_member:
         return resource_not_found()
@@ -259,7 +244,7 @@ def update_member_role(workspace_id, user_id):
 @workspaces_bp.route(
     "/api/workspaces/<int:workspace_id>/members/<int:user_id>", methods=["DELETE"]
 )
-def delet_member_route(workspace_id, user_id):
+def delete_member(workspace_id, user_id):
     requester_id, error = get_authenticated_user()
     if error:
         return error
@@ -285,7 +270,7 @@ def delet_member_route(workspace_id, user_id):
     if requester_role == "owner" and target_member_role == "owner":
         if requester_id != workspace[1]:
             return insufficient_privileges()
-    deleted_member = delete_member_db(workspace_id, user_id)
+    deleted_member = delete_workspace_member(workspace_id, user_id)
     if not deleted_member:
         return resource_not_found()
     return {"message": f"member {deleted_member[0]} has been deleted"}, 200
@@ -295,7 +280,7 @@ def delet_member_route(workspace_id, user_id):
     "/api/workspaces/<int:workspace_id>/owner",
     methods=["PATCH"],
 )
-def transfer_crown(workspace_id):
+def transfer_owner(workspace_id):
     user_id, error = get_authenticated_user()
 
     if error:
@@ -325,7 +310,7 @@ def transfer_crown(workspace_id):
     if error:
         return error
 
-    updated_workspace = crowned_king(
+    updated_workspace = transfer_workspace_owner(
         target_user_id,
         workspace_id,
     )
@@ -339,4 +324,7 @@ def transfer_crown(workspace_id):
         "owner_id": updated_workspace[1],
         "name": updated_workspace[2],
         "created_at": updated_workspace[3].isoformat(),
+        "icon_type": updated_workspace[4],
+        "icon_value": updated_workspace[5],
+        "color": updated_workspace[6],
     }, 200
